@@ -5,7 +5,7 @@ import (
 	
 )
 
-func Hash(senha string) ([]byte, error) {
+func HashPassword(senha string) ([]byte, error) {
 
 	hashPass, err:=bcrypt.GenerateFromPassword([]byte(senha), bcrypt.DefaultCost)
 	if err != nil {
@@ -15,3 +15,5 @@ func Hash(senha string) ([]byte, error) {
 	return  hashPass, nil
 
 }
+
+func HashCompare(){}
