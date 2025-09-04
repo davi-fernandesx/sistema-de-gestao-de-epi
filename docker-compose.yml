@@ -1,30 +1,18 @@
 version: '3.8'
 
 services:
-
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: sqlserver
-    hostname: sqlserver
-    env_file:
-      - configs/.env # Mantém o arquivo de ambiente
-    environment:
-      - ACCEPT_EULA=Y
-      # - SA_PASSWORD=davi2003 # REMOVA ESTA LINHA para usar a do .env
-      - SA_PASSWORD=Davi2003Ag0ra! # Use a variável do .env
-      - MSSQL_PID=Express
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: sqlserver_container
     ports:
       - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=MinhaSenhaForte123!
+      - MSSQL_PID=Developer
     volumes:
       - sqlserver_data:/var/opt/mssql
-    healthcheck:
-      # Use a variável para a senha aqui também, ou a senha forte diretamente
-      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -U sa -P \"$${SA_PASSWORD}\" -Q 'SELECT 1' || exit 1"]
-      interval: 10s
-      timeout: 20s
-      retries: 15
-      start_period: 60s
 
 volumes:
   sqlserver_data:
-    name: sge_sql_data
+
