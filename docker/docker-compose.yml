@@ -4,12 +4,14 @@ services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2019-latest
     container_name: sqlserver_container
+    env_file:
+      - ../configs/.env
     ports:
-      - "1433:1433"
+      - "${DB_PORT}:1433"
     environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=MinhaSenhaForte123!
-      - MSSQL_PID=Developer
+      - ACCEPT_EULA=${ACCEPT_EULA}
+      - MSSQL_SA_PASSWORD=${SA_PASSWORD}
+      - MSSQL_PID=${MSSQL_PID}
     volumes:
       - sqlserver_data:/var/opt/mssql
 
