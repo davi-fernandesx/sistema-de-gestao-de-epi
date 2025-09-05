@@ -9,15 +9,9 @@ services:
     ports:
       - "${DB_PORT}:1433"
     environment:
-<<<<<<< HEAD:docker-compose.yml
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=Davi2003@
-      - MSSQL_PID=Developer
-=======
       - ACCEPT_EULA=${ACCEPT_EULA}
       - MSSQL_SA_PASSWORD=${SA_PASSWORD}
       - MSSQL_PID=${MSSQL_PID}
->>>>>>> f59f8e82d4ef2411814f1e53b472ac46b5e1ec41:docker/docker-compose.yml
     volumes:
       - sqlserver_data:/var/opt/mssql
 
