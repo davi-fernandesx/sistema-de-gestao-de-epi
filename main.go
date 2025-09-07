@@ -16,10 +16,14 @@ func main(){
 	_, err:= configs.InitAplicattion()
 	if err != nil {
 
-		log.Fatal(err)
+	log.Fatal(err)
 	}
 
 
 	router.Run(":8080")
+
+
+	
+
 
 }
