@@ -5,6 +5,8 @@ import (
 	
 )
 
+//funcao criada para codificar a senha de login do usuario
+
 func HashPassword(senha string) ([]byte, error) {
 
 	hashPass, err:=bcrypt.GenerateFromPassword([]byte(senha), bcrypt.DefaultCost)
@@ -16,4 +18,13 @@ func HashPassword(senha string) ([]byte, error) {
 
 }
 
-func HashCompare(){}
+//funcao que ira servir para comparar a senha que o usuario digitar, com a que esta salva no banco de dados
+func HashCompare(hash []byte, senha []byte) error{
+
+	err:= bcrypt.CompareHashAndPassword(hash, senha)
+	if err != nil {
+		return  err
+	}
+
+	return  nil
+}
