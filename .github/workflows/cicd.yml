@@ -54,11 +54,11 @@ jobs:
 
           - name: rodando os testes de integração
             env:
-            DB_SERVER: ${{ secrets.DB_SERVER }}
-            DB_PORT: ${{ secrets.DB_PORT }}
-            DATABASE: ${{ secrets.DATABASE }}
-            DB_USER: ${{ secrets.DB_USER }}
-            SA_PASSWORD: ${{ secrets.SA_PASSWORD }}
+              DB_SERVER: ${{ secrets.DB_SERVER }}
+              DB_PORT: ${{ secrets.DB_PORT }}
+              DATABASE: ${{ secrets.DATABASE }}
+              DB_USER: ${{ secrets.DB_USER }}
+              SA_PASSWORD: ${{ secrets.SA_PASSWORD }}
 
-            
+
             run:  go test -v -tags=integration ./...
