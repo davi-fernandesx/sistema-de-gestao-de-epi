@@ -1,2 +1,8 @@
 - repository, service e controller login
 - banco de dados login
+
+rodar testes
+go test -v -tags=integration ./...
+
+rodar docker
+ sudo docker-compose --env-file ../configs/.env up -d
