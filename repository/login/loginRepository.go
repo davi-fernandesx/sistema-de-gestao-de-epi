@@ -36,7 +36,7 @@ func (s *SqlServerLogin) AddLogin(ctx context.Context, model *model.Login) (*mod
 		if errors.As(err, &errSql) && errSql.Number == 2627{ /*verificando se o erro atual, faz parte dos conjuntos de erro do sqlServer e, 
 			verificando se o erro do sqlserver é igual ao numero 2627, que é o erro da constraint UNIQUE*/
 			
-			return nil, usuarioJaExistente
+			return nil, ErrusuarioJaExistente
 		}
 
 		return nil, err
@@ -56,17 +56,17 @@ func (s *SqlServerLogin) DeletarLogin(ctx context.Context, id int) error {
 	result, err:= s.db.Exec(query, sql.Named("id", id))
 	if err != nil {
 
-		return erroAoApagarUmLogin
+		return err
 	}
 	
 	row, err:= result.RowsAffected()
 	if err != nil{
 
-		return erroLinhasAfetadas
+		return ErrLinhasAfetadas
 	}
 	
 	if row == 0{
-		return fmt.Errorf("nenhuma categoria encontrada com o id: %d", id)
+		return fmt.Errorf("nenhum login encontrado com o id: %d", id)
 	}
 
 

@@ -15,6 +15,6 @@ type loginRepository interface{
 	Login(ctx context.Context, Nome string) (*model.Login, error)
 }
 //conjunto de erros
-var  usuarioJaExistente = errors.New("usuario já cadastrado")
-var  erroAoApagarUmLogin = errors.New("erro ao apagar login")
-var erroLinhasAfetadas = errors.New( "erro ao verificar as linhas afetadas")
+var  ErrusuarioJaExistente = errors.New("usuario já cadastrado")
+var  ErrAoApagarUmLogin = errors.New("erro ao apagar login")
+var ErrLinhasAfetadas = errors.New( "erro ao verificar as linhas afetadas")

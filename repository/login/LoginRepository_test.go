@@ -93,7 +93,7 @@ func TestDeletarLogin(t *testing.T) {
 		// Assert
 		require.Error(t, err) // Esperamos um erro
 		// Verificamos se o erro retornado é exatamente o que a função deve criar
-		expectedErrorMsg := fmt.Sprintf("nenhuma categoria encontrada com o id: %d", idInexistente)
+		expectedErrorMsg := fmt.Sprintf("nenhum login encontrado com o id: %d", idInexistente)
 		assert.EqualError(t, err, expectedErrorMsg)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -105,7 +105,7 @@ func TestDeletarLogin(t *testing.T) {
 		// Simulamos um erro genérico do banco de dados durante a execução.
 		mock.ExpectExec(query).
 			WithArgs(sql.Named("id", idParaDeletar)).
-			WillReturnError(errors.New("erro de conexão")) // Simula uma falha
+			WillReturnError(errors.New("erro ao apagar login")) // Simula uma falha
 
 		// Act
 		err := repo.DeletarLogin(context.Background(), idParaDeletar)
@@ -113,7 +113,7 @@ func TestDeletarLogin(t *testing.T) {
 		// Assert
 		require.Error(t, err) // Esperamos um erro
 		// Verificamos se o erro retornado é o nosso erro customizado
-		assert.Equal(t, erroAoApagarUmLogin, err)
+		assert.Equal(t, ErrAoApagarUmLogin, err)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
