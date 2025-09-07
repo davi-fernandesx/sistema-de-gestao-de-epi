@@ -45,7 +45,7 @@ jobs:
               go-version: '1.25.1'
 
           - name: criando arquivo .env a partir de secrets do github
-            run: echo "${{ secrets.ENV.FILE}}" > configs/.env
+            run: echo "${{ secrets.ENV_FILE}}" > configs/.env
 
           - name: subindo o docker compose
             run: docker-compose -f docker/docker-compose.yml up -d
