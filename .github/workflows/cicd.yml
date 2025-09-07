@@ -48,7 +48,7 @@ jobs:
             run: echo "${{ secrets.ENV_FILE}}" > configs/.env
 
           - name: subindo o docker compose
-            run: docker-compose -f docker/docker-compose.yml up -d
+            run: docker compose -f docker/docker-compose.yml up -d
 
           - name: esperando o banco de dados subir
 
@@ -56,7 +56,7 @@ jobs:
                   echo "Esperando 20 segundos pelo SQL Server..."
                   sleep 20
                   echo "Verificando os contêineres..."
-                  docker-compose -f docker/docker-compose.yml ps
+                  docker compose -f docker/docker-compose.yml ps
 
           - name: rodando os testes de integração
             env:
