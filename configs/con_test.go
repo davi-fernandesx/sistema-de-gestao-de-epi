@@ -1,3 +1,4 @@
+//go:build integration
 package configs
 
 import (
@@ -13,10 +14,8 @@ import (
 
 func TestConexao(t *testing.T) {
 
-	err := godotenv.Load()
-	if err != nil {
-		t.Fatalf("Erro ao carregar o arquivo .env da pasta configs: %v", err)
-	}
+	_ = godotenv.Load()
+
 	db_server:= os.Getenv("DB_SERVER")
 	db_port:= os.Getenv("DB_PORT")
 	db_database:= os.Getenv("DATABASE")
