@@ -19,12 +19,12 @@ func HashPassword(senha string) ([]byte, error) {
 }
 
 //funcao que ira servir para comparar a senha que o usuario digitar, com a que esta salva no banco de dados
-func HashCompare(hash []byte, senha []byte) error{
+func HashCompare(hash []byte, senha []byte)(bool, error){
 
 	err:= bcrypt.CompareHashAndPassword(hash, senha)
 	if err != nil {
-		return  err
+		return false , err
 	}
 
-	return  nil
+	return  true, nil
 }
