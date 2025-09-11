@@ -7,3 +7,8 @@ type Login struct {
 	Nome string
 	Senha string
 }
+
+type LoginDto struct {
+	Nome string
+	Senha string
+}

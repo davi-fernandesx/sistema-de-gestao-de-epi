@@ -4,6 +4,9 @@ import (
 	"log"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/controller"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/login"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,17 +16,23 @@ func main(){
 	
 	router:= gin.Default()
 
-	_, err:= configs.InitAplicattion()
+	db, err:= configs.InitAplicattion()
 	if err != nil {
 
 	log.Fatal(err)
 	}
 
+	repoLogin:= login.NewSqlLogin(db)
+	ServiceLogin:= service.NewLoginService(repoLogin)
+	ControllerLogin:= controller.NewControllerLogin(ServiceLogin)
+
+	router.POST("/login", ControllerLogin.SalvarLoginHttp())
+
 
 	router.Run(":8080")
 
 
-	
+
 
 
 }

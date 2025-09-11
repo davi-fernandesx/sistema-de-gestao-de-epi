@@ -1,0 +1,49 @@
+package controller
+
+import (
+	"net/http"
+
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/service"
+	"github.com/gin-gonic/gin"
+)
+
+type ControllerLogin struct {
+
+	ServiceLogin *service.LoginService
+}
+
+
+func NewControllerLogin(serviceLogin *service.LoginService) *ControllerLogin{
+
+	return &ControllerLogin{
+		ServiceLogin: serviceLogin,
+	}
+}
+
+
+func (Cl *ControllerLogin) SalvarLoginHttp() gin.HandlerFunc {
+
+	return  func(c *gin.Context) {
+
+		var  request model.LoginDto
+
+		err:= c.BindJSON(&request)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Erro": "erro ao realizar a decodificação do json"})
+			return 
+		}
+
+
+		err = Cl.ServiceLogin.SalvaLogin(request)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Erro:": err.Error()})
+			return 
+		}
+
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "usuario salvo com sucesso",
+		})
+	}
+}
