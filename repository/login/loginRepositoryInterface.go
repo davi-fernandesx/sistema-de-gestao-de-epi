@@ -1,4 +1,4 @@
-package auth
+package login
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 type loginRepository interface{
 
 
-	AddLogin(ctx context.Context, model *model.Login)(*model.Login, error) 
+	AddLogin( model *model.Login)(error) 
 	DeletarLogin(ctx context.Context, id int) error
 	Login(ctx context.Context, Nome string) (*model.Login, error)
 }
