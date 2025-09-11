@@ -28,7 +28,7 @@ jobs:
               DATABASE: ${{ secrets.DATABASE }}
               DB_USER: ${{ secrets.DB_USER }}
               SA_PASSWORD: ${{ secrets.SA_PASSWORD }}
-        run: docker compose -f docker/docker-compose.yml up -d
+        
         run: go test -v ./...    
 
 
