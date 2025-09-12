@@ -74,16 +74,57 @@ func (s *SqlServerLogin) DeletarLogin(ctx context.Context, id int) error {
 
 }
 
+func (s *SqlServerLogin) RetornaLogin() (*[]model.Login, error){
+
+	query:= `
+		select * from usuario ;
+
+	`
+
+	linhas, err:= s.db.Query(query)
+	if err != nil {
+		return  &[]model.Login{}, fmt.Errorf("erro ao rodar a query para obter os usuarios")
+
+	}
+
+	defer linhas.Close()
+
+	var Usuarios []model.Login
+
+	for linhas.Next() {
+		var usuario model.Login
+
+		if err:= linhas.Scan(
+			&usuario.ID,
+			&usuario.Nome,
+			&usuario.Senha,
+		); err != nil {
+			return &[]model.Login{}, fmt.Errorf("erro no scaner")
+		}
+
+		Usuarios = append(Usuarios, usuario)
+
+	}
+
+		err = linhas.Err()
+		if err != nil {
+			return  &[]model.Login{}, fmt.Errorf("erro no sql.rows")
+		}
+
+		return  &Usuarios, nil
+	
+}
+
 // Login implements loginRepository.
-func (s *SqlServerLogin) Login(ctx context.Context, nome string) (*model.Login, error) {
+func (s *SqlServerLogin) Login(login *model.Login) (*model.Login, error) {
 	
 	query:= `
 		SELECT usuario, senha FROM login WHERE usuario = @nome
 	`
 
-   login:= &model.Login{}
+   var Login model.Login
 
-	err:= s.db.QueryRow(query, sql.Named("nome", nome)).Scan(&login.Nome,
+	err:= s.db.QueryRow(query, sql.Named("nome", login.Nome)).Scan(&Login.Nome,
 		&login.Senha,)
 		
 	if err != nil {

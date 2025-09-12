@@ -47,3 +47,31 @@ func (Cl *ControllerLogin) SalvarLoginHttp() gin.HandlerFunc {
 		})
 	}
 }
+
+func (Cl *ControllerLogin) AceitarLogin() gin.HandlerFunc{
+
+	return  func(c *gin.Context) {
+
+		var request model.LoginDto
+
+		err:= c.BindJSON(&request)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"erro": err.Error(),
+			})
+			return 
+		}
+
+		loginAceito, err:= Cl.ServiceLogin.Login(request)
+		if err != nil {
+
+			c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+			return 
+		}
+
+		if loginAceito {
+			c.JSON(http.StatusOK, gin.H{"Login feito com sucesso": "ok"})
+		}
+
+	}
+}

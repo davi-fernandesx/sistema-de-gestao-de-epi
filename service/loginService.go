@@ -47,3 +47,34 @@ func (Ls *LoginService)SalvaLogin(LoginUsuario model.LoginDto) error {
 
 	return  nil
 }
+
+func (Ls *LoginService) Login(LoginUsuario model.LoginDto) (bool,error) {
+
+	usuarios, err:= Ls.LoginRepo.RetornaLogin();
+	if err != nil {
+		return  false, err
+	}
+	modelUsuario:= model.Login{
+		Nome: LoginUsuario.Nome,
+		Senha: LoginUsuario.Senha,
+	}
+
+	for _, usuario:= range *usuarios {
+
+		if usuario.Nome == modelUsuario.Nome {
+
+			LoginAceito, err:=auth.HashCompare([]byte(usuario.Senha), []byte(modelUsuario.Senha))
+			if err != nil {
+				return false, nil
+			}
+
+			if LoginAceito {
+				return  true, nil
+			}
+
+		}
+	}
+
+	return false, fmt.Errorf("fim da funcao login")
+
+}

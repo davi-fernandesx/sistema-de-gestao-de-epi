@@ -26,7 +26,9 @@ func main(){
 	ServiceLogin:= service.NewLoginService(repoLogin)
 	ControllerLogin:= controller.NewControllerLogin(ServiceLogin)
 
-	router.POST("/login", ControllerLogin.SalvarLoginHttp())
+	router.POST("/Salvar-login", ControllerLogin.SalvarLoginHttp())
+	router.GET("/Login", ControllerLogin.AceitarLogin())
+
 
 
 	router.Run(":8080")

@@ -12,7 +12,7 @@ type loginRepository interface{
 
 	AddLogin( model *model.Login)(error) 
 	DeletarLogin(ctx context.Context, id int) error
-	Login(ctx context.Context, Nome string) (*model.Login, error)
+	Login(model *model.Login) (*model.Login, error)
 }
 //conjunto de erros
 var  ErrusuarioJaExistente = errors.New("usuario já cadastrado")
