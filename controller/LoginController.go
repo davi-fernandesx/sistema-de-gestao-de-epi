@@ -71,7 +71,12 @@ func (Cl *ControllerLogin) AceitarLogin() gin.HandlerFunc{
 
 		if loginAceito {
 			c.JSON(http.StatusOK, gin.H{"Login feito com sucesso": "ok"})
+			return 
 		}
+
+
+		c.JSON(http.StatusUnauthorized, gin.H{"erro":"senha ou usuario incorreto"})
+		
 
 	}
 }
