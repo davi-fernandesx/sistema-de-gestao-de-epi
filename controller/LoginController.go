@@ -27,7 +27,7 @@ func (Cl *ControllerLogin) SalvarLoginHttp() gin.HandlerFunc {
 	return  func(c *gin.Context) {
 
 		var  request model.LoginDto
-
+		ctx:= c
 		err:= c.BindJSON(&request)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"Erro": "erro ao realizar a decodificação do json"})
@@ -35,7 +35,7 @@ func (Cl *ControllerLogin) SalvarLoginHttp() gin.HandlerFunc {
 		}
 
 
-		err = Cl.ServiceLogin.SalvaLogin(request)
+		err = Cl.ServiceLogin.SalvaLogin(ctx, request)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Erro:": err.Error()})
 			return 
@@ -53,7 +53,7 @@ func (Cl *ControllerLogin) AceitarLogin() gin.HandlerFunc{
 	return  func(c *gin.Context) {
 
 		var request model.LoginDto
-
+		ctx:= c
 		err:= c.BindJSON(&request)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -62,7 +62,9 @@ func (Cl *ControllerLogin) AceitarLogin() gin.HandlerFunc{
 			return 
 		}
 
-		loginAceito, err:= Cl.ServiceLogin.Login(request)
+		
+
+		loginAceito, err:= Cl.ServiceLogin.Login(ctx, request)
 		if err != nil {
 
 			c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})

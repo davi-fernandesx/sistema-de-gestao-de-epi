@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -23,7 +24,7 @@ func NewLoginService(loginRepo  *login.SqlServerLogin) *LoginService{
 }
 
 
-func (Ls *LoginService)SalvaLogin(LoginUsuario model.LoginDto) error {
+func (Ls *LoginService)SalvaLogin(ctx context.Context, LoginUsuario model.LoginDto) error {
 
 	if strings.TrimSpace(LoginUsuario.Nome) == " "{
 		return fmt.Errorf("nome de usuario nao pode ser em branco")
@@ -39,7 +40,7 @@ func (Ls *LoginService)SalvaLogin(LoginUsuario model.LoginDto) error {
 		Senha: string(SenhaHash),
 	}
 
-	err =  Ls.LoginRepo.AddLogin( &loginModel)
+	err =  Ls.LoginRepo.AddLogin(ctx, &loginModel)
 	if err != nil {
 
 		return  err
@@ -48,10 +49,10 @@ func (Ls *LoginService)SalvaLogin(LoginUsuario model.LoginDto) error {
 	return  nil
 }
 
-func (Ls *LoginService) Login(LoginUsuario model.LoginDto) (bool,error) {
+func (Ls *LoginService) Login(ctx context.Context, LoginUsuario model.LoginDto) (bool,error) {
 
 
-	usuario, err:= Ls.LoginRepo.BuscaPorNome(LoginUsuario.Nome)
+	usuario, err:= Ls.LoginRepo.BuscaPorNome(ctx, LoginUsuario.Nome)
 	if err != nil {
 
 		if errors.Is(err, login.ErrLinhasAfetadas){

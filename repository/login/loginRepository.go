@@ -22,7 +22,7 @@ func NewSqlLogin(DB *sql.DB) *SqlServerLogin {
 }
 // AddLogin implements loginRepository.
 //função para adicionar um login no sistema
-func (s *SqlServerLogin) AddLogin( model *model.Login) ( error) {
+func (s *SqlServerLogin) AddLogin( ctx context.Context, model *model.Login) ( error) {
 	
 	query:= `
 			INSERT INTO login (usuario, senha) OUTPUT INSERTED.id values (@p1, @p2);
@@ -76,7 +76,7 @@ func (s *SqlServerLogin) DeletarLogin(ctx context.Context, id int) error {
 
 
 //busca o usuario pelo nome
-func (s *SqlServerLogin) BuscaPorNome( nome string) (*model.Login, error){
+func (s *SqlServerLogin) BuscaPorNome(ctx context.Context,  nome string) (*model.Login, error){
 
 	query:= `
 		select usuario, senha from login
