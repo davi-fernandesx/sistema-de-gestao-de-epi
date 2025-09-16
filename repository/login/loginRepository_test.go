@@ -70,7 +70,7 @@ func ConectaAoBanco(t *testing.T)(*sql.DB, func()){
 	return  db, apagar
 	
 }
-func Test_AdicionarLogin(t *testing.T){
+func Test_LoginRepository(t *testing.T){
 
 	login:= model.Login{
 			ID: 1,
