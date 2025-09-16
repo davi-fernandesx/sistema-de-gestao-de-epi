@@ -3,12 +3,12 @@ package model
 
 type Login struct {
 
-	ID int
-	Nome string
-	Senha string
+	ID int `json:""`
+	Nome string   `json:""`
+	Senha string  `json:""`
 }
 
 type LoginDto struct {
-	Nome string
-	Senha string
+	Nome string  `json:""`
+	Senha string  `json:""`
 }

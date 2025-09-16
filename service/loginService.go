@@ -1,7 +1,8 @@
 package service
 
 import (
-
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -12,18 +13,19 @@ import (
 
 type LoginService struct {
 
-	LoginRepo  *login.SqlServerLogin
+	LoginRepo  login.LoginRepository
 }
 
-func NewLoginService(loginRepo  *login.SqlServerLogin) *LoginService{
+func NewLoginService(Repo  login.LoginRepository) *LoginService{
 
-	return  &LoginService{
-		LoginRepo: loginRepo,
+	return &LoginService{
+		LoginRepo: Repo,
 	}
+
 }
 
 
-func (Ls *LoginService)SalvaLogin(LoginUsuario model.LoginDto) error {
+func (Ls *LoginService)SalvaLogin(ctx context.Context, LoginUsuario model.LoginDto) error {
 
 	if strings.TrimSpace(LoginUsuario.Nome) == " "{
 		return fmt.Errorf("nome de usuario nao pode ser em branco")
@@ -39,7 +41,7 @@ func (Ls *LoginService)SalvaLogin(LoginUsuario model.LoginDto) error {
 		Senha: string(SenhaHash),
 	}
 
-	err =  Ls.LoginRepo.AddLogin( &loginModel)
+	err =  Ls.LoginRepo.AddLogin(ctx, &loginModel)
 	if err != nil {
 
 		return  err
@@ -48,33 +50,29 @@ func (Ls *LoginService)SalvaLogin(LoginUsuario model.LoginDto) error {
 	return  nil
 }
 
-func (Ls *LoginService) Login(LoginUsuario model.LoginDto) (bool,error) {
+func (Ls *LoginService) Login(ctx context.Context, LoginUsuario model.LoginDto) (bool,error) {
 
-	usuarios, err:= Ls.LoginRepo.RetornaLogin();
+
+	usuario, err:= Ls.LoginRepo.BuscaPorNome(ctx, LoginUsuario.Nome)
 	if err != nil {
-		return  false, err
-	}
-	modelUsuario:= model.Login{
-		Nome: LoginUsuario.Nome,
-		Senha: LoginUsuario.Senha,
-	}
 
-	for _, usuario:= range *usuarios {
+		if errors.Is(err, login.ErrLinhasAfetadas){
 
-		if usuario.Nome == modelUsuario.Nome {
-
-			LoginAceito, err:=auth.HashCompare([]byte(usuario.Senha), []byte(modelUsuario.Senha))
-			if err != nil {
-				return false, nil
-			}
-
-			if LoginAceito {
-				return  true, nil
-			}
-
+			return false, nil
 		}
+
+		return  false, err
+
 	}
 
-	return false, fmt.Errorf("fim da funcao login")
+	senhaLogin, err:= auth.HashCompare([]byte(usuario.Senha), []byte(LoginUsuario.Senha))
+	if err != nil {
 
+		return false, fmt.Errorf("erro ao comparar senhas")
+	}
+
+
+
+
+	return senhaLogin, nil
 }
