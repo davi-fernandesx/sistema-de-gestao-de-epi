@@ -9,16 +9,28 @@ import (
 	"github.com/microsoft/go-mssqldb"
 )
 
+//interface contendo os metados
+type LoginRepository interface{
+
+	 AddLogin( ctx context.Context, model *model.Login) ( error)
+	 DeletarLogin(ctx context.Context, id int) error
+	 BuscaPorNome(ctx context.Context,  nome string) (*model.Login, error)
+
+
+}
+
+//model do repository
 type SqlServerLogin struct {
 	db *sql.DB
 }
 
 
-func NewSqlLogin(DB *sql.DB) *SqlServerLogin {
+//construtor
+func NewSqlLogin(DB *sql.DB) LoginRepository {
 
 	return &SqlServerLogin{
-		db: DB,
-	}
+	db: DB,
+}
 }
 // AddLogin implements loginRepository.
 //função para adicionar um login no sistema

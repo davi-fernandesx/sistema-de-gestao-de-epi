@@ -13,14 +13,15 @@ import (
 
 type LoginService struct {
 
-	LoginRepo  *login.SqlServerLogin
+	LoginRepo  login.LoginRepository
 }
 
-func NewLoginService(loginRepo  *login.SqlServerLogin) *LoginService{
+func NewLoginService(Repo  login.LoginRepository) *LoginService{
 
-	return  &LoginService{
-		LoginRepo: loginRepo,
+	return &LoginService{
+		LoginRepo: Repo,
 	}
+
 }
 
 
