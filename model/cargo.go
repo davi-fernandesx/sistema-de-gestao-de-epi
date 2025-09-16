@@ -3,13 +3,13 @@ package model
 
 type Cargo struct {
 
-	ID 	int
-	Cargo string
+	ID 	int `json:" id"`
+	Cargo string `json:"cargo"`
 }
 
 type CargoDto struct {
 
-	Cargo string
+	Cargo string `json:"cargo"`
 }
 
 

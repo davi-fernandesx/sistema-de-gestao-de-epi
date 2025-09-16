@@ -2,15 +2,15 @@ package model
 
 type TipoProtecao struct {
 
-	ID int
-	Nome Protecao
+	ID int  `json:"id"`
+	Nome Protecao `json:"nome"`
 
 }
 
 
 type TipoProtecaoDto struct {
 
-	Nome Protecao
+	Nome Protecao `json:"nome"`
 }
 
 type Protecao string
