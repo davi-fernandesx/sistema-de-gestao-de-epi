@@ -47,7 +47,7 @@ func ConectaAoBanco(t *testing.T)(*sql.DB, func()){
 		create TABLE login (
 
     	 id int PRIMARY key IDENTITY(1,1),
-   		 usuario VARCHAR(50) not null,
+   		 usuario VARCHAR(50) unique  not null,
    		 senha VARCHAR(255) not NUll,
 );
 	` 
@@ -69,26 +69,22 @@ func ConectaAoBanco(t *testing.T)(*sql.DB, func()){
 
 	return  db, apagar
 	
-
 }
+func Test_LoginRepository(t *testing.T){
 
-
-func Test_RepoLogin(t *testing.T){
-
-	db, apagar:= ConectaAoBanco(t)
-	defer apagar()
-
-	repo:= NewSqlLogin(db)
-	ctx:= context.Background()
-
-	t.Run("adicionando um usuario no banco", func(t *testing.T){
-
-		login:= model.Login{
+	login:= model.Login{
 			ID: 1,
 			Nome: "rada",
 			Senha: "rada2003",
 		}
 
+	ctx:= context.Background()
+
+	t.Run("adicionando um usuario no banco", func(t *testing.T){
+
+		db, apagar:= ConectaAoBanco(t)
+		defer apagar()
+		repo:= NewSqlLogin(db)
 		t.Log("criptografando a senha !!")
 		senhaHash, err:= auth.HashPassword(login.Senha)
 		require.NoError(t, err, "erro ao criptografar a senha")
@@ -100,6 +96,80 @@ func Test_RepoLogin(t *testing.T){
 		t.Log("usuario adicionado!!")
 
 
+	})
+
+	t.Run("testando o erro da chave unique", func(t *testing.T) {
+		
+		db, apagar:= ConectaAoBanco(t)
+		defer apagar()
+		repo:= NewSqlLogin(db)
+
+		login1:= model.Login{
+			ID: 1,
+			Nome: "rada",
+			Senha: "rada2003",
+		}
+		senhaHash, err:= auth.HashPassword(login.Senha)
+		require.NoError(t, err, "erro ao criptografar a senha")
+
+		login.Senha = string(senhaHash)
+
+		err = repo.AddLogin(ctx, &login)
+
+		err1:= repo.AddLogin(ctx, &login1)
+		require.Error(t, err1, ErrusuarioJaExistente)
+
+		t.Log("erro registrado com sucesso")
+		
+	})
+
+	t.Run("deletando um usuario do banco de dados", func(t *testing.T)  {
+
+		db, apagar:= ConectaAoBanco(t)
+		defer apagar()
+		repo:= NewSqlLogin(db)
+
+
+		_= repo.AddLogin(ctx, &login)
+
+		err:= repo.DeletarLogin(ctx, 1)
+		require.NoError(t, err, ErrLinhasAfetadas)
+		t.Log("usuario deletado, teste feito")
+		
+		
+	})
+
+	t.Run("testando erro ao apagar login", func(t *testing.T) {
+		db, apagar:= ConectaAoBanco(t)
+		defer apagar()
+		repo:= NewSqlLogin(db)
+
+		err:= repo.DeletarLogin(ctx, 4)
+		require.Error(t, err, ErrLinhasAfetadas)
+	
+		t.Log("erro ao deletar login registrado com sucesso")
+	})
+
+	t.Run("testando o sucesso da funcao de buscar por nome", func(t *testing.T) {
+
+		db, apagar:= ConectaAoBanco(t)
+		defer apagar()
+		repo:= NewSqlLogin(db)
+		_= repo.AddLogin(ctx, &login)
+		_, err:= repo.BuscaPorNome(ctx, "rada")
+		require.NoError(t, err, ErrLinhasAfetadas)
+		t.Log("sucesso ao buscar usuario por nome")
+		
+	})
+
+	t.Run("testando o erro da funcao de buscar por nome", func(t *testing.T) {
+
+		db, apagar:= ConectaAoBanco(t)
+		defer apagar()
+		repo:= NewSqlLogin(db)
+		_, err:= repo.BuscaPorNome(ctx, "davi")
+		require.Error(t, err, ErrLinhasAfetadas)
+		t.Log("erro ao buscar usuario registrado com sucesso")
 	})
 	
 }
