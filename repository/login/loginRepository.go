@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	"github.com/microsoft/go-mssqldb"
 )
 
@@ -19,11 +21,10 @@ type LoginRepository interface{
 
 }
 
-//model do repository
+
 type SqlServerLogin struct {
 	db *sql.DB
 }
-
 
 //construtor
 func NewSqlLogin(DB *sql.DB) LoginRepository {
@@ -37,7 +38,7 @@ func NewSqlLogin(DB *sql.DB) LoginRepository {
 func (s *SqlServerLogin) AddLogin( ctx context.Context, model *model.Login) ( error) {
 	
 	query:= `
-			INSERT INTO login (usuario, senha) OUTPUT INSERTED.id values (@p1, @p2);
+			INSERT INTO login (usuario, senha) values (@p1, @p2);
 
 	` 
 
@@ -48,7 +49,7 @@ func (s *SqlServerLogin) AddLogin( ctx context.Context, model *model.Login) ( er
 		if errors.As(err, &errSql) && errSql.Number == 2627{ /*verificando se o erro atual, faz parte dos conjuntos de erro do sqlServer e, 
 			verificando se o erro do sqlserver é igual ao numero 2627, que é o erro da constraint UNIQUE*/
 			
-			return ErrusuarioJaExistente
+			return repository.ErrusuarioJaExistente
 		}
 
 		return  err
@@ -74,7 +75,7 @@ func (s *SqlServerLogin) DeletarLogin(ctx context.Context, id int) error {
 	row, err:= result.RowsAffected()
 	if err != nil{
 
-		return ErrLinhasAfetadas
+		return repository.ErrLinhasAfetadas
 	}
 	
 	if row == 0{
@@ -107,7 +108,7 @@ func (s *SqlServerLogin) BuscaPorNome(ctx context.Context,  nome string) (*model
 	if err != nil {
 
 		if err == sql.ErrNoRows {
-			return  nil, ErrLinhasAfetadas
+			return  nil, repository.ErrLinhasAfetadas
 		}
 
 		return  nil, fmt.Errorf("erro ao buscar usuario; %w", err)

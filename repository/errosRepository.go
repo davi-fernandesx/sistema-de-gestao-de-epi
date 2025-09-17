@@ -1,10 +1,11 @@
-package login
+package repository
 
 import (
 
 	"errors"
-
 )
+
+//model do repository
 
 
 //conjunto de erros
