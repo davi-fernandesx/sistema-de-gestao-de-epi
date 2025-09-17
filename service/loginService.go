@@ -8,6 +8,7 @@ import (
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/auth"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/login"
 )
 
@@ -56,7 +57,7 @@ func (Ls *LoginService) Login(ctx context.Context, LoginUsuario model.LoginDto) 
 	usuario, err:= Ls.LoginRepo.BuscaPorNome(ctx, LoginUsuario.Nome)
 	if err != nil {
 
-		if errors.Is(err, login.ErrLinhasAfetadas){
+		if errors.Is(err, repository.ErrLinhasAfetadas){
 
 			return false, nil
 		}
