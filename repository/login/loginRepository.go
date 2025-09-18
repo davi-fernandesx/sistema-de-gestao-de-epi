@@ -41,15 +41,11 @@ func (s *SqlServerLogin) AddLogin( ctx context.Context, model *model.Login) ( er
 			INSERT INTO login (usuario, senha) values (@p1, @p2);
 
 	` 
-
-	err:= s.db.QueryRow(query, model.Nome, model.Senha).Scan(&model.ID)
+	_, err:= s.db.ExecContext(ctx, query, model.Nome, model.Senha)
 	if err != nil {
-
-		var errSql mssql.Error //erro especifico do sqlServer
-		if errors.As(err, &errSql) && errSql.Number == 2627{ /*verificando se o erro atual, faz parte dos conjuntos de erro do sqlServer e, 
-			verificando se o erro do sqlserver é igual ao numero 2627, que é o erro da constraint UNIQUE*/
-			
-			return repository.ErrusuarioJaExistente
+		var errSql *mssql.Error
+		if errors.As(err, &errSql) && errSql.Number == 2627{
+			return  repository.ErrusuarioJaExistente
 		}
 
 		return  err
@@ -79,7 +75,7 @@ func (s *SqlServerLogin) DeletarLogin(ctx context.Context, id int) error {
 	}
 	
 	if row == 0{
-		return fmt.Errorf("nenhum login encontrado com o id: %d", id)
+		return repository.ErrUsuarioNaoEncontrado
 	}
 
 
