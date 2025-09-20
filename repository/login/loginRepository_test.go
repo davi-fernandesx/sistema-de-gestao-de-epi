@@ -124,10 +124,10 @@ func Test_LoginRepositoryDelete(t *testing.T){
 
 		query:= regexp.QuoteMeta("delete from login where id = @id")
 
-		mock.ExpectExec(query).WithArgs(login.ID).WillReturnError(repository.ErrLinhasAfetadas)
+		mock.ExpectExec(query).WithArgs(login.ID).WillReturnResult(sqlmock.NewResult(0,0))
 
 		err:= repo.DeletarLogin(ctx, 1)
-		require.Error(t, err)
+		require.Equal(t, repository.ErrUsuarioNaoEncontrado,err)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -143,6 +143,21 @@ func Test_LoginRepositoryDelete(t *testing.T){
 
 		
 
+	})
+
+	t.Run("erro ao buscar linhas afetadas", func(t *testing.T) {
+
+
+		query:= regexp.QuoteMeta("delete from login where id = @id")
+
+		driveErro:= errors.New("driver: RowsAffected not supported")
+
+		mock.ExpectExec(query).WithArgs(login.ID).WillReturnResult(sqlmock.NewErrorResult(driveErro))
+
+		err:= repo.DeletarLogin(ctx, login.ID)
+		require.Error(t, err)
+		require.Equal(t, repository.ErrLinhasAfetadas,err )
+		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
 }
