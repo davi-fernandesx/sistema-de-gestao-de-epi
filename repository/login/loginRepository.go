@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
@@ -104,10 +103,10 @@ func (s *SqlServerLogin) BuscaPorNome(ctx context.Context,  nome string) (*model
 	if err != nil {
 
 		if err == sql.ErrNoRows {
-			return  nil, repository.ErrLinhasAfetadas
+			return  nil, repository.ErrUsuarioNaoEncontrado
 		}
 
-		return  nil, fmt.Errorf("erro ao buscar usuario; %w", err)
+		return  nil, repository.ErrFalhaAoEscanearDados
 	}
 
 

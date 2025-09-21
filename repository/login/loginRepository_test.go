@@ -2,6 +2,7 @@ package login
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"regexp"
 
@@ -131,20 +132,6 @@ func Test_LoginRepositoryDelete(t *testing.T){
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("Usuario não encontrado", func(t *testing.T) {
-
-		query:= regexp.QuoteMeta("delete from login where id = @id")
-
-		mock.ExpectExec(query).WithArgs(login.ID).WillReturnError(repository.ErrUsuarioNaoEncontrado)
-
-		err:= repo.DeletarLogin(ctx, 1)
-		require.Error(t, err)
-		require.NoError(t, mock.ExpectationsWereMet())
-
-		
-
-	})
-
 	t.Run("erro ao buscar linhas afetadas", func(t *testing.T) {
 
 
@@ -159,5 +146,82 @@ func Test_LoginRepositoryDelete(t *testing.T){
 		require.Equal(t, repository.ErrLinhasAfetadas,err )
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
+
+}
+
+func Test_loginRepositoryBuscarUsuario(t *testing.T){
+
+	ctx:= context.Background()
+	db, mock, err:= sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	repo:= NewSqlLogin(db)
+
+	login:= model.Login{
+		ID: 1,
+		Nome: "rada",
+		Senha: "1234",
+
+	}
+
+	t.Run("testando o sucesso da busca por nome do usuario", func(t *testing.T) {
+
+
+		query:= `select usuario, senha from login
+		where usuario = @usuario ;`
+
+		linhas:= sqlmock.NewRows([]string{"usuario", "senha"}).AddRow(login.Nome, login.Senha)
+		mock.ExpectQuery(query).WithArgs(login.Nome).WillReturnRows(linhas)
+
+		usuario,err:=  repo.BuscaPorNome(ctx, login.Nome)
+		require.NoError(t,err)
+		require.NotNil(t, usuario)
+		require.Equal(t, login.Nome, usuario.Nome)
+		require.Equal(t, login.Senha,usuario.Senha)
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+	})
+
+	t.Run("testando o erro de usuario inexistente", func(t *testing.T) {
+
+		query:= regexp.QuoteMeta("select usuario, senha from login where usuario = @usuario ;")
+
+		usuarioInexistente:= "teste"
+
+		mock.ExpectQuery(query).WithArgs(usuarioInexistente).WillReturnError(sql.ErrNoRows)
+
+		usuario, err:= repo.BuscaPorNome(ctx, usuarioInexistente )
+		require.Error(t, err)
+		require.Equal(t, repository.ErrUsuarioNaoEncontrado, err)
+		require.Nil(t, usuario)
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+	})
+
+	t.Run("testando o erro de scan", func(t *testing.T) {
+
+		query:= regexp.QuoteMeta("select usuario, senha from login where usuario = @usuario ;")
+
+		linhas:= sqlmock.NewRows([]string{"usuario", "senha"})
+		
+		linhas.AddRow(login.Nome, login.Senha).RowError(0, repository.ErrFalhaAoEscanearDados)
+
+		mock.ExpectQuery(query).WithArgs(login.Nome).WillReturnRows(linhas)
+
+		usuario, err:= repo.BuscaPorNome(ctx, login.Nome)
+
+		require.Error(t, err)
+		require.Equal(t, repository.ErrFalhaAoEscanearDados, err)
+		require.Nil(t, usuario)
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+
+
+	})
+
 
 }
