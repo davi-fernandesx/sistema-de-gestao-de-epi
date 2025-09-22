@@ -27,4 +27,6 @@ var ErrDepartamentoNaoEncontrado = errors.New("departamento não encontrado")
 var ErrBuscarTodosDepartamentos = errors.New("erro ao buscar todos os departamentos")
 var ErrIterarSobreDepartamentos = errors.New("erro ao iterar sobre os departamentos")
 
+// erros funcao
 
+var ErrFuncaoJaExistente = errors.New("funcao ja cadastrada")
