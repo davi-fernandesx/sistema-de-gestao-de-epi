@@ -27,6 +27,7 @@ var ErrDepartamentoNaoEncontrado = errors.New("departamento não encontrado")
 var ErrBuscarTodosDepartamentos = errors.New("erro ao buscar todos os departamentos")
 var ErrIterarSobreDepartamentos = errors.New("erro ao iterar sobre os departamentos")
 
+
 //epi
 
 var ErrEpiAoAdicionarEpi = errors.New("erro ao executar o comendo db exec ao adicionar um epi no banco de dados")
@@ -34,3 +35,7 @@ var ErrAoProcurarEpi = errors.New("epi não encontrado")
 var ErrAoBuscarTodosOsEpis = errors.New("erro ao buscar todos os epis")
 var ErrAoInterarSobreEpis = errors.New("erro ao iterar sobre os epis")
 var ErrEpiNaoEncontrado = errors.New("epi nao encontrado na base de dados")
+
+// erros funcao
+
+var ErrFuncaoJaExistente = errors.New("funcao ja cadastrada") 
