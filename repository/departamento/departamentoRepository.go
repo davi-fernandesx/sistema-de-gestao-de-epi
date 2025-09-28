@@ -28,76 +28,74 @@ func NewDepartamentoRepository(db *sql.DB) DepartamentoInterface {
 	}
 }
 
-
 // AddDepartamento implements DepartamentoInterface.
 func (n *NewSqlLogin) AddDepartamento(ctx context.Context, departamento *model.Departamento) error {
-	
-	query:= `insert into departamento (departamento) values (@departamento)`
 
-	_, err:= n.DB.ExecContext(ctx, query, departamento.Departamento)
+	query := `insert into departamento (departamento) values (@departamento)`
+
+	_, err := n.DB.ExecContext(ctx, query, sql.Named("departamento", departamento.Departamento))
 	if err != nil {
 		var ErrSql *mssql.Error
 		if errors.As(err, &ErrSql) && ErrSql.Number == 2627 {
-			return  repository.ErrDepartamentoJaExistente
-			
+			return repository.ErrDepartamentoJaExistente
+
 		}
-		return  err
+		return err
 	}
 
-	return  nil
+	return nil
 }
 
 // BuscarDepartamento implements DepartamentoInterface.
 func (n *NewSqlLogin) BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error) {
-	
-	query:= `select departamento from departamento where id = @id`
+
+	query := `select departamento from departamento where id = @id`
 
 	var departamento model.Departamento
 
-	err:= n.DB.QueryRow(query, sql.Named("id", id)).Scan(
+	err := n.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(
 		&departamento.ID,
 		&departamento.Departamento,
 	)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return  nil, repository.ErrDepartamentoNaoEncontrado
+			return nil, repository.ErrDepartamentoNaoEncontrado
 		}
 
-		return  nil, repository.ErrFalhaAoEscanearDados
+		return nil, repository.ErrFalhaAoEscanearDados
 	}
 
-	return  &departamento, nil
+	return &departamento, nil
 }
 
 // BuscarTodosDepartamentos implements DepartamentoInterface.
 func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) (*[]model.Departamento, error) {
-	
-	query:= `select id, departamento from departamento`
 
-	linhas, err:= n.DB.Query(query)
+	query := `select id, departamento from departamento`
+
+	linhas, err := n.DB.QueryContext(ctx, query)
 	if err != nil {
-		return  nil, repository.ErrBuscarTodosDepartamentos
+		return nil, repository.ErrBuscarTodosDepartamentos
 	}
 
 	defer linhas.Close()
 
 	var departamentos []model.Departamento
 
-	for linhas.Next(){
+	for linhas.Next() {
 		var departamento model.Departamento
 
-
-		if err:= linhas.Scan(&departamento.ID, &departamento.Departamento); err != nil {
-			return  nil, repository.ErrFalhaAoEscanearDados
+		if err := linhas.Scan(&departamento.ID, &departamento.Departamento); err != nil {
+			return nil, repository.ErrFalhaAoEscanearDados
 		}
 
 		departamentos = append(departamentos, departamento)
 	}
 
-	if err:= linhas.Err(); err != nil {
+	if err := linhas.Err(); err != nil {
 
-		return  nil,  repository.ErrIterarSobreDepartamentos
+		return nil, repository.ErrIterarSobreDepartamentos
 	}
 
 	return &departamentos, nil
@@ -106,22 +104,22 @@ func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) (*[]model.De
 
 // DeletarDepartamento implements DepartamentoInterface.
 func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
-		
-	query:= `delete from departamento where id = @id`
 
-	result, err:= n.DB.ExecContext(ctx, query, sql.Named("id", id))
+	query := `delete from departamento where id = @id`
+
+	result, err := n.DB.ExecContext(ctx, query, sql.Named("id", id))
 	if err != nil {
-		return  err
+		return err
 	}
 
-	linhas, err:= result.RowsAffected()
+	linhas, err := result.RowsAffected()
 	if err != nil {
-		return  repository.ErrLinhasAfetadas
+		return repository.ErrLinhasAfetadas
 	}
 
 	if linhas == 0 {
-		return  repository.ErrDepartamentoNaoEncontrado
+		return repository.ErrDepartamentoNaoEncontrado
 	}
 
-	return  nil
+	return nil
 }

@@ -8,10 +8,10 @@ import (
 )
 
 type TamanhsoInterface interface {
-	AddTamanhos(ctx context.Context, tamanhos *model.Tamanho) error
+	AddTamanhos(ctx context.Context, tamanhos *model.Tamanhos) error
 	DeletarTamanhos(ctx context.Context, id int) error
-	BuscarTamanhos(ctx context.Context) (*model.Tamanho, error)
-	BuscarTodosTamanhos(ctx context.Context) (*[]model.Tamanho, error)
+	BuscarTamanhos(ctx context.Context) (*model.Tamanhos, error)
+	BuscarTodosTamanhos(ctx context.Context) (*[]model.Tamanhos, error)
 }
 
 type SqlServerLogin struct {
@@ -26,17 +26,17 @@ func NewTamanhoRepository(db *sql.DB) TamanhsoInterface {
 }
 
 // AddTamanhos implements TamanhsoInterface.
-func (s *SqlServerLogin) AddTamanhos(ctx context.Context, tamanhos *model.Tamanho) error {
+func (s *SqlServerLogin) AddTamanhos(ctx context.Context, tamanhos *model.Tamanhos) error {
 	panic("unimplemented")
 }
 
 // BuscarTamanhos implements TamanhsoInterface.
-func (s *SqlServerLogin) BuscarTamanhos(ctx context.Context) (*model.Tamanho, error) {
+func (s *SqlServerLogin) BuscarTamanhos(ctx context.Context) (*model.Tamanhos, error) {
 	panic("unimplemented")
 }
 
 // BuscarTodosTamanhos implements TamanhsoInterface.
-func (s *SqlServerLogin) BuscarTodosTamanhos(ctx context.Context) (*[]model.Tamanho, error) {
+func (s *SqlServerLogin) BuscarTodosTamanhos(ctx context.Context) (*[]model.Tamanhos, error) {
 	panic("unimplemented")
 }
 

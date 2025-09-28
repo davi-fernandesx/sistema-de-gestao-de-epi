@@ -12,7 +12,6 @@ type FuncaoInterface interface {
 	DeletarFuncao(ctx context.Context, id int) error
 	BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error)
 	BuscarTodosCargos(ctx context.Context) (*[]model.Funcao, error)
-	
 }
 
 type SqlServerLogin struct {
@@ -45,5 +44,3 @@ func (s *SqlServerLogin) BuscarTodosCargos(ctx context.Context) (*[]model.Funcao
 func (s *SqlServerLogin) DeletarFuncao(ctx context.Context, id int) error {
 	panic("unimplemented")
 }
-
-
