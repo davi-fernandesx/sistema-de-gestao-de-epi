@@ -17,3 +17,4 @@ const (
 	Proteção_do_Corpo             Protecao = " Proteção do Corpo "
 	Proteção_da_Cabeça_e_Face     Protecao = "Proteção da Cabeça e Face"
 )
+

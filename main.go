@@ -5,6 +5,7 @@ import (
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/controller"
+
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/login"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/service"
 	"github.com/gin-gonic/gin"
@@ -32,7 +33,6 @@ func main(){
 
 
 	router.Run(":8080")
-
 
 
 
