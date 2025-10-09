@@ -39,3 +39,21 @@ var ErrEpiNaoEncontrado = errors.New("epi nao encontrado na base de dados")
 // erros funcao
 
 var ErrFuncaoJaExistente = errors.New("funcao ja cadastrada") 
+var ErrAoProcurarFuncao = errors.New("funcao não encontrada")
+var ErrAoBuscarTodasAsFuncoes = errors.New("erro ao buscas todas as funcões no banco de dados")
+var ErrAoIterarSobreFuncoes = errors.New("erro ao percorrer funcoes")
+
+//tamanhos
+var ErrAoAdicionarTamanho = errors.New("erro ao adicionar tamanho")
+var ErrAoProcurarTamanho = errors.New("tamanho nao encontrado")
+var ErrTamanhoJaExistente = errors.New("tamanho ja existe no banco de dados")
+var ErrAoBuscarTodosOsTamanhos = errors.New("erro ao buscar todos os tamanhos")
+var ErrAoIterarSobreTamanhos = errors.New("erro ao iterar sobre os tamanhos")
+var ErrTamanhoNaoEncontrado = errors.New("tamanho nao encontrado  na base de dados")
+
+//protecao
+var ErrAoAdicionarProtecao = errors.New("erro ao adicionar protecao")
+var ErrAoProcurarProtecao = errors.New("erro ao procurar protecao")
+var ErrAoBuscarTodasAsProtecoes = errors.New("erro ao buscar todas as proteçoes")
+var ErrAoIterarSobreProtecoes = errors.New("erro ao iterar sobre protecoes")
+var ErrProtecaoNaoEncontrada = errors.New("protecao nao encontrada na base de dados")

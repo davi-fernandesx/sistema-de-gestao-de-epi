@@ -5,13 +5,14 @@ import (
 	"database/sql"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 )
 
 type TipoProtecaoInterface interface {
 	AddProtecao(ctx context.Context, protecao *model.TipoProtecao) error
 	DeletarProtecao(ctx context.Context, ind int) error
-	BuscarProtecao(ctx context.Context) (*model.TipoProtecao, error)
-	BuscarTodasProtecao(ctx context.Context) (*[]model.TipoProtecao, error)
+	BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error)
+	BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error)
 }
 
 type SqlServerLogin struct {
@@ -27,22 +28,93 @@ func NewTipoProtecaoRepository(db *sql.DB) TipoProtecaoInterface {
 
 // AddProtecao implements TipoProtecaoInterface.
 func (s *SqlServerLogin) AddProtecao(ctx context.Context, protecao *model.TipoProtecao) error {
-	panic("unimplemented")
+	
+	query:= `insert into protecao values (@protecao)`
+
+	_, err:= s.DB.ExecContext(ctx, query, sql.Named("protecao", protecao.Nome))
+	if err != nil {
+		return repository.ErrAoAdicionarProtecao
+	}
+
+	return  nil
+
 }
 
 // BuscarProtecao implements TipoProtecaoInterface.
-func (s *SqlServerLogin) BuscarProtecao(ctx context.Context) (*model.TipoProtecao, error) {
-	panic("unimplemented")
+func (s *SqlServerLogin) BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error) {
+	
+	query:= ` select id, protecao from protecao where id = @id`
+
+	var protecao model.TipoProtecao
+
+	err:= s.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(&protecao.ID, &protecao.Nome)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return  nil, repository.ErrAoProcurarProtecao
+		}
+
+		return nil, repository.ErrFalhaAoEscanearDados
+	}
+
+	return &protecao, nil
 }
 
 // BuscarTodasProtecao implements TipoProtecaoInterface.
-func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) (*[]model.TipoProtecao, error) {
-	panic("unimplemented")
+func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error) {
+	
+	query:= `select id, protecao from protecao`
+
+	linhas, err:= s.DB.QueryContext(ctx, query)
+	if err != nil {
+		return  []model.TipoProtecao{}, repository.ErrAoBuscarTodasAsProtecoes
+	}
+
+	defer linhas.Close()
+
+	var protecoes []model.TipoProtecao
+
+	for linhas.Next(){
+		
+		var protecao model.TipoProtecao
+		err:= linhas.Scan(&protecao.ID, &protecao.Nome)
+		if err != nil {
+			return nil, repository.ErrFalhaAoEscanearDados
+		}
+
+		protecoes = append(protecoes, protecao)
+	}
+
+	err = linhas.Err()
+	if err != nil {
+		return  nil, repository.ErrAoIterarSobreProtecoes
+	}
+
+	return protecoes, nil
 }
 
 // DeletarProtecao implements TipoProtecaoInterface.
-func (s *SqlServerLogin) DeletarProtecao(ctx context.Context, ind int) error {
-	panic("unimplemented")
+func (s *SqlServerLogin) DeletarProtecao(ctx context.Context, id int) error {
+	
+	query:= `delete from protecao where id = @id`
+
+	result, err:= s.DB.ExecContext(ctx, query, sql.Named("id", id))
+	
+	if err != nil {
+		return  err
+	}
+
+	linhas, err:= result.RowsAffected()
+	if err != nil {
+		return  repository.ErrLinhasAfetadas
+	}
+
+	if linhas == 0 {
+
+		return repository.ErrProtecaoNaoEncontrada
+	}
+
+	return nil
 }
 
 
