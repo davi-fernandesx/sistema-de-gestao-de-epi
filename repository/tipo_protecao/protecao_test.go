@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +42,7 @@ func Test_AddProtecao(t *testing.T) {
 
 		err := repo.AddProtecao(ctx, &protecao)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoAdicionarProtecao)
+		require.ErrorIs(t, err, Errors.ErrSalvar, "erro tem que ser do tipo salvar")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -77,7 +77,7 @@ func Test_BuscarProtecao(t *testing.T) {
 
 		protecaoDB, err := repo.BuscarProtecao(ctx, idNaoExistente)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoProcurarProtecao)
+		require.ErrorIs(t, err, Errors.ErrNaoEncontrado, "erro tem que ser do tipo não encontrado")
 		require.Nil(t, protecaoDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -90,7 +90,7 @@ func Test_BuscarProtecao(t *testing.T) {
 
 		protecaoDB, err := repo.BuscarProtecao(ctx, protecao.ID)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrFalhaAoEscanearDados)
+		require.ErrorIs(t, err, Errors.ErrFalhaAoEscanearDados, "erro tem que ser do tipo não encontrado")
 		require.Nil(t, protecaoDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -128,8 +128,7 @@ func Test_BuscarTodasProtecao(t *testing.T) {
 		mock.ExpectQuery(query).WillReturnError(dbErr)
 
 		protecoesDB, err := repo.BuscarTodasProtecao(ctx)
-		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoBuscarTodasAsProtecoes)
+		require.ErrorIs(t, err, Errors.ErrBuscarTodos, "erro tem que ser do tipo buscar todos")
 		require.Empty(t, protecoesDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -142,8 +141,7 @@ func Test_BuscarTodasProtecao(t *testing.T) {
 		mock.ExpectQuery(query).WillReturnRows(rows)
 
 		protecoesDB, err := repo.BuscarTodasProtecao(ctx)
-		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrFalhaAoEscanearDados)
+		require.ErrorIs(t, err, Errors.ErrFalhaAoEscanearDados, "erro tem que ser do tipo escanear")
 		require.Nil(t, protecoesDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -157,8 +155,8 @@ func Test_BuscarTodasProtecao(t *testing.T) {
 		mock.ExpectQuery(query).WillReturnRows(rows)
 
 		protecoesDB, err := repo.BuscarTodasProtecao(ctx)
-		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoIterarSobreProtecoes)
+
+		require.ErrorIs(t, err, Errors.ErrAoIterar, "erro tem que ser do tipo iterar")
 		require.Nil(t, protecoesDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -192,8 +190,7 @@ func Test_DeletarProtecao(t *testing.T) {
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
 		err := repo.DeletarProtecao(ctx, idNaoExistente)
-		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrProtecaoNaoEncontrada)
+		require.ErrorIs(t, err, Errors.ErrNaoEncontrado)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -208,14 +205,13 @@ func Test_DeletarProtecao(t *testing.T) {
 	})
 
 	t.Run("erro ao obter linhas afetadas", func(t *testing.T) {
-		driverErr := errors.New("driver: RowsAffected not supported")
+
 		mock.ExpectExec(query).
 			WithArgs(idParaDeletar).
-			WillReturnResult(sqlmock.NewErrorResult(driverErr))
+			WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 
 		err := repo.DeletarProtecao(ctx, idParaDeletar)
-		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrLinhasAfetadas)
+		require.ErrorIs(t, err, Errors.ErrLinhasAfetadas, "erro tem que ser do tipo não encontrada")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }

@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,7 +65,7 @@ func Test_LoginRepository_Add(t *testing.T){
 
 		err = repo.AddLogin(ctx, &login)
 		require.Error(t,err)
-		require.Equal(t, repository.ErrusuarioJaExistente, err)
+		assert.True(t, errors.Is(err,  Errors.ErrSalvar), "erro deveria ser erro ao salvar")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -84,7 +84,7 @@ func Test_LoginRepository_Add(t *testing.T){
 
 		err:=repo.AddLogin(ctx, &login)
 		require.Error(t, err)
-		require.Equal(t, ErroGenericoDb, err)
+		assert.True(t, errors.Is(err, Errors.ErrInternal), "erro tem que ser do tipo interno")
 
 		require.NoError(t, mock.ExpectationsWereMet())
 
@@ -128,7 +128,7 @@ func Test_LoginRepositoryDelete(t *testing.T){
 		mock.ExpectExec(query).WithArgs(login.ID).WillReturnResult(sqlmock.NewResult(0,0))
 
 		err:= repo.DeletarLogin(ctx, 1)
-		require.Equal(t, repository.ErrUsuarioNaoEncontrado,err)
+		assert.True(t, errors.Is(err, Errors.ErrNaoEncontrado), "erro tem que ser do tipo nao encontrado")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -137,13 +137,13 @@ func Test_LoginRepositoryDelete(t *testing.T){
 
 		query:= regexp.QuoteMeta("delete from login where id = @id")
 
-		driveErro:= errors.New("driver: RowsAffected not supported")
+		
 
-		mock.ExpectExec(query).WithArgs(login.ID).WillReturnResult(sqlmock.NewErrorResult(driveErro))
+		mock.ExpectExec(query).WithArgs(login.ID).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 
 		err:= repo.DeletarLogin(ctx, login.ID)
 		require.Error(t, err)
-		require.Equal(t, repository.ErrLinhasAfetadas,err )
+		assert.True(t, errors.Is(err, Errors.ErrLinhasAfetadas), "erro tem que ser do tipo linhas afetadas")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -194,7 +194,7 @@ func Test_loginRepositoryBuscarUsuario(t *testing.T){
 
 		usuario, err:= repo.BuscaPorNome(ctx, usuarioInexistente )
 		require.Error(t, err)
-		require.Equal(t, repository.ErrUsuarioNaoEncontrado, err)
+		assert.True(t, errors.Is(err, Errors.ErrNaoEncontrado), "erro deveria ser do tipo nao encotrado")
 		require.Nil(t, usuario)
 
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -207,14 +207,14 @@ func Test_loginRepositoryBuscarUsuario(t *testing.T){
 
 		linhas:= sqlmock.NewRows([]string{"usuario", "senha"})
 		
-		linhas.AddRow(login.Nome, login.Senha).RowError(0, repository.ErrFalhaAoEscanearDados)
+		linhas.AddRow(login.Nome, login.Senha).RowError(0, Errors.ErrFalhaAoEscanearDados)
 
 		mock.ExpectQuery(query).WithArgs(login.Nome).WillReturnRows(linhas)
 
 		usuario, err:= repo.BuscaPorNome(ctx, login.Nome)
 
 		require.Error(t, err)
-		require.Equal(t, repository.ErrFalhaAoEscanearDados, err)
+		assert.True(t, errors.Is(err, Errors.ErrFalhaAoEscanearDados), "erro deveria ser do  tipo escanear dados")
 		require.Nil(t, usuario)
 
 		require.NoError(t, mock.ExpectationsWereMet())

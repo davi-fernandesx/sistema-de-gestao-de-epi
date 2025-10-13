@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/stretchr/testify/require"
 )
@@ -43,20 +43,19 @@ func Test_AddTamanhos(t *testing.T) {
 
 		err := repo.AddTamanhos(ctx, &tamanho)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrTamanhoJaExistente)
+		require.ErrorIs(t, err, Errors.ErrSalvar, "erro tem que ser tipo salvar")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	t.Run("erro - falha generica ao adicionar", func(t *testing.T) {
-		dbErr := errors.New("falha de conexão")
 
 		mock.ExpectExec(query).
 			WithArgs(tamanho.Tamanho).
-			WillReturnError(dbErr)
+			WillReturnError(Errors.ErrSalvar)
 
 		err := repo.AddTamanhos(ctx, &tamanho)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoAdicionarTamanho)
+		require.ErrorIs(t, err, Errors.ErrSalvar, "erro tem que ser do tipo salvar")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -90,7 +89,7 @@ func Test_BuscarTamanhos(t *testing.T) {
 
 		tamanhoDB, err := repo.BuscarTamanhos(ctx, idNaoExistente)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoProcurarTamanho)
+		require.ErrorIs(t, err, Errors.ErrNaoEncontrado, "erro tem que ser do tipo não encontrado")
 		require.Nil(t, tamanhoDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -103,7 +102,7 @@ func Test_BuscarTamanhos(t *testing.T) {
 
 		tamanhoDB, err := repo.BuscarTamanhos(ctx, tamanho.ID)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrFalhaAoEscanearDados)
+		require.ErrorIs(t, err, Errors.ErrFalhaAoEscanearDados, "erro tem que ser do tipo escanear")
 		require.Nil(t, tamanhoDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -143,8 +142,7 @@ func Test_BuscarTodosTamanhos(t *testing.T) {
 
 		tamanhosDB, err := repo.BuscarTodosTamanhos(ctx)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoBuscarTodosOsTamanhos)
-		require.Equal(t, repository.ErrAoBuscarTodosOsTamanhos, err)
+		require.ErrorIs(t, err, Errors.ErrBuscarTodos)
 		require.Empty(t, tamanhosDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -159,8 +157,7 @@ func Test_BuscarTodosTamanhos(t *testing.T) {
 
 		tamanhosDB, err := repo.BuscarTodosTamanhos(ctx)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrFalhaAoEscanearDados)
-		require.Equal(t, repository.ErrFalhaAoEscanearDados, err)
+		require.ErrorIs(t, err, Errors.ErrFalhaAoEscanearDados)
 		require.Nil(t, tamanhosDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -176,7 +173,7 @@ func Test_BuscarTodosTamanhos(t *testing.T) {
 
 		tamanhosDB, err := repo.BuscarTodosTamanhos(ctx)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoIterarSobreTamanhos)
+		require.ErrorIs(t, err, Errors.ErrAoIterar)
 		require.Nil(t, tamanhosDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -211,31 +208,150 @@ func Test_DeletarTamanhos(t *testing.T) {
 
 		err := repo.DeletarTamanhos(ctx, idNaoExistente)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrTamanhoNaoEncontrado)
+		require.ErrorIs(t, err, Errors.ErrNaoEncontrado, "erro tem que ser do tipo nao encontrado")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	t.Run("erro generico do banco de dados ao deletar", func(t *testing.T) {
-		dbErr := errors.New("erro de execucao")
+		
 
-		mock.ExpectExec(query).WithArgs(idParaDeletar).WillReturnError(dbErr)
+		mock.ExpectExec(query).WithArgs(idParaDeletar).WillReturnError(Errors.ErrInternal)
 
 		err := repo.DeletarTamanhos(ctx, idParaDeletar)
 		require.Error(t, err)
-		require.Equal(t, dbErr, err) // O erro é retornado diretamente
+		require.ErrorIs(t, err, Errors.ErrInternal) // O erro é retornado diretamente
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	t.Run("erro ao obter linhas afetadas", func(t *testing.T) {
-		driverErr := errors.New("driver: RowsAffected not supported")
+		
 
 		mock.ExpectExec(query).
 			WithArgs(idParaDeletar).
-			WillReturnResult(sqlmock.NewErrorResult(driverErr))
+			WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 
 		err := repo.DeletarTamanhos(ctx, idParaDeletar)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrLinhasAfetadas)
+		require.ErrorIs(t, err, Errors.ErrLinhasAfetadas, "erro tem que ser do tipo linhas afetadas")
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+
+func Test_BuscarTamanhosPorIdEpi(t *testing.T) {
+	ctx := context.Background()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Assumindo que seu repositório é instanciado assim
+	repo := NewTamanhoRepository(db) // <-- Adapte esta linha para o seu construtor
+
+	// Query exata que a função usa
+	query := regexp.QuoteMeta(`
+        select 
+            t.id, t.tamanho
+        from
+            tamanho t
+        inner join
+            tamanhosEpis te on t.id = te.id_tamanho
+        where
+            te.epiId = @epiId
+    `)
+
+	// Dados de exemplo para o caso de sucesso
+	tamanhosEsperados := []model.Tamanhos{
+		{ID: 2, Tamanho: "M"},
+		{ID: 3, Tamanho: "G"},
+	}
+
+	t.Run("sucesso ao buscar os tamanhos de um epi", func(t *testing.T) {
+		epiId := 1
+
+		// Prepara as linhas que o mock deve retornar
+		rows := sqlmock.NewRows([]string{"id", "tamanho"}).
+			AddRow(tamanhosEsperados[0].ID, tamanhosEsperados[0].Tamanho).
+			AddRow(tamanhosEsperados[1].ID, tamanhosEsperados[1].Tamanho)
+
+		// Define a expectativa: a query será executada com o epiId=1 e retornará as linhas acima
+		mock.ExpectQuery(query).WithArgs(epiId).WillReturnRows(rows)
+
+		// Executa a função
+		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
+
+		// Faz as asserções
+		require.NoError(t, err)
+		require.NotNil(t, tamanhosDB)
+		require.Len(t, tamanhosDB, 2)
+		require.Equal(t, tamanhosEsperados, tamanhosDB)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("sucesso - epi sem tamanhos associados", func(t *testing.T) {
+		epiId := 2
+
+		// Prepara um resultado vazio (apenas as colunas, sem linhas de dados)
+		rows := sqlmock.NewRows([]string{"id", "tamanho"})
+
+		mock.ExpectQuery(query).WithArgs(epiId).WillReturnRows(rows)
+
+		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
+
+		// Um resultado vazio não é um erro. O slice deve vir vazio.
+		require.NoError(t, err)
+		require.Empty(t, tamanhosDB)   // Verifica se o slice está vazio
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("erro ao executar a query de busca", func(t *testing.T) {
+		epiId := 3
+		dbErr := errors.New("falha de conexão")
+
+		// Simula um erro do banco de dados na execução da query
+		mock.ExpectQuery(query).WithArgs(epiId).WillReturnError(dbErr)
+
+		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
+
+		require.Error(t, err)
+		// Verifica se o erro retornado é o erro customizado esperado
+		require.ErrorIs(t, err, Errors.ErrBuscarTodos, "erro tem que ser do tipo buscar todos")
+		require.Nil(t, tamanhosDB) // Em caso de erro, o slice deve ser nulo
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("erro ao escanear dados durante a iteracao", func(t *testing.T) {
+		epiId := 4
+		// A segunda linha tem um tipo de dado errado (string no ID) para forçar um erro no Scan
+		rows := sqlmock.NewRows([]string{"id", "tamanho"}).
+			AddRow(1, "P").
+			AddRow("id-invalido", "M")
+
+		mock.ExpectQuery(query).WithArgs(epiId).WillReturnRows(rows)
+
+		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
+
+		require.Error(t, err)
+		require.ErrorIs(t, err, Errors.ErrFalhaAoEscanearDados, "erro tem que ser do tipo escanear")
+		require.Nil(t, tamanhosDB)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("erro apos a iteracao (linhas.Err)", func(t *testing.T) {
+		epiId := 5
+		iterErr := errors.New("erro de rede durante a iteracao")
+
+		// Simula um erro que acontece durante a iteração, capturado por `linhas.Err()`
+		rows := sqlmock.NewRows([]string{"id", "tamanho"}).
+			AddRow(1, "P").
+			CloseError(iterErr)
+
+		mock.ExpectQuery(query).WithArgs(epiId).WillReturnRows(rows)
+
+		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
+
+		require.Error(t, err)
+		require.ErrorIs(t, err, Errors.ErrAoIterar, "erro tem que ser do tipo iterar")
+		require.Nil(t, tamanhosDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }

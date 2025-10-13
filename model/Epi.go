@@ -4,30 +4,46 @@ import (
 	"time"
 )
 
-// model banco de dados
+// model banco de dados (com campos trazidos do inner join)
 type Epi struct {
-	ID             int        `json:"id"`
-	Nome           string     `json:"nome"`
-	Fabricante     string     `json:"fabricante"`
-	CA             string     `json:"ca"`
-	Tamanho        TamanhoDto `json:"tamanho"`
-	Descricao      string     `json:"descricao"`
-	DataFabricacao time.Time  `json:"dataFabricante"`
-	DataValidade   time.Time  `json:"dataValidade"`
-	DataValidadeCa time.Time  `json:"DataValidadadeCa"`
-	IDprotecao     int        `json:"idProtecao"`
-	AlertaMinimo   int        `json:"alertaMinimo"`
+	ID             int
+	Nome           string
+	Fabricante     string
+	CA             string
+	Descricao      string
+	DataFabricacao time.Time
+	DataValidade   time.Time
+	DataValidadeCa time.Time
+	AlertaMinimo   int
+	IDprotecao     int
+	NomeProtecao   string
 }
 
+//modelo para ser usado ao inserir/atualizar no banco de dados
 
-type Epi_dto struct {
+type EpiInserir struct {
+	ID             int
+	Nome           string
+	Fabricante     string
+	CA             string
+	Tamanho        string
+	Descricao      string
+	DataFabricacao time.Time
+	DataValidade   time.Time
+	DataValidadeCa time.Time
+	AlertaMinimo   int
+	IDprotecao     int
+}
+
+// modelo para ser usado no controller e services
+type EpiDto struct {
 	Nome           string          `json:"nome"`
 	Fabricante     string          `json:"fabricante"`
 	CA             string          `json:"ca"`
-	Tamanho        TamanhoDto      `json:"tamanho"`
+	Tamanho        []TamanhoDto    `json:"tamanho"`
 	Descricao      string          `json:"descricao"`
 	DataFabricacao time.Time       `json:"dataFabricante"`
 	DataValidade   time.Time       `json:"dataValidade"`
-	DataValidadeCa time.Time       `json:"DataValidadadeCa"`
-	Protecao       TipoProtecaoDto `json:"idProtecao"`
+	DataValidadeCa time.Time       `json:"DataValidadeCa"`
+	Protecao       TipoProtecaoDto `json:"Protecao"`
 }

@@ -3,9 +3,11 @@ package tipoprotecao
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 )
 
 type TipoProtecaoInterface interface {
@@ -33,7 +35,7 @@ func (s *SqlServerLogin) AddProtecao(ctx context.Context, protecao *model.TipoPr
 
 	_, err:= s.DB.ExecContext(ctx, query, sql.Named("protecao", protecao.Nome))
 	if err != nil {
-		return repository.ErrAoAdicionarProtecao
+		return fmt.Errorf("erro interno ao salvar protecao, %w", Errors.ErrSalvar)
 	}
 
 	return  nil
@@ -51,10 +53,10 @@ func (s *SqlServerLogin) BuscarProtecao(ctx context.Context, id int) (*model.Tip
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return  nil, repository.ErrAoProcurarProtecao
+			return  nil,  fmt.Errorf("protecao com id %d, não encontrado! %w",id,  Errors.ErrNaoEncontrado)
 		}
 
-		return nil, repository.ErrFalhaAoEscanearDados
+		return nil,fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 	}
 
 	return &protecao, nil
@@ -67,7 +69,7 @@ func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoP
 
 	linhas, err:= s.DB.QueryContext(ctx, query)
 	if err != nil {
-		return  []model.TipoProtecao{}, repository.ErrAoBuscarTodasAsProtecoes
+		return  []model.TipoProtecao{}, fmt.Errorf("erro ao procurar todas as proteções, %w", Errors.ErrBuscarTodos)
 	}
 
 	defer linhas.Close()
@@ -79,7 +81,7 @@ func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoP
 		var protecao model.TipoProtecao
 		err:= linhas.Scan(&protecao.ID, &protecao.Nome)
 		if err != nil {
-			return nil, repository.ErrFalhaAoEscanearDados
+			return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 		}
 
 		protecoes = append(protecoes, protecao)
@@ -87,7 +89,7 @@ func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoP
 
 	err = linhas.Err()
 	if err != nil {
-		return  nil, repository.ErrAoIterarSobreProtecoes
+		return  nil, fmt.Errorf("erro ao iterar sobre as proteções , %w", Errors.ErrAoIterar)
 	}
 
 	return protecoes, nil
@@ -106,12 +108,15 @@ func (s *SqlServerLogin) DeletarProtecao(ctx context.Context, id int) error {
 
 	linhas, err:= result.RowsAffected()
 	if err != nil {
-		return  repository.ErrLinhasAfetadas
+		if errors.Is(err, Errors.ErrLinhasAfetadas){
+
+			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
+		}
 	}
 
 	if linhas == 0 {
 
-		return repository.ErrProtecaoNaoEncontrada
+	return  fmt.Errorf("proteção com o id %d não encontrado!, %w", id, Errors.ErrNaoEncontrado)
 	}
 
 	return nil

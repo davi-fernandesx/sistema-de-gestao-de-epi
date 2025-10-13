@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	mssql "github.com/microsoft/go-mssqldb"
 )
 
@@ -37,10 +38,10 @@ func (s *SqlServerLogin) AddFuncao(ctx context.Context, funcao *model.Funcao) er
 		if err != nil{
 			var ErrSql *mssql.Error
 			if errors.As(err, &ErrSql) && ErrSql.Number == 2627 {
-				return  repository.ErrFuncaoJaExistente
+				return  fmt.Errorf("função %s ja existe no sistema!, %w", funcao.Funcao, Errors.ErrSalvar)
 			}
 
-			return  err
+			return  fmt.Errorf("erro interno ao salvar funcao!, %w", Errors.ErrInternal)
 		}
 
 		return  nil
@@ -54,13 +55,12 @@ func (s *SqlServerLogin) BuscarFuncao(ctx context.Context, id int) (*model.Funca
 	var funcao model.Funcao
 
 	err:= s.Db.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(&funcao.ID, &funcao.Funcao)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return  nil, repository.ErrAoProcurarFuncao
+			return  nil, fmt.Errorf("funcao com o id %d não encotrada!, %w", id, Errors.ErrNaoEncontrado)
 		}
 
-		return  nil, repository.ErrFalhaAoEscanearDados
+		return  nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 	}
 
 	return &funcao, nil
@@ -72,7 +72,7 @@ func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao,
 
 	linhas, err:= s.Db.QueryContext(ctx, query)
 	if err != nil {
-		return []model.Funcao{}, repository.ErrAoBuscarTodasAsFuncoes
+		return []model.Funcao{}, fmt.Errorf("erro ao procurar todas as funções, %w", Errors.ErrBuscarTodos)
 	}
 
 	var Funcoes []model.Funcao
@@ -84,7 +84,7 @@ func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao,
 
 		if err:= linhas.Scan(&funcao.ID, &funcao.Funcao); err!= nil {
 
-			return  nil, repository.ErrFalhaAoEscanearDados
+			return  nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 		}
 
 		Funcoes = append(Funcoes, funcao)
@@ -92,7 +92,7 @@ func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao,
 	
 	err = linhas.Err()
 	if err != nil {
-		return  nil, repository.ErrAoIterarSobreFuncoes
+		return  nil, fmt.Errorf("erro ao iterar sobre as funções , %w", Errors.ErrAoIterar)
 	}
 
 	return  Funcoes, nil
@@ -113,12 +113,15 @@ func (s *SqlServerLogin) DeletarFuncao(ctx context.Context, id int) error {
 	
 	linhas, err:= result.RowsAffected()
 	if err != nil {
-		return repository.ErrLinhasAfetadas
+		if errors.Is(err, Errors.ErrLinhasAfetadas){
+
+			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
+		}
 	}
 
 	if linhas == 0 {
 
-		return repository.ErrAoProcurarFuncao
+		return fmt.Errorf("função com o id %d não encontrado!, %w", id, Errors.ErrNaoEncontrado)
 	}
 
 	return nil

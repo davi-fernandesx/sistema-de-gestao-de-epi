@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	mssql "github.com/denisenkom/go-mssqldb"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,10 +43,12 @@ func Test_Departamento_add(t *testing.T) {
 
 	t.Run("erro de departamento ja existente", func(t *testing.T) {
 
+		
 		mock.ExpectExec(query).WithArgs(departamento.Departamento).WillReturnError(&mssql.Error{Number: 2627})
+
 		errDepartamento := repo.AddDepartamento(ctx, &departamento)
 		require.Error(t, errDepartamento)
-		require.Equal(t, repository.ErrDepartamentoJaExistente, errDepartamento)
+		assert.True(t, errors.Is(errDepartamento, Errors.ErrSalvar), "erro tem que ser do tipo salvar")
 		require.NoError(t, mock.ExpectationsWereMet())
 
 	})
@@ -57,7 +60,7 @@ func Test_Departamento_add(t *testing.T) {
 
 		err := repo.AddDepartamento(ctx, &departamento)
 		require.Error(t, err)
-		require.Equal(t, ErroGenericoDb, err)
+		assert.True(t, errors.Is(err, Errors.ErrInternal), "erro tem que ser do tipo internal")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -92,19 +95,18 @@ func Test_DepartamentoRepository_delete(t *testing.T) {
 		mock.ExpectExec(query).WithArgs(departamento.ID).WillReturnResult(sqlmock.NewResult(0, 0))
 		err := repo.DeletarDepartamento(ctx, departamento.ID)
 		require.Error(t, err)
-		require.Equal(t, repository.ErrDepartamentoNaoEncontrado, err)
+		assert.True(t, errors.Is(err, Errors.ErrNaoEncontrado), "erro tem que ser do tipo noa encontrado")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	t.Run("erro ao buscar linhas afetadas", func(t *testing.T) {
 
-		driveErro := errors.New("driver: RowsAffected not supported")
 
-		mock.ExpectExec(query).WithArgs(departamento.ID).WillReturnResult(sqlmock.NewErrorResult(driveErro))
+		mock.ExpectExec(query).WithArgs(departamento.ID).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 
 		err := repo.DeletarDepartamento(ctx, departamento.ID)
 		require.Error(t, err)
-		require.Equal(t, repository.ErrLinhasAfetadas, err)
+		assert.True(t, errors.Is(err, Errors.ErrLinhasAfetadas ), "erro tem que ser do tipo linhas afetadas")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -149,7 +151,7 @@ func Test_DepartamentoRepository_Buscar(t *testing.T) {
 
 		Departamentopdb, err := repo.BuscarDepartamento(ctx, departamentoInexistenteId)
 		require.Error(t, err)
-		require.Equal(t, repository.ErrDepartamentoNaoEncontrado, err)
+		assert.True(t, errors.Is(err, Errors.ErrNaoEncontrado), "erro tem que ser do tipo nao encontrado")
 		require.Nil(t, Departamentopdb)
 
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -158,13 +160,13 @@ func Test_DepartamentoRepository_Buscar(t *testing.T) {
 	t.Run("testando o erro de scan", func(t *testing.T) {
 
 		linhas := sqlmock.NewRows([]string{"id", "departamento"})
-		linhas.AddRow(departamento.ID, departamento.Departamento).RowError(0, repository.ErrFalhaAoEscanearDados)
+		linhas.AddRow(departamento.ID, departamento.Departamento).RowError(0, Errors.ErrFalhaAoEscanearDados)
 
 		mock.ExpectQuery(query).WithArgs(departamento.ID).WillReturnRows(linhas)
 
 		departamentodb, err := repo.BuscarDepartamento(ctx, departamento.ID)
 		require.Error(t, err)
-		require.Equal(t, repository.ErrFalhaAoEscanearDados, err)
+		assert.True(t, errors.Is(err, Errors.ErrFalhaAoEscanearDados))
 		require.Nil(t, departamentodb)
 
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -211,12 +213,12 @@ func Test_DepartamentoRepository_buscarTodos(t *testing.T) {
 
 	t.Run("erro na consulta do banco de dados", func(t *testing.T) {
 
-		mock.ExpectQuery(query).WillReturnError(repository.ErrConexaoDb)
+		mock.ExpectQuery(query).WillReturnError(Errors.ErrConexaoDb)
 
 		departamentodb, err := repo.BuscarTodosDepartamentos(ctx)
 		require.Error(t, err)
 		require.Nil(t, departamentodb)
-		require.Equal(t, repository.ErrBuscarTodosDepartamentos, err)
+		assert.True(t, errors.Is(err, Errors.ErrBuscarTodos), "Erro tem que ser do tipo buscar todos")
 
 		require.NoError(t, mock.ExpectationsWereMet())
 
@@ -227,14 +229,14 @@ func Test_DepartamentoRepository_buscarTodos(t *testing.T) {
 		linhas := sqlmock.NewRows([]string{"id", "departamento"}).
 			AddRow(departamento.ID, departamento.Departamento).
 			AddRow(2, " ti").
-			CloseError(repository.ErrDadoIncompativel)
+			CloseError(Errors.ErrDadoIncompativel)
 
 		mock.ExpectQuery(query).WillReturnRows(linhas)
 
 		departamentodb, err := repo.BuscarTodosDepartamentos(ctx)
 		require.Error(t, err)
 		require.Nil(t, departamentodb)
-		require.Equal(t, repository.ErrIterarSobreDepartamentos, err)
+		assert.True(t, errors.Is(err, Errors.ErrAoIterar), "erro tem que ser do tipo iterar")
 
 		require.NoError(t, mock.ExpectationsWereMet())
 	})

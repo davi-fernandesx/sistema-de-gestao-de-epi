@@ -13,7 +13,7 @@ type Entrega_epi struct {
 
 type Entrega_epi_dto struct {
 	Funcionario        Funcionario_Dto `json:"funcionario"`
-	Epi                Epi_dto         `json:"epi"`
+	Epi                EpiDto        `json:"epi"`
 	Data_entrega       time.Time       `json:"data_entrega"`
 	Assinatura_Digital string          `json:"assinatura_digital"`
 	Quantidade         int             `json:"quantidade"`

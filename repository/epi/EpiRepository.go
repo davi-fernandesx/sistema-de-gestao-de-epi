@@ -3,14 +3,15 @@ package epi
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 
-
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 )
 
 type EpiInterface interface {
-	AddEpi(ctx context.Context, epi *model.Epi) error
+	AddEpi(ctx context.Context, epi *model.EpiInserir) error
 	DeletarEpi(ctx context.Context, id int) error
 	BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 	BuscarTodosEpi(ctx context.Context) ([]model.Epi, error)
@@ -28,7 +29,7 @@ func NewEpiRepository(db *sql.DB) EpiInterface {
 }
 
 // AddEpi implements EpiInterface.
-func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.Epi) error {
+func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 
 	query := `insert into epi (nome, fabricante, CA, descricao, data_fabricacao, data_validade, validade_CA, id_tipo_protecao, alerta_minimo) values (
 			@nome, @fabricante, @CA, @descricao,@data_fabricacao, @data_validade, @validade_CA, @id_tipo_protecao, @alerta_minimo )`
@@ -45,7 +46,7 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.Epi) error {
 		sql.Named("alerta_minimo", epi.AlertaMinimo))
 
 	if err != nil {
-		return repository.ErrEpiAoAdicionarEpi
+		return fmt.Errorf(" Erro interno ao salvar Epi, %w", Errors.ErrInternal)
 	}
 
 	return nil
@@ -54,8 +55,17 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.Epi) error {
 // BuscarEpi implements EpiInterface.
 func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error) {
 
-	query := `select id, nome, fabricante, CA, descricao, data_fabricacao, data_validade, validade_CA, id_tipo_protecao, alerta_minimo
-			from epi where id = @id`
+	query := `
+			select
+					e.id, e.nome, e.fabricante,e.CA, e.descricao, e.data_fabricacao, e.data_validade, 
+					e.validade_CA, e.alerta_minimo, e.id_tipo_protecao, tp.nome
+			from
+				epi e
+			inner join
+				tipo_protecao tp on	e.id_tipo_protecao = tp.id		
+			where
+				e.id = @id
+	`
 
 	var epi model.Epi
 	err := n.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(
@@ -67,17 +77,18 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 		&epi.DataFabricacao,
 		&epi.DataValidade,
 		&epi.DataValidadeCa,
-		&epi.IDprotecao,
 		&epi.AlertaMinimo,
+		&epi.IDprotecao,
+		&epi.NomeProtecao,
 	)
 
 	if err != nil {
 
 		if err == sql.ErrNoRows {
-			return nil, repository.ErrAoProcurarEpi
+			return nil, fmt.Errorf("epi com id %d não encontrado!, %w", id, Errors.ErrNaoEncontrado)
 		}
 
-		return nil, repository.ErrFalhaAoEscanearDados
+		return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 	}
 
 	return &epi, nil
@@ -86,14 +97,18 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 // BuscarTodosEpi implements EpiInterface.
 func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 
-	query := `select id, nome, fabricante, CA, descricao,
-	 		data_fabricacao, data_validade, validade_CA, 
-	 		id_tipo_protecao, alerta_minimo
-			from epi`
+	query := `
+				select
+					e.id, e.nome, e.fabricante,e.CA, e.descricao, e.data_fabricacao, e.data_validade, 
+					e.validade_CA, e.alerta_minimo, e.id_tipo_protecao, tp.nome
+			from
+				epi e
+			inner join
+				tipo_protecao tp on	e.id_tipo_protecao = tp.id`
 
 	linhas, err := n.DB.QueryContext(ctx, query)
 	if err != nil {
-		return []model.Epi{}, repository.ErrAoBuscarTodosOsEpis
+		return []model.Epi{}, fmt.Errorf("erro ao buscar todos os epi!, %w", Errors.ErrBuscarTodos)
 	}
 	defer linhas.Close()
 
@@ -103,10 +118,21 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 
 		var epi model.Epi
 
-		if err := linhas.Scan(&epi.ID, &epi.Nome, &epi.Fabricante, &epi.CA, &epi.Descricao, &epi.DataFabricacao, &epi.DataValidade, &epi.DataValidadeCa,
-			&epi.IDprotecao, &epi.AlertaMinimo); err != nil {
+		err := linhas.Scan(
+			&epi.ID,
+			&epi.Nome,
+			&epi.Fabricante,
+			&epi.CA,
+			&epi.Descricao,
+			&epi.DataFabricacao,
+			&epi.DataValidade,
+			&epi.DataValidadeCa,
+			&epi.AlertaMinimo,
+			&epi.IDprotecao,
+			&epi.NomeProtecao,)
+		 if err != nil {
 
-			return nil, repository.ErrFalhaAoEscanearDados
+			return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 		}
 
 		epis = append(epis, epi)
@@ -114,7 +140,7 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 
 	if err := linhas.Err(); err != nil {
 
-		return nil, repository.ErrAoInterarSobreEpis
+		return nil, fmt.Errorf("erro ao iterar sobre os epis!, %w", Errors.ErrAoIterar)
 	}
 
 	return epis, nil
@@ -134,13 +160,15 @@ func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
 
 	linhas, err:= result.RowsAffected()
 	if err != nil{
+			if errors.Is(err, Errors.ErrLinhasAfetadas){
 
-		return  repository.ErrLinhasAfetadas
+			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
+		}
 	}
 
 	if linhas == 0 {
 
-		return  repository.ErrEpiNaoEncontrado
+		return  fmt.Errorf("epi com o id %d não encontrado!, %w", id, Errors.ErrNaoEncontrado)
 	}
 
 	return  nil

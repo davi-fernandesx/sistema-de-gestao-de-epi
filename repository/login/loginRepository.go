@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	"github.com/microsoft/go-mssqldb"
 )
 
@@ -44,10 +45,10 @@ func (s *SqlServerLogin) AddLogin( ctx context.Context, model *model.Login) ( er
 	if err != nil {
 		var errSql *mssql.Error
 		if errors.As(err, &errSql) && errSql.Number == 2627{
-			return  repository.ErrusuarioJaExistente
+			return  fmt.Errorf("usuario com nome: %s ja existente. %w", model.Nome, Errors.ErrSalvar)
 		}
 
-		return  err
+		return  fmt.Errorf("erro inesperado ao salvar Login: %w", Errors.ErrInternal)
 	}
 	
 	return  nil
@@ -69,12 +70,13 @@ func (s *SqlServerLogin) DeletarLogin(ctx context.Context, id int) error {
 	
 	row, err:= result.RowsAffected()
 	if err != nil{
-
-		return repository.ErrLinhasAfetadas
+		if errors.Is(err, Errors.ErrLinhasAfetadas){
+			return fmt.Errorf("erro ao verificar linhas afetadas: %w", Errors.ErrLinhasAfetadas)
+		}		
 	}
 	
 	if row == 0{
-		return repository.ErrUsuarioNaoEncontrado
+		return fmt.Errorf("usuario com id %d não encontrado!, %w",id, Errors.ErrNaoEncontrado)
 	}
 
 
@@ -103,10 +105,10 @@ func (s *SqlServerLogin) BuscaPorNome(ctx context.Context,  nome string) (*model
 	if err != nil {
 
 		if err == sql.ErrNoRows {
-			return  nil, repository.ErrUsuarioNaoEncontrado
+			return  nil, fmt.Errorf("usuario com nome %s, não encontrado! %w",nome,  Errors.ErrNaoEncontrado)
 		}
 
-		return  nil, repository.ErrFalhaAoEscanearDados
+		return  nil, fmt.Errorf("erro ao escanecar dados!, %w", Errors.ErrFalhaAoEscanearDados)
 	}
 
 

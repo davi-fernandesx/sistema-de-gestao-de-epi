@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +44,7 @@ func Test_AddFuncao(t *testing.T) {
 
 		err := repo.AddFuncao(ctx, &funcao)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrFuncaoJaExistente)
+		require.ErrorIs(t, err, Errors.ErrSalvar, "erro tem que ser do tipo salvar")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -57,7 +57,7 @@ func Test_AddFuncao(t *testing.T) {
 
 		err := repo.AddFuncao(ctx, &funcao)
 		require.Error(t, err)
-		require.Equal(t, dbErr, err) // Neste caso, o erro é repassado diretamente
+		require.ErrorIs(t, err, Errors.ErrInternal, "erro tem que ser do tipo internal") // Neste caso, o erro é repassado diretamente
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -91,7 +91,7 @@ func Test_BuscarFuncao(t *testing.T) {
 
 		funcaoDB, err := repo.BuscarFuncao(ctx, idNaoExistente)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoProcurarFuncao)
+		require.ErrorIs(t, err, Errors.ErrNaoEncontrado, "erro tem que ser do tipo nao encontrado")
 		require.Nil(t, funcaoDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -104,7 +104,7 @@ func Test_BuscarFuncao(t *testing.T) {
 
 		funcaoDB, err := repo.BuscarFuncao(ctx, funcao.ID)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrFalhaAoEscanearDados)
+		require.ErrorIs(t, err, Errors.ErrFalhaAoEscanearDados, "erro tem que ser do tipo escanear")
 		require.Nil(t, funcaoDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -146,7 +146,7 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 
 		funcoesDB, err := repo.BuscarTodasFuncao(ctx)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoBuscarTodasAsFuncoes)
+		require.ErrorIs(t, err, Errors.ErrBuscarTodos)
 		require.Empty(t, funcoesDB) // ou require.Len(t, funcoesDB, 0)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -161,7 +161,7 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 
 		funcoesDB, err := repo.BuscarTodasFuncao(ctx)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrFalhaAoEscanearDados)
+		require.ErrorIs(t, err, Errors.ErrFalhaAoEscanearDados)
 		require.Nil(t, funcoesDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -177,7 +177,7 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 
 		funcoesDB, err := repo.BuscarTodasFuncao(ctx)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoIterarSobreFuncoes)
+		require.ErrorIs(t, err, Errors.ErrAoIterar)
 		require.Nil(t, funcoesDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -212,7 +212,7 @@ func Test_DeletarFuncao(t *testing.T) {
 
 		err := repo.DeletarFuncao(ctx, idNaoExistente)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrAoProcurarFuncao)
+		require.ErrorIs(t, err, Errors.ErrNaoEncontrado)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -229,15 +229,14 @@ func Test_DeletarFuncao(t *testing.T) {
 
 	t.Run("erro ao obter linhas afetadas", func(t *testing.T) {
 		// Alguns drivers podem não suportar RowsAffected e retornar um erro
-		driverErr := errors.New("driver: RowsAffected not supported")
 		
 		mock.ExpectExec(query).
 			WithArgs(idParaDeletar).
-			WillReturnResult(sqlmock.NewErrorResult(driverErr))
+			WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 
 		err := repo.DeletarFuncao(ctx, idParaDeletar)
 		require.Error(t, err)
-		require.ErrorIs(t, err, repository.ErrLinhasAfetadas)
+		require.ErrorIs(t, err, Errors.ErrLinhasAfetadas)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }

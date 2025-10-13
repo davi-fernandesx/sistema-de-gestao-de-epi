@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
 	mssql "github.com/denisenkom/go-mssqldb"
 )
 
@@ -37,10 +38,10 @@ func (n *NewSqlLogin) AddDepartamento(ctx context.Context, departamento *model.D
 	if err != nil {
 		var ErrSql *mssql.Error
 		if errors.As(err, &ErrSql) && ErrSql.Number == 2627 {
-			return repository.ErrDepartamentoJaExistente
+			return fmt.Errorf("departamento %s ja existente!, %w", departamento.Departamento, Errors.ErrSalvar)
 
 		}
-		return err
+		return fmt.Errorf(" Erro interno ao salvar departamento, %w", Errors.ErrInternal)
 	}
 
 	return nil
@@ -60,10 +61,10 @@ func (n *NewSqlLogin) BuscarDepartamento(ctx context.Context, id int) (*model.De
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, repository.ErrDepartamentoNaoEncontrado
+		return  nil, fmt.Errorf("usuario com id %d, não encontrado! %w",id,  Errors.ErrNaoEncontrado)
 		}
 
-		return nil, repository.ErrFalhaAoEscanearDados
+		return nil,  fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 	}
 
 	return &departamento, nil
@@ -76,7 +77,7 @@ func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) (*[]model.De
 
 	linhas, err := n.DB.QueryContext(ctx, query)
 	if err != nil {
-		return nil, repository.ErrBuscarTodosDepartamentos
+		return nil, fmt.Errorf("erro ao procurar todos os departamentos, %w", Errors.ErrBuscarTodos)
 	}
 
 	defer linhas.Close()
@@ -87,7 +88,7 @@ func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) (*[]model.De
 		var departamento model.Departamento
 
 		if err := linhas.Scan(&departamento.ID, &departamento.Departamento); err != nil {
-			return nil, repository.ErrFalhaAoEscanearDados
+			return nil,  fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 		}
 
 		departamentos = append(departamentos, departamento)
@@ -95,7 +96,7 @@ func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) (*[]model.De
 
 	if err := linhas.Err(); err != nil {
 
-		return nil, repository.ErrIterarSobreDepartamentos
+		return nil, fmt.Errorf("erro ao iterar sobre os departamentos, %w", Errors.ErrAoIterar)
 	}
 
 	return &departamentos, nil
@@ -114,11 +115,14 @@ func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
 
 	linhas, err := result.RowsAffected()
 	if err != nil {
-		return repository.ErrLinhasAfetadas
+		if errors.Is(err, Errors.ErrLinhasAfetadas){
+
+			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
+		}
 	}
 
 	if linhas == 0 {
-		return repository.ErrDepartamentoNaoEncontrado
+		return fmt.Errorf("departamento com o id %d não encontrado!, %w", id, Errors.ErrNaoEncontrado)
 	}
 
 	return nil
