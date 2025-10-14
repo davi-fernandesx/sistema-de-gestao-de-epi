@@ -1,8 +1,8 @@
 package model
 
 type Tamanhos struct {
-	ID      int   `json:"id"`
-	Tamanho string `json:"tamanho"`
+	ID      int   
+	Tamanho string 
 }
 
 type TamanhoDto struct {

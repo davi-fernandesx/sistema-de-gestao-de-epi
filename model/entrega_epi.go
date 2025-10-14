@@ -2,18 +2,39 @@ package model
 
 import "time"
 
-type Entrega_epi struct {
-	ID                 int       `json:"id"`
-	ID_funcionario     int       `json:"id_funcionario"`
-	ID_epi             int       `json:"id_epi"`
-	Data_entrega       time.Time `json:"data_entrega"`
-	Assinatura_Digital string    `json:"assinatura_digital"`
-	Quantidade         int       `json:"quantidade"`
+type EntregaEpiInserir struct {
+	ID                 int
+	ID_funcionario     int
+	ID_epi             int
+	Data_entrega       time.Time
+	Assinatura_Digital string
+	Quantidade         int
+}
+
+type EntregaEpi struct {
+	Id                 int
+	IDfuncionario      int
+	NomeFuncionario    string
+	Funcao             string
+	Departamento       string
+	IDEpi              int
+	Nome               string
+	Fabricante         string
+	CA                 string
+	Descricao          string
+	DataFabricacao     time.Time
+	DataValidade       time.Time
+	DataValidadeCa     time.Time
+	IDprotecao         int
+	NomeProtecao       string
+	Data_entrega       time.Time
+	Assinatura_Digital string
+	Quantidade         int
 }
 
 type Entrega_epi_dto struct {
 	Funcionario        Funcionario_Dto `json:"funcionario"`
-	Epi                EpiDto        `json:"epi"`
+	Epi                EpiDto          `json:"epi"`
 	Data_entrega       time.Time       `json:"data_entrega"`
 	Assinatura_Digital string          `json:"assinatura_digital"`
 	Quantidade         int             `json:"quantidade"`

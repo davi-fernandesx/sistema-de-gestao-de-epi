@@ -1,8 +1,8 @@
 package model
 
 type TipoProtecao struct {
-	ID   int      `json:"id"`
-	Nome Protecao `json:"nome"`
+	ID   int     
+	Nome Protecao 
 }
 
 type TipoProtecaoDto struct {

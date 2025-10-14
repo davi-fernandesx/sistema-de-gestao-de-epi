@@ -28,18 +28,17 @@ func NewEntradaRepository(db *sql.DB) EntradaEpi {
 	}
 }
 
-
 // AddEntradaEpi implements EntradaEpi.
 func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.EntradaEpiInserir) error {
-	
-	query:= `
-		insert into Entrada (id_epi, data_entrada, quantidade, lote, fornecedor)
-		values (@id_epi, @data_entrada, @quantidade, @lote, @fornecedor)
 
+	query := `
+		insert into Entrada (id_epi,id_tamanho, data_entrada, quantidade, lote, fornecedor)
+		values (@id_epi,@id_tamanho, @data_entrada, @quantidade, @lote, @fornecedor)
 	`
 
-	_, err:= n.DB.ExecContext(ctx, query,
+	_, err := n.DB.ExecContext(ctx, query,
 		sql.Named("id_epi", EntradaEpi.ID_epi),
+		sql.Named("id_tamanho", EntradaEpi.Id_tamanho),
 		sql.Named("data_entrada", EntradaEpi.Data_entrada),
 		sql.Named("quantidade", EntradaEpi.Quantidade),
 		sql.Named("lote", EntradaEpi.Lote),
@@ -47,33 +46,42 @@ func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.Entra
 	)
 
 	if err != nil {
-		return  fmt.Errorf("erro interno ao salvar entrada, %w", Errors.ErrSalvar)
+		return fmt.Errorf("erro interno ao salvar entrada, %w", Errors.ErrSalvar)
 	}
 
-	return  nil
+	return nil
 }
 
 // BuscarEntrada implements EntradaEpi.
 func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (*model.EntradaEpi, error) {
-	
-	query:= `
-			select
-				ee.id, ee.id_epi,e.nome,e.fabricante, e.CA,e.descricao,
-				e.dataFabricacao, e.dataValidade, e.dataValidadeCa, 
-				e.id_protecao, e.nomeProtecao, ee.lote, ee.fornecedor 
-			from 
-				entrada ee
-			inner join
-				epi e on ee.id_epi = e.id 
-			where 
-				ee.id = @id
+
+	query := `
+     SELECT
+            ee.id, ee.id_epi, ee.quantidade, ee.lote, ee.fornecedor, -- Campos da tabela de entrada
+            e.nome, e.fabricante, e.CA, e.descricao,
+            e.data_fabricacao, e.data_validade, e.validade_CA, -- Campos do EPI
+            tp.id as id_protecao, tp.protecao as nome_protecao, -- Campos do Tipo de Proteção
+            t.id as id_tamanho, t.tamanho as tamanho_descricao -- Campos do Tamanho
+        FROM 
+            entradas_epi ee
+        INNER JOIN
+            epi e ON ee.id_epi = e.id 
+        INNER JOIN
+            tipo_protecao tp ON e.id_tipo_protecao = tp.id
+        INNER JOIN
+            tamanhos t ON ee.id_tamanho = t.id
+        WHERE 
+            ee.id = @id;
 	`
 
 	var entrada model.EntradaEpi
 
-	err:= n.DB.QueryRowContext(ctx, query,sql.Named("id", id)).Scan(
+	err := n.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(
 		&entrada.ID,
 		&entrada.ID_epi,
+		&entrada.Quantidade,
+		&entrada.Lote,
+		&entrada.Fornecedor,
 		&entrada.Nome,
 		&entrada.Fabricante,
 		&entrada.CA,
@@ -83,19 +91,18 @@ func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (*model.Entrada
 		&entrada.DataValidadeCa,
 		&entrada.IDprotecao,
 		&entrada.NomeProtecao,
-		&entrada.Lote,
-		&entrada.Fornecedor,
-
-	)	
+		&entrada.Id_Tamanho,
+		&entrada.TamanhoDescricao,
+	)
 
 	if err != nil {
 
-		if err == sql.ErrNoRows{
+		if err == sql.ErrNoRows {
 
-		return  nil, fmt.Errorf("entrada com id %d, não encontrado! %w",id,  Errors.ErrNaoEncontrado)
+			return nil, fmt.Errorf("entrada com id %d, não encontrado! %w", id, Errors.ErrNaoEncontrado)
 		}
 
-		return  nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	return &entrada, nil
@@ -103,32 +110,41 @@ func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (*model.Entrada
 
 // BuscarTodasEntradas implements EntradaEpi.
 func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaEpi, error) {
-	query:= `
-			select
-				ee.id, ee.id_epi,e.nome,e.fabricante, e.CA,e.descricao,
-				e.dataFabricacao, e.dataValidade, e.dataValidadeCa, 
-				e.id_protecao, e.nomeProtecao, ee.lote, ee.fornecedor 
-			from 
-				entrada ee
-			inner join
-				epi e on ee.id_epi = e.id  
-	`
+	query := `
+     SELECT
+            ee.id, ee.id_epi, ee.quantidade, ee.lote, ee.fornecedor, -- Campos da tabela de entrada
+            e.nome, e.fabricante, e.CA, e.descricao,
+            e.data_fabricacao, e.data_validade, e.validade_CA, -- Campos do EPI
+            tp.id as id_protecao, tp.protecao as nome_protecao, -- Campos do Tipo de Proteção
+            t.id as id_tamanho, t.tamanho as tamanho_descricao -- Campos do Tamanho
+        FROM 
+            entradas_epi ee
+        INNER JOIN
+            epi e ON ee.id_epi = e.id 
+        INNER JOIN
+            tipo_protecao tp ON e.id_tipo_protecao = tp.id
+        INNER JOIN
+            tamanhos t ON ee.id_tamanho = t.id
+		`
 
-	linhas, err:= n.DB.QueryContext(ctx, query)
+	linhas, err := n.DB.QueryContext(ctx, query)
 	if err != nil {
 		return []model.EntradaEpi{}, fmt.Errorf("erro ao procurar todas as entradas, %w", Errors.ErrBuscarTodos)
 	}
 
 	defer linhas.Close()
 
-	 entradas:= make([]model.EntradaEpi, 0)
+	entradas := make([]model.EntradaEpi, 0)
 
-	for linhas.Next(){
+	for linhas.Next() {
 		var entrada model.EntradaEpi
 
-		err:= linhas.Scan(
+		err := linhas.Scan(
 			&entrada.ID,
 			&entrada.ID_epi,
+			&entrada.Quantidade,
+			&entrada.Lote,
+			&entrada.Fornecedor,
 			&entrada.Nome,
 			&entrada.Fabricante,
 			&entrada.CA,
@@ -138,17 +154,16 @@ func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaE
 			&entrada.DataValidadeCa,
 			&entrada.IDprotecao,
 			&entrada.NomeProtecao,
-			&entrada.Lote,
-			&entrada.Fornecedor,
+			&entrada.Id_Tamanho,
+			&entrada.TamanhoDescricao,
 		)
 
 		if err != nil {
-			return  nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
+			return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 		}
 
 		entradas = append(entradas, entrada)
 	}
-
 
 	if err := linhas.Err(); err != nil {
 
@@ -160,18 +175,18 @@ func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaE
 
 // DeletarEntrada implements EntradaEpi.
 func (n *NewSqlLogin) DeletarEntrada(ctx context.Context, id int) error {
-	
-		query:= `delete from  entrada where id = @id`
 
-	result, err:= n.DB.ExecContext(ctx, query, sql.Named("id", id))
+	query := `delete from  entrada where id = @id`
+
+	result, err := n.DB.ExecContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
-		return  fmt.Errorf("erro interno ao deletar uma entrada %w", Errors.ErrInternal)
+		return fmt.Errorf("erro interno ao deletar uma entrada %w", Errors.ErrInternal)
 	}
 
-	linhas, err:= result.RowsAffected()
-	if err != nil{
-		if errors.Is(err, Errors.ErrLinhasAfetadas){
+	linhas, err := result.RowsAffected()
+	if err != nil {
+		if errors.Is(err, Errors.ErrLinhasAfetadas) {
 
 			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
 		}
@@ -179,9 +194,8 @@ func (n *NewSqlLogin) DeletarEntrada(ctx context.Context, id int) error {
 
 	if linhas == 0 {
 
-		return  fmt.Errorf("entrada com o id %d não encontrado!, %w", id, Errors.ErrNaoEncontrado)
+		return fmt.Errorf("entrada com o id %d não encontrado!, %w", id, Errors.ErrNaoEncontrado)
 	}
 
-	return  nil
+	return nil
 }
-

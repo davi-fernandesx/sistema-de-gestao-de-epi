@@ -31,23 +31,54 @@ func NewEpiRepository(db *sql.DB) EpiInterface {
 // AddEpi implements EpiInterface.
 func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 
-	query := `insert into epi (nome, fabricante, CA, descricao, data_fabricacao, data_validade, validade_CA, id_tipo_protecao, alerta_minimo) values (
-			@nome, @fabricante, @CA, @descricao,@data_fabricacao, @data_validade, @validade_CA, @id_tipo_protecao, @alerta_minimo )`
+	tx, err := n.DB.BeginTx(ctx, nil)
+	if err != nil {
+        return fmt.Errorf("erro ao iniciar transação: %w", Errors.ErrInternal)
+    }
+	defer tx.Rollback()
+	query := `insert into epi (nome, fabricante, CA, descricao, data_fabricacao, data_validade, validade_CA, id_tipo_protecao, alerta_minimo) 
+			OUTPUT INSERTED.id 
+			values 
+			(@nome, @fabricante, @CA, @descricao,@data_fabricacao, @data_validade, @validade_CA, @id_tipo_protecao, @alerta_minimo )`// quwry para
+			//salvar um epi e retornar seu id
 
-	_, err := n.DB.ExecContext(ctx, query,
+	var EpiId int64
+	 err = tx.QueryRowContext(ctx, query,
 		sql.Named("nome", epi.Nome),
-		sql.Named("fabricantte", epi.Fabricante),
+		sql.Named("fabricante", epi.Fabricante),
 		sql.Named("CA", epi.CA),
 		sql.Named("descricao", epi.Descricao),
 		sql.Named("data_fabricacao", epi.DataFabricacao),
 		sql.Named("data_validade", epi.DataValidade),
 		sql.Named("validade_CA", epi.DataValidadeCa),
 		sql.Named("id_tipo_protecao", epi.IDprotecao),
-		sql.Named("alerta_minimo", epi.AlertaMinimo))
+		sql.Named("alerta_minimo", epi.AlertaMinimo)).Scan(&EpiId)//escaneado o id
 
 	if err != nil {
-		return fmt.Errorf(" Erro interno ao salvar Epi, %w", Errors.ErrInternal)
+		return fmt.Errorf(" Erro interno ao salvar Epi: %w",  Errors.ErrInternal)
 	}
+
+	stmt, err:= tx.PrepareContext(ctx, "insert into tamanho_epi  (id_tamanho, id_epi) values (@id_tamanho, @id_epi)") 
+	//preparando a query para inserir na tabela de assosiação o id do epi salvar e o id do tamanho(vindo da model do epi)
+	if err != nil{
+		return fmt.Errorf("erro ao preparar statemnt para tamanho_epi: %w", Errors.ErrInternal)
+	}
+	defer stmt.Close()
+
+	for _, idTamanho:= range epi.Idtamanho {
+		_, err:= stmt.ExecContext(ctx, sql.Named("id_tamanho", idTamanho), sql.Named("id_epi", EpiId))
+		//executando a query preparada, adicionando na tabela de associação os id do epi e o id dos tamanhos
+		if err != nil {
+
+			return fmt.Errorf("erro ao inserir na tabela epi_tamanhos para o tamanho ID %d: %w", idTamanho, Errors.ErrInternal)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		 return fmt.Errorf("erro ao commitar transação: %w", Errors.ErrInternal)
+	}
+
 
 	return nil
 }
@@ -81,7 +112,6 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 		&epi.IDprotecao,
 		&epi.NomeProtecao,
 	)
-
 	if err != nil {
 
 		if err == sql.ErrNoRows {
@@ -90,6 +120,43 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 
 		return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 	}
+	//query usada para buscar os tamanhos por basee  do id do produto passado
+	queryTamanhos:=`
+	
+		select 
+			t.id, t.tamanho
+		from
+			tamanho t
+		inner join
+			tamanhosEpis te on t.id = te.id_tamanho
+		where
+			te.epiId = @epiId
+		`
+
+	linhas, err:= n.DB.QueryContext(ctx, queryTamanhos, sql.Named("epiId", epi.ID))
+	if err != nil {
+        // Retorna o EPI encontrado, mas avisa sobre o erro nos tamanhos, ou pode retornar o erro direto
+        return nil, fmt.Errorf("erro ao buscar tamanhos para o epi %d: %w", epi.ID, Errors.ErrNaoEncontrado)
+	}
+	defer linhas.Close()
+
+	var tamanhos []model.Tamanhos
+
+	for linhas.Next(){
+
+		var tamanho model.Tamanhos
+
+		err:= linhas.Scan(&tamanho.ID, &tamanho.Tamanho)
+		if err != nil {
+			return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
+
+		}
+
+		tamanhos = append(tamanhos, tamanho)
+	}
+
+	epi.Tamanhos = tamanhos
+	
 
 	return &epi, nil
 }
@@ -112,36 +179,73 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 	}
 	defer linhas.Close()
 
-	var epis []model.Epi
+	 EpisMap:= make(map[int]*model.Epi) //usando map ao inves de um slic por motivos de performace
 
-	for linhas.Next() {
+	 for linhas.Next(){
 
 		var epi model.Epi
-
-		err := linhas.Scan(
-			&epi.ID,
-			&epi.Nome,
-			&epi.Fabricante,
-			&epi.CA,
-			&epi.Descricao,
-			&epi.DataFabricacao,
-			&epi.DataValidade,
-			&epi.DataValidadeCa,
-			&epi.AlertaMinimo,
-			&epi.IDprotecao,
-			&epi.NomeProtecao,)
-		 if err != nil {
-
-			return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
+		err:= linhas.Scan(
+		&epi.ID,
+		&epi.Nome,
+		&epi.Fabricante,
+		&epi.CA,
+		&epi.Descricao,
+		&epi.DataFabricacao,
+		&epi.DataValidade,
+		&epi.DataValidadeCa,
+		&epi.AlertaMinimo,
+		&epi.IDprotecao,
+		&epi.NomeProtecao,
+		)
+		if err!= nil {
+			return  nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 		}
 
-		epis = append(epis, epi)
-	}
+		EpisMap[epi.ID] = &epi
+	 }
 
-	if err := linhas.Err(); err != nil {
+	 if len(EpisMap) == 0 {
 
-		return nil, fmt.Errorf("erro ao iterar sobre os epis!, %w", Errors.ErrAoIterar)
-	}
+		return []model.Epi{}, nil
+	 }
+
+	 //segunda query
+
+	 queryTamanhos:= ` 
+	 		select
+	 			 te.id_epi, t.id, t.tamanho
+			from tamanhos t
+			inner join tamanho_epi te on t.id = te.id_tamanho
+	 `// query que retorna o id do epi, id do tamanho e o tamanho
+
+	 linhasTamanhos, err:= n.DB.QueryContext(ctx, queryTamanhos)
+	 if err != nil{
+			return  nil, fmt.Errorf("erro ao buscar associacao de tamanho, %w", Errors.ErrInternal)		
+	 }
+	 defer linhasTamanhos.Close()
+
+	 for linhasTamanhos.Next(){
+
+		var epiID int64
+		var t model.Tamanhos
+
+		err:= linhasTamanhos.Scan(&epiID, &t.ID, &t.Tamanho)
+		if err != nil {
+			return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
+
+		}
+
+		if epi, ok:= EpisMap[int(epiID)]; ok {
+			epi.Tamanhos = append(epi.Tamanhos, t)
+		}
+
+	 }
+	 epis:= make([]model.Epi, 0, len(EpisMap))
+	 for _, epi:= range EpisMap {
+		epis = append(epis, *epi)
+	 }
+
+
 
 	return epis, nil
 
@@ -149,10 +253,23 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 
 // DeletarEpi implements EpiInterface.
 func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
-	
-	query:=  `delete from epi where id = @id`
 
-	result, err:= n.DB.ExecContext(ctx, query, sql.Named("id", id))
+
+	tx, err:= n.DB.BeginTx(ctx, nil)
+	if err!= nil {
+
+		return  fmt.Errorf("erro ao começar transaction, %w", Errors.ErrInternal)
+	}
+	defer tx.Rollback()
+
+	queryTamanhoEpi := ` delete from  tamanho_epi where id_epi = @id`
+	_, err = tx.ExecContext(ctx, queryTamanhoEpi, sql.Named("id", id))
+	if err != nil {
+		return err
+	}
+		
+	query:=  `delete from epi where id = @id`
+	result, err := tx.ExecContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
 		return  err
@@ -171,5 +288,5 @@ func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
 		return  fmt.Errorf("epi com o id %d não encontrado!, %w", id, Errors.ErrNaoEncontrado)
 	}
 
-	return  nil
+	return  tx.Commit()
 }

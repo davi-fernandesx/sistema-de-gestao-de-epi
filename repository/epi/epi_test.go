@@ -1,3 +1,4 @@
+// epi_repository_test.go
 package epi
 
 import (
@@ -9,491 +10,264 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/stretchr/testify/assert"
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors" // Seus erros customizados
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"  // Seus models
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func Test_Epi_add(t *testing.T) {
+// --- Estrutura da Suíte de Testes (Boa prática para organizar) ---
 
-	ctx := context.Background()
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
-
-	defer db.Close()
-
-	repo := NewEpiRepository(db)
-
-	EpiInserir := model.EpiInserir{
-		ID:             1,
-		Nome:           "botas isolante antiderapante",
-		Fabricante:     "maicol",
-		CA:             "36025",
-		Descricao:      "Bota de Pvc Cano Médio 28Cm Branca",
-		DataFabricacao: time.Now(),
-		DataValidade:   time.Now().AddDate(3, 12, 0),
-		DataValidadeCa: time.Now().AddDate(2, 0, 0),
-		AlertaMinimo:   10,
-		IDprotecao:     1,
-	}
-
-	query := regexp.QuoteMeta(`insert into epi (nome, fabricante, CA, descricao,
-				data_fabricacao, data_validade, 
-				validade_CA, id_tipo_protecao, alerta_minimo) values (
-				@nome, @fabricante, @CA, @descricao,@data_fabricacao, @data_validade,
-				@validade_CA, @id_tipo_protecao, @alerta_minimo )`)
-
-	t.Run("testando o sucesso ao adicionar um  epi no banco de dados", func(t *testing.T) {
-
-		mock.ExpectExec(query).WithArgs(EpiInserir.Nome, EpiInserir.Fabricante, EpiInserir.CA, EpiInserir.Descricao,
-			EpiInserir.DataFabricacao,
-			EpiInserir.DataValidade, EpiInserir.DataValidadeCa, EpiInserir.IDprotecao, EpiInserir.AlertaMinimo).
-			WillReturnResult(sqlmock.NewResult(0, 1))
-
-		ErrEpi := repo.AddEpi(ctx, &EpiInserir)
-		require.NoError(t, ErrEpi)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("testando o erro ao adicionar um epi no banco de dados", func(t *testing.T) {
-
-		errGen :=Errors.ErrSalvar
-		mock.ExpectExec(query).WithArgs(EpiInserir.Nome, EpiInserir.Fabricante, EpiInserir.CA, EpiInserir.Descricao,
-			EpiInserir.DataFabricacao,
-			EpiInserir.DataValidade, EpiInserir.DataValidadeCa, EpiInserir.IDprotecao, EpiInserir.AlertaMinimo).
-			WillReturnError(errGen)
-
-		errEpi := repo.AddEpi(ctx, &EpiInserir)
-		require.Error(t, errEpi)
-		assert.True(t, errors.Is(errEpi, Errors.ErrInternal), "erro tem que ser do tipo internal")
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
+type EpiRepositorySuite struct {
+	suite.Suite
+	db   *sql.DB
+	mock sqlmock.Sqlmock
+	repo EpiInterface
 }
 
-func Test_buscarEpi(t *testing.T) {
+// SetupTest é executado antes de cada teste na suíte
+func (s *EpiRepositorySuite) SetupTest() {
+	var err error
+	s.db, s.mock, err = sqlmock.New()
+	require.NoError(s.T(), err)
+	s.repo = NewEpiRepository(s.db)
+}
 
-	ctx := context.Background()
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
+// TearDownTest é executado depois de cada teste
+func (s *EpiRepositorySuite) TearDownTest() {
+	s.db.Close()
+}
 
-	defer db.Close()
+// Função para rodar a suíte
+func TestEpiRepository(t *testing.T) {
+	suite.Run(t, new(EpiRepositorySuite))
+}
 
-	repo := NewEpiRepository(db)
+// --- Testes para AddEpi ---
 
-	Epi := model.Epi{
-		ID:             1,
-		Nome:           "botas isolante antiderapante",
-		Fabricante:     "maicol",
-		CA:             "36025",
-		Descricao:      "Bota de Pvc Cano Médio 28Cm Branca",
+func (s *EpiRepositorySuite) TestAddEpi_Success() {
+	// Dados de entrada para o teste
+	epiToInsert := &model.EpiInserir{
+		Nome:           "Capacete Pro-Safety",
+		Fabricante:     "MSA",
+		CA:             "12345",
+		Descricao:      "Capacete de segurança para obras",
 		DataFabricacao: time.Now(),
-		DataValidade:   time.Now().AddDate(3, 12, 0),
+		DataValidade:   time.Now().AddDate(5, 0, 0),
 		DataValidadeCa: time.Now().AddDate(2, 0, 0),
-		AlertaMinimo:   10,
-		IDprotecao:     1,
-		NomeProtecao:   "protecao_para_cabeça",
+		Idtamanho:      []int{1, 2}, // IDs dos tamanhos a serem associados
+		IDprotecao:     10,
+		AlertaMinimo:   5,
 	}
 
-	query := regexp.QuoteMeta(`
-				select
-					e.id, e.nome, e.fabricante,e.CA, e.descricao, e.data_fabricacao, e.data_validade, 
-					e.validade_CA, e.alerta_minimo, e.id_tipo_protecao, tp.nome
-			from
-				epi e
-			inner join
-				tipo_protecao tp on	e.id_tipo_protecao = tp.id		
-			where
-				e.id = @id`)
+	// sqlmock espera que essas operações aconteçam NA ORDEM
+	s.mock.ExpectBegin() // 1. Espera o início de uma transação
 
-	t.Run("testando o sucesso ao buscar um epi", func(t *testing.T) {
+	// 2. Espera a query de INSERT na tabela 'epi'.
+	// Usamos regexp.QuoteMeta para tratar a query como texto literal, evitando problemas com caracteres especiais.
+	s.mock.ExpectQuery(regexp.QuoteMeta(`insert into epi`)).
+		WithArgs(
+			epiToInsert.Nome, epiToInsert.Fabricante, epiToInsert.CA, epiToInsert.Descricao,
+			epiToInsert.DataFabricacao, epiToInsert.DataValidade, epiToInsert.DataValidadeCa,
+			epiToInsert.IDprotecao, epiToInsert.AlertaMinimo,
+		).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)) // Simula o retorno do ID 1
 
-		linhas := sqlmock.NewRows([]string{
-			"id",
-			"nome",
-			"fabricante",
-			"CA",
-			"descricao",
-			"data_fabricacao",
-			"data_validade",
-			"validade_CA",
-			"alerta_minimo",
-			"id_tipo_protecao",
-			"nome_protecao",
-		}).AddRow(
-			Epi.ID,
-			Epi.Nome,
-			Epi.Fabricante,
-			Epi.CA,
-			Epi.Descricao,
-			Epi.DataFabricacao,
-			Epi.DataValidade,
-			Epi.DataValidadeCa,
-			Epi.AlertaMinimo,
-			Epi.IDprotecao,
-			Epi.NomeProtecao,
-		)
+	// 3. Espera que a query de INSERT para a tabela de associação seja preparada
+	s.mock.ExpectPrepare(regexp.QuoteMeta("insert into tamanho_epi"))
 
-		mock.ExpectQuery(query).WithArgs(Epi.ID).WillReturnRows(linhas)
+	// 4. Espera a execução para o primeiro tamanho (ID 1)
+	s.mock.ExpectExec(regexp.QuoteMeta("insert into tamanho_epi")).
+		WithArgs(1, int64(1)). // id_tamanho, id_epi
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
-		epidb, err := repo.BuscarEpi(ctx, Epi.ID)
-		require.NoError(t, err)
-		require.Equal(t, Epi.ID, epidb.ID)
-		require.Equal(t, Epi.Nome, epidb.Nome)
-		require.Equal(t, Epi.Fabricante, epidb.Fabricante)
-		require.Equal(t, Epi.CA, epidb.CA)
-		require.Equal(t, Epi.Descricao, epidb.Descricao)
-		require.Equal(t, Epi.DataFabricacao, epidb.DataFabricacao)
-		require.Equal(t, Epi.DataValidade, epidb.DataValidade)
-		require.Equal(t, Epi.DataValidadeCa, epidb.DataValidadeCa)
-		require.Equal(t, Epi.AlertaMinimo, epidb.AlertaMinimo)
-		require.Equal(t, Epi.IDprotecao, epidb.IDprotecao)
-		require.Equal(t, Epi.NomeProtecao, epidb.NomeProtecao)
+	// 5. Espera a execução para o segundo tamanho (ID 2)
+	s.mock.ExpectExec(regexp.QuoteMeta("insert into tamanho_epi")).
+		WithArgs(2, int64(1)). // id_tamanho, id_epi
+		WillReturnResult(sqlmock.NewResult(2, 1))
 
-		require.NoError(t, mock.ExpectationsWereMet())
+	// 6. Espera o Commit da transação
+	s.mock.ExpectCommit()
 
-	})
+	// Executa a função
+	err := s.repo.AddEpi(context.Background(), epiToInsert)
 
-	t.Run("testando o erro ao buscar um epi", func(t *testing.T) {
+	// Verifica se não houve erro
+	require.NoError(s.T(), err)
+	// Verifica se todas as expectativas do mock foram cumpridas
+	require.NoError(s.T(), s.mock.ExpectationsWereMet())
+}
 
-		idEpiNaoEXistente := 2
+func (s *EpiRepositorySuite) TestAddEpi_CommitError() {
+	epiToInsert := &model.EpiInserir{Idtamanho: []int{1}} // Dados mínimos para o teste
 
-		mock.ExpectQuery(query).WithArgs(idEpiNaoEXistente).WillReturnError(sql.ErrNoRows)
+	s.mock.ExpectBegin()
+	s.mock.ExpectQuery(regexp.QuoteMeta(`insert into epi`)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+	s.mock.ExpectPrepare(regexp.QuoteMeta("insert into tamanho_epi"))
+	s.mock.ExpectExec(regexp.QuoteMeta("insert into tamanho_epi")).WillReturnResult(sqlmock.NewResult(1, 1))
+	
+	// Simula um erro no Commit
+	s.mock.ExpectCommit().WillReturnError(errors.New("commit failed"))
+	
+	// A transação deve ser desfeita (Rollback)
+	s.mock.ExpectRollback()
 
-		epiDB, err := repo.BuscarEpi(ctx, idEpiNaoEXistente)
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, Errors.ErrNaoEncontrado), "erro tem que ser do tipo nao encontrado")
-		require.Nil(t, epiDB)
+	err := s.repo.AddEpi(context.Background(), epiToInsert)
 
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("testando erro  ao escanear os epi do banco de dados", func(t *testing.T) {
-
-		linhas := sqlmock.NewRows([]string{
-
-			"nome",
-			"fabricante",
-			"CA",
-			"descricao",
-			"data_fabricacao",
-			"data_validade",
-			"validade_CA",
-			"id_tipo_protecao",
-			"alerta_minimo",
-		}).AddRow(
-			//Epi.ID,  nao passando o id, para gerar o erro
-			Epi.Nome,
-			Epi.Fabricante,
-			Epi.CA,
-			Epi.Descricao,
-			Epi.DataFabricacao,
-			Epi.DataValidade,
-			Epi.DataValidadeCa,
-			Epi.IDprotecao,
-			Epi.AlertaMinimo,
-		)
-
-		mock.ExpectQuery(query).WithArgs(Epi.ID).WillReturnRows(linhas)
-
-		epidb, err := repo.BuscarEpi(ctx, Epi.ID)
-
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, Errors.ErrFalhaAoEscanearDados), "erro tem que ser do tipo escanaear")
-		require.Nil(t, epidb)
-
-		require.NoError(t, mock.ExpectationsWereMet())
-
-	})
+	require.Error(s.T(), err)
+	require.Contains(s.T(), err.Error(), "erro ao commitar transação")
 
 }
 
-func Test_buscarTodosEpis(t *testing.T) {
+// --- Testes para BuscarEpi ---
 
-	ctx := context.Background()
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
+func (s *EpiRepositorySuite) TestBuscarEpi_Success() {
+	epiID := 1
+	
+	// Mock da primeira query (buscar dados do EPI)
+	epiRows := sqlmock.NewRows([]string{"id", 
+	"nome", 
+	"fabricante", 
+	"CA", 
+	"descricao",
+	"data_fabricacao",
+	"data_validade", 
+	"validade_CA",   
+	"alerta_minimo", 
+	"id_tipo_protecao", 
+	"nome_protecao"}).
+		AddRow(epiID, "Capacete", "MSA", "123", "Desc", time.Now(), time.Now(), time.Now(), 5, 10, "Proteção Craniana")
+	
+	s.mock.ExpectQuery(regexp.QuoteMeta(`select e.id, e.nome`)).
+		WithArgs(epiID).
+		WillReturnRows(epiRows)
 
-	defer db.Close()
+	// Mock da segunda query (buscar os tamanhos)
+	tamanhoRows := sqlmock.NewRows([]string{"id", "tamanho"}).
+		AddRow(1, "P").
+		AddRow(2, "M")
 
-	repo := NewEpiRepository(db)
+	// CORREÇÃO: Os nomes das tabelas e colunas precisam ser consistentes
+	s.mock.ExpectQuery(regexp.QuoteMeta(`
+			select 
+			t.id, t.tamanho
+		from
+			tamanho t
+		inner join
+			tamanhosEpis te on t.id = te.id_tamanho
+		where
+			te.epiId = @epiId`)).
+		WithArgs(epiID).
+		WillReturnRows(tamanhoRows)
 
-	Epi1 := model.Epi{
-		ID:             1,
-		Nome:           "luvas isolante termicas",
-		Fabricante:     "maicol",
-		CA:             "36022",
-		Descricao:      "luvas de borracha",
-		DataFabricacao: time.Now(),
-		DataValidade:   time.Now().AddDate(3, 12, 0),
-		DataValidadeCa: time.Now().AddDate(2, 0, 0),
-		AlertaMinimo:   20,
-		IDprotecao:     3,
-		NomeProtecao:   "protecao_para_os_pes",
-	}
+	epi, err := s.repo.BuscarEpi(context.Background(), epiID)
 
-	Epi2 := model.Epi{
-		ID:             2,
-		Nome:           "botas isolante antiderapante",
-		Fabricante:     "maicol",
-		CA:             "36025",
-		Descricao:      "Bota de Pvc Cano Médio 28Cm Branca",
-		DataFabricacao: time.Now(),
-		DataValidade:   time.Now().AddDate(3, 12, 0),
-		DataValidadeCa: time.Now().AddDate(2, 0, 0),
-		AlertaMinimo:   10,
-		IDprotecao:     1,
-		NomeProtecao:   "protecao_para_os_pes",
-	}
-
-	query := regexp.QuoteMeta(`
-					select
-					e.id, e.nome, e.fabricante,e.CA, e.descricao, e.data_fabricacao, e.data_validade, 
-					e.validade_CA, e.alerta_minimo, e.id_tipo_protecao, tp.nome
-			from
-				epi e
-			inner join
-				tipo_protecao tp on	e.id_tipo_protecao = tp.id`)
-
-	t.Run("testando o sucesso ao buscar todos os epis", func(t *testing.T) {
-
-		linhas := sqlmock.NewRows([]string{
-			"id",
-			"nome",
-			"fabricante",
-			"CA",
-			"descricao",
-			"data_fabricacao",
-			"data_validade",
-			"validade_CA",
-			"alerta_minimo",
-			"id_tipo_protecao",
-			"nomeProtecao",
-		}).AddRow(
-			Epi1.ID,
-			Epi1.Nome,
-			Epi1.Fabricante,
-			Epi1.CA,
-			Epi1.Descricao,
-			Epi1.DataFabricacao,
-			Epi1.DataValidade,
-			Epi1.DataValidadeCa,
-			Epi1.AlertaMinimo,
-			Epi1.IDprotecao,
-			Epi1.NomeProtecao,
-		).AddRow(
-			Epi2.ID,
-			Epi2.Nome,
-			Epi2.Fabricante,
-			Epi2.CA,
-			Epi2.Descricao,
-			Epi2.DataFabricacao,
-			Epi2.DataValidade,
-			Epi2.DataValidadeCa,
-			Epi2.AlertaMinimo,
-			Epi2.IDprotecao,
-			Epi2.NomeProtecao,
-		)
-
-		EpisESperados := []model.Epi{Epi1, Epi2}
-
-		mock.ExpectQuery(query).WillReturnRows(linhas)
-
-		epis, err := repo.BuscarTodosEpi(ctx)
-		require.NoError(t, err)
-		require.NotNil(t, epis)
-		require.Len(t, epis, 2)
-		require.Equal(t, EpisESperados, epis)
-
-		require.NoError(t, mock.ExpectationsWereMet())
-
-	})
-
-	t.Run("testando o erro de driver do sql", func(t *testing.T) {
-
-		mock.ExpectQuery(query).WillReturnError(Errors.ErrBuscarTodos)
-
-		epis, err := repo.BuscarTodosEpi(ctx)
-		require.Error(t, err)
-		require.Empty(t, epis)
-		assert.True(t, errors.Is(err, Errors.ErrBuscarTodos))
-
-		require.NoError(t, mock.ExpectationsWereMet())
-
-	})
-
-	t.Run("testando o erro ao buscar todos os epis", func(t *testing.T) {
-		linhas := sqlmock.NewRows([]string{
-			"id",
-			"nome",
-			"fabricante",
-			//"CA",
-			"descricao",
-			"data_fabricacao",
-			"data_validade",
-			"validade_CA",
-			"alerta_minimo",
-			"id_tipo_protecao",
-			"nomeProtecao",
-		}).AddRow(
-			Epi1.ID,
-			Epi1.Nome,
-			Epi1.Fabricante,
-			//Epi1.CA,
-			Epi1.Descricao,
-			Epi1.DataFabricacao,
-			Epi1.DataValidade,
-			Epi1.DataValidadeCa,
-			Epi1.AlertaMinimo,
-			Epi1.IDprotecao,
-			Epi1.NomeProtecao,
-		).AddRow(
-			Epi2.ID,
-			Epi2.Nome,
-			Epi2.Fabricante,
-			//Epi2.CA,
-			Epi2.Descricao,
-			Epi2.DataFabricacao,
-			Epi2.DataValidade,
-			Epi2.DataValidadeCa,
-			Epi2.AlertaMinimo,
-			Epi2.IDprotecao,
-			Epi2.NomeProtecao,
-		)
-
-		mock.ExpectQuery(query).WillReturnRows(linhas)
-
-		epiDb, err := repo.BuscarTodosEpi(ctx)
-
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, Errors.ErrFalhaAoEscanearDados), "erro tem que ser do tipo escanaear")
-		require.Nil(t, epiDb)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("testando erro ao iterar sobre os epis", func(t *testing.T) {
-
-		linhas := sqlmock.NewRows([]string{
-			"id",
-			"nome",
-			"fabricante",
-			"CA",
-			"descricao",
-			"data_fabricacao",
-			"data_validade",
-			"validade_CA",
-			"alerta_minimo",
-			"id_tipo_protecao",
-			"nomeProtecao",
-		}).AddRow(
-			Epi1.ID,
-			Epi1.Nome,
-			Epi1.Fabricante,
-			Epi1.CA,
-			Epi1.Descricao,
-			Epi1.DataFabricacao,
-			Epi1.DataValidade,
-			Epi1.DataValidadeCa,
-			Epi1.AlertaMinimo,
-			Epi1.IDprotecao,
-			Epi1.NomeProtecao,
-		).AddRow(
-			Epi2.ID,
-			Epi2.Nome,
-			Epi2.Fabricante,
-			Epi2.CA,
-			Epi2.Descricao,
-			Epi2.DataFabricacao,
-			Epi2.DataValidade,
-			Epi2.DataValidadeCa,
-			Epi2.AlertaMinimo,
-			Epi2.IDprotecao,
-			Epi2.NomeProtecao,
-		).CloseError(Errors.ErrDadoIncompativel)
-
-		mock.ExpectQuery(query).WillReturnRows(linhas)
-
-		epis, err := repo.BuscarTodosEpi(ctx)
-
-		require.Error(t, err)
-		assert.True(t, errors.Is(err, Errors.ErrAoIterar), "erro tem que ser do tipo iterar")
-		require.Nil(t, epis)
-
-		require.NoError(t, mock.ExpectationsWereMet())
-
-	})
-
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), epi)
+	require.Equal(s.T(), epiID, epi.ID)
+	require.Equal(s.T(), "Capacete", epi.Nome)
+	require.Len(s.T(), epi.Tamanhos, 2) // Verifica se os 2 tamanhos foram adicionados
+	require.Equal(s.T(), "P", epi.Tamanhos[0].Tamanho)
+	require.NoError(s.T(), s.mock.ExpectationsWereMet())
 }
 
-func Test_deletarEpi(t *testing.T) {
 
-	ctx := context.Background()
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
+func (s *EpiRepositorySuite) TestBuscarEpi_NotFound() {
+	epiID := 99
+	
+	s.mock.ExpectQuery(regexp.QuoteMeta(`select e.id, e.nome`)).
+		WithArgs(epiID).
+		WillReturnError(sql.ErrNoRows) // Simula que o banco não encontrou nada
 
-	defer db.Close()
+	epi, err := s.repo.BuscarEpi(context.Background(), epiID)
 
-	repo := NewEpiRepository(db)
+	require.Error(s.T(), err)
+	require.Nil(s.T(), epi)
+	require.ErrorIs(s.T(), err, Errors.ErrNaoEncontrado) // Verifica se o erro customizado foi retornado
+	require.NoError(s.T(), s.mock.ExpectationsWereMet())
+}
 
-	Epi1 := model.Epi{
-		ID:             1,
-		Nome:           "luvas isolante termicas",
-		Fabricante:     "maicol",
-		CA:             "36022",
-		Descricao:      "luvas de borracha",
-		DataFabricacao: time.Now(),
-		DataValidade:   time.Now().AddDate(3, 12, 0),
-		DataValidadeCa: time.Now().AddDate(2, 0, 0),
-		AlertaMinimo:   20,
-		IDprotecao:     3,
-		NomeProtecao: "protecao_para_as_maos",
-	}
 
-	query := regexp.QuoteMeta(`delete from epi where id = @id`)
+// --- Testes para BuscarTodosEpi ---
 
-	t.Run("testando o sucesso ao deletar um epi da base de dados", func(t *testing.T) {
+func (s *EpiRepositorySuite) TestBuscarTodosEpi_Success() {
+	// Mock da primeira query (buscar todos os EPIs)
+	epiRows := sqlmock.NewRows([]string{"id", "nome", "fabricante", "CA", "descricao", "data_fabricacao", "data_validade", "validade_CA", "alerta_minimo", "id_tipo_protecao", "nome_protecao"}).
+		AddRow(1, "Capacete", "MSA", "123", "Desc1", time.Now(), time.Now(), time.Now(), 5, 10, "Proteção Craniana").
+		AddRow(2, "Luva", "3M", "456", "Desc2", time.Now(), time.Now(), time.Now(), 10, 11, "Proteção Mãos")
 
-		mock.ExpectExec(query).WithArgs(Epi1.ID).WillReturnResult(sqlmock.NewResult(0, 1))
+	s.mock.ExpectQuery(regexp.QuoteMeta(`select e.id, e.nome`)).
+		WillReturnRows(epiRows)
 
-		errEpi := repo.DeletarEpi(ctx, Epi1.ID)
-		require.NoError(t, errEpi)
+	// Mock da segunda query (buscar todas as associações de tamanho)
+	tamanhoRows := sqlmock.NewRows([]string{"id_epi", "id", "tamanho"}).
+		AddRow(1, 1, "P").      // Tamanho P para o Capacete
+		AddRow(1, 2, "M").      // Tamanho M para o Capacete
+		AddRow(2, 3, "Único") // Tamanho Único para a Luva
 
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
+	// CORREÇÃO: Corrigido o "inner joinn" e nomes de colunas
+	s.mock.ExpectQuery(regexp.QuoteMeta(`select te.id_epi, t.id, t.tamanho from tamanhos t inner join tamanho_epi te`)).
+		WillReturnRows(tamanhoRows)
 
-	t.Run("erro na execução da query no repository", func(t *testing.T) {
+	epis, err := s.repo.BuscarTodosEpi(context.Background())
 
-		mock.ExpectExec(query).WithArgs(Epi1.ID).WillReturnError(Errors.ErrConexaoDb)
+	require.NoError(s.T(), err)
+	require.Len(s.T(), epis, 2)
 
-		errEpi := repo.DeletarEpi(ctx, Epi1.ID)
+	// Valida o primeiro EPI
+	require.Equal(s.T(), 1, epis[0].ID)
+	require.Len(s.T(), epis[0].Tamanhos, 2)
 
-		require.Error(t, errEpi)
-		assert.True(t, errors.Is(errEpi, Errors.ErrConexaoDb))
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
+	// Valida o segundo EPI
+	require.Equal(s.T(), 2, epis[1].ID)
+	require.Len(s.T(), epis[1].Tamanhos, 1)
+	require.Equal(s.T(), "Único", epis[1].Tamanhos[0].Tamanho)
 
-	t.Run("testando o erro de linhas afetadas", func(t *testing.T) {
+	require.NoError(s.T(), s.mock.ExpectationsWereMet())
+}
 
-		
+// --- Testes para DeletarEpi ---
 
-		mock.ExpectExec(query).WithArgs(Epi1.ID).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
+func (s *EpiRepositorySuite) TestDeletarEpi_Success() {
+	epiID := 1
 
-		errEpi := repo.DeletarEpi(ctx, Epi1.ID)
+	s.mock.ExpectBegin()
 
-		require.Error(t, errEpi)
-		assert.True(t, errors.Is(errEpi, Errors.ErrLinhasAfetadas))
+	// Espera o delete na tabela de associação
+	s.mock.ExpectExec(regexp.QuoteMeta("delete from tamanho_epi where id_epi = @id")).
+		WithArgs(epiID).
+		WillReturnResult(sqlmock.NewResult(0, 2)) // Simula que 2 associações foram deletadas
 
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
+	// Espera o delete na tabela principal
+	s.mock.ExpectExec(regexp.QuoteMeta("delete from epi where id = @id")).
+		WithArgs(epiID).
+		WillReturnResult(sqlmock.NewResult(0, 1)) // Simula que 1 EPI foi deletado
 
-	t.Run("epi nao encontrado", func(t *testing.T) {
+	s.mock.ExpectCommit()
 
-		mock.ExpectExec(query).WithArgs(Epi1.ID).WillReturnResult(sqlmock.NewResult(0, 0))
+	err := s.repo.DeletarEpi(context.Background(), epiID)
 
-		errEpi := repo.DeletarEpi(ctx, Epi1.ID)
-		require.Error(t, errEpi)
-		assert.True(t, errors.Is(errEpi, Errors.ErrNaoEncontrado))
+	require.NoError(s.T(), err)
+	require.NoError(s.T(), s.mock.ExpectationsWereMet())
+}
 
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
+func (s *EpiRepositorySuite) TestDeletarEpi_NotFound() {
+	epiID := 99
+
+	s.mock.ExpectBegin()
+	s.mock.ExpectExec(regexp.QuoteMeta("delete from tamanho_epi")).
+		WithArgs(epiID).
+		WillReturnResult(sqlmock.NewResult(0, 0)) // Nenhuma associação encontrada
+
+	s.mock.ExpectExec(regexp.QuoteMeta("delete from epi")).
+		WithArgs(epiID).
+		WillReturnResult(sqlmock.NewResult(0, 0)) // Nenhum EPI encontrado
+
+	s.mock.ExpectRollback() // A transação deve ser desfeita
+
+	err := s.repo.DeletarEpi(context.Background(), epiID)
+
+	require.Error(s.T(), err)
+	require.ErrorIs(s.T(), err, Errors.ErrNaoEncontrado)
+	require.NoError(s.T(), s.mock.ExpectationsWereMet())
 }

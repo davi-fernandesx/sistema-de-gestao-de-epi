@@ -17,6 +17,7 @@ type Epi struct {
 	AlertaMinimo   int
 	IDprotecao     int
 	NomeProtecao   string
+	Tamanhos       []Tamanhos
 }
 
 //modelo para ser usado ao inserir/atualizar no banco de dados
@@ -26,21 +27,22 @@ type EpiInserir struct {
 	Nome           string
 	Fabricante     string
 	CA             string
-	Tamanho        string
 	Descricao      string
 	DataFabricacao time.Time
 	DataValidade   time.Time
 	DataValidadeCa time.Time
-	AlertaMinimo   int
+	Idtamanho      []int
 	IDprotecao     int
+	AlertaMinimo   int
 }
 
 // modelo para ser usado no controller e services
 type EpiDto struct {
+	Id             int             `json:"id"`
 	Nome           string          `json:"nome"`
 	Fabricante     string          `json:"fabricante"`
 	CA             string          `json:"ca"`
-	Tamanho        []TamanhoDto    `json:"tamanho"`
+	Tamanho        []TamanhoDto    `json:"tamanhos"`
 	Descricao      string          `json:"descricao"`
 	DataFabricacao time.Time       `json:"dataFabricante"`
 	DataValidade   time.Time       `json:"dataValidade"`

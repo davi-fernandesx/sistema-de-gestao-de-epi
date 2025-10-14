@@ -1,9 +1,9 @@
 package model
 
 type Login struct {
-	ID    int    `json:"-"`
-	Nome  string `json:""`
-	Senha string `json:""`
+	ID    int    
+	Nome  string 
+	Senha string 
 }
 
 type LoginDto struct {

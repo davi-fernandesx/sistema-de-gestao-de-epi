@@ -13,7 +13,7 @@ import (
 
 type FuncaoInterface interface {
 	AddFuncao(ctx context.Context, funcao *model.Funcao) error
-	DeletarFuncao(ctx context.Context, id int) error
+	DeletarFuncao(ctx context.Context, id int) error 
 	BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error)
 
 	BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error)
