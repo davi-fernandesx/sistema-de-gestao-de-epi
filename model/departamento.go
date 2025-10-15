@@ -6,5 +6,6 @@ type Departamento struct {
 }
 
 type DepartamentoDto struct {
+	ID           int    `json:"id"`
 	Departamento string `json:"departamento"`
 }

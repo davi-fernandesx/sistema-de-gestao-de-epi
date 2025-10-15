@@ -32,6 +32,7 @@ type EntradaEpi struct {
 }
 
 type EntradaEpiDto struct {
+	ID           int    `json:"id"`
 	Epi          EpiDto     `json:"epi"`
 	Tamanho      TamanhoDto `json:"tamanho"`
 	Data_entrada time.Time  `json:"data_entrada"`

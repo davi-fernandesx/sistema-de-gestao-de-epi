@@ -10,6 +10,7 @@ type Funcionario struct {
 
 
 type Funcionario_Dto struct {
+	ID           int    `json:"id"`
 	Nome         string          `json:"nome"`
 	Departamento DepartamentoDto `json:"departamento"`
 	Funcao       FuncaoDto       `json:"funcao"`

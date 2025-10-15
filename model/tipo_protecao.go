@@ -1,11 +1,12 @@
 package model
 
 type TipoProtecao struct {
-	ID   int     
-	Nome Protecao 
+	ID   int
+	Nome Protecao
 }
 
 type TipoProtecaoDto struct {
+	ID   int      `json:"id"`
 	Nome Protecao `json:"nome"`
 }
 
@@ -17,4 +18,3 @@ const (
 	Proteção_do_Corpo             Protecao = " Proteção do Corpo "
 	Proteção_da_Cabeça_e_Face     Protecao = "Proteção da Cabeça e Face"
 )
-
