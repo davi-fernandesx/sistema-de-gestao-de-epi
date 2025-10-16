@@ -8,13 +8,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type ControllerLoginInterface interface {
+
+	SalvarLoginHttp() gin.HandlerFunc
+	AceitarLogin() gin.HandlerFunc
+}
 type ControllerLogin struct {
 
-	ServiceLogin *service.LoginService
+	ServiceLogin service.LoginServiceInterface
 }
 
 
-func NewControllerLogin(serviceLogin *service.LoginService) *ControllerLogin{
+func NewControllerLogin(serviceLogin service.LoginServiceInterface) ControllerLoginInterface{
 
 	return &ControllerLogin{
 		ServiceLogin: serviceLogin,

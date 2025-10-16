@@ -12,11 +12,18 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/login"
 )
 
+
+type LoginServiceInterface interface {
+
+	SalvaLogin(ctx context.Context, loginUsuario model.LoginDto) error
+	Login(ctx context.Context, LoginUsuario model.LoginDto) (bool, error)
+
+}
 type LoginService struct {
 	LoginRepo login.LoginRepository
 }
 
-func NewLoginService(Repo login.LoginRepository) *LoginService {
+func NewLoginService(Repo login.LoginRepository) LoginServiceInterface {
 
 	return &LoginService{
 		LoginRepo: Repo,
@@ -26,7 +33,7 @@ func NewLoginService(Repo login.LoginRepository) *LoginService {
 
 func (Ls *LoginService) SalvaLogin(ctx context.Context, LoginUsuario model.LoginDto) error {
 
-	if strings.TrimSpace(LoginUsuario.Nome) == " " {
+	if strings.TrimSpace(LoginUsuario.Nome) == "" {
 		return fmt.Errorf("nome de usuario nao pode ser em branco")
 	}
 
