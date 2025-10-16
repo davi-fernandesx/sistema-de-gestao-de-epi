@@ -9,19 +9,26 @@ import (
 )
 
 
+type Init struct {
 
-func InitAplicattion()(*sql.DB, error){
+	Conexao Conexao
+}
+
+
+func (I *Init)InitAplicattion()(*sql.DB, error){
 
 	err:= godotenv.Load("configs/.env")
 	if err != nil {
 		return  nil, fmt.Errorf("erro ao carregar arquivo .env: %v", err)
 	}	
 	
-	db, err:= Conn()
+	db, err:= I.Conexao.Conn()
 	if err != nil {
 
 		return  nil, err
 	}
+
+	
 
 	log.Println("conexao feita com sucesso!!")
 	return db, nil

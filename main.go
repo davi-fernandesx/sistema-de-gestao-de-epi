@@ -13,17 +13,21 @@ import (
 
 func main(){
 
+	sqlServerConnection := configs.ConexaoDbSqlserver{}
 
+	init:= configs.Init{
+		Conexao: &sqlServerConnection,
+	}
 	
 	router:= gin.Default()
 
-	db, err:= configs.InitAplicattion()
+	db, err:= init.InitAplicattion()
 	if err != nil {
 
 	log.Fatal(err)
 	}
 
-	repoLogin:= login.NewSqlLogin(db)
+	repoLogin:= login.NewLogin(db)
 	ServiceLogin:= service.NewLoginService(repoLogin)
 	ControllerLogin:= controller.NewControllerLogin(ServiceLogin)
 

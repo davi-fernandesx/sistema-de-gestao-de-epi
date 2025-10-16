@@ -7,10 +7,13 @@ import (
 	_ "github.com/microsoft/go-mssqldb"
 )
 
+type ConexaoDbSqlserver struct {}
+type Conexao interface {
 
+	Conn()( *sql.DB, error)
+}
 
-
-func Conn()(*sql.DB, error) {
+func (C *ConexaoDbSqlserver) Conn()(*sql.DB, error) {
 
 	db_server:= os.Getenv("DB_SERVER")
 	db_port:= os.Getenv("DB_PORT")
@@ -36,3 +39,8 @@ func Conn()(*sql.DB, error) {
 
 
 }
+
+
+type ConexaoDbMysql struct{}
+
+func (m *ConexaoDbMysql) Conn()(*sql.DB, error){return  nil, nil}
