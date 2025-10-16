@@ -18,24 +18,24 @@ type LoginRepository interface{
 	 DeletarLogin(ctx context.Context, id int) error
 	 BuscaPorNome(ctx context.Context,  nome string) (*model.Login, error)
 
-
 }
 
 
-type SqlServerLogin struct {
+type ConnDB struct {
 	db *sql.DB
 }
 
-//construtor
-func NewSqlLogin(DB *sql.DB) LoginRepository {
 
-	return &SqlServerLogin{
+//construtor
+func NewLogin(DB *sql.DB) LoginRepository {
+
+	return &ConnDB{
 	db: DB,
 }
 }
 // AddLogin implements loginRepository.
 //função para adicionar um login no sistema
-func (s *SqlServerLogin) AddLogin( ctx context.Context, model *model.Login) ( error) {
+func (s *ConnDB) AddLogin( ctx context.Context, model *model.Login) ( error) {
 	
 	query:= `
 			INSERT INTO login (usuario, senha) values (@p1, @p2);
@@ -55,7 +55,7 @@ func (s *SqlServerLogin) AddLogin( ctx context.Context, model *model.Login) ( er
 }
 
 // DeletarLogin implements loginRepository.
-func (s *SqlServerLogin) DeletarLogin(ctx context.Context, id int) error {
+func (s *ConnDB) DeletarLogin(ctx context.Context, id int) error {
 
 	query:= `
 
@@ -86,7 +86,7 @@ func (s *SqlServerLogin) DeletarLogin(ctx context.Context, id int) error {
 
 
 //busca o usuario pelo nome
-func (s *SqlServerLogin) BuscaPorNome(ctx context.Context,  nome string) (*model.Login, error){
+func (s *ConnDB) BuscaPorNome(ctx context.Context,  nome string) (*model.Login, error){
 
 	query:= `
 		select usuario, senha from login

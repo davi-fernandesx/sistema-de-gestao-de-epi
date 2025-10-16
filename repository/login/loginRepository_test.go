@@ -24,7 +24,7 @@ func Test_LoginRepository_Add(t *testing.T){
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo:= NewSqlLogin(db)
+	repo:= NewLogin(db)
 
 	t.Run("sucesso ao add o login ao banco de dados", func(t *testing.T) {
 
@@ -99,7 +99,7 @@ func Test_LoginRepositoryDelete(t *testing.T){
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo:= NewSqlLogin(db)
+	repo:= NewLogin(db)
 
 	login:= model.Login{
 		ID: 1,
@@ -156,7 +156,7 @@ func Test_loginRepositoryBuscarUsuario(t *testing.T){
 	require.NoError(t, err)
 	defer db.Close()
 
-	repo:= NewSqlLogin(db)
+	repo:= NewLogin(db)
 
 	login:= model.Login{
 		ID: 1,
