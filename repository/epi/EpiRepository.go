@@ -42,6 +42,7 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 			(@nome, @fabricante, @CA, @descricao,@data_fabricacao, @data_validade, @validade_CA, @id_tipo_protecao, @alerta_minimo )`// quwry para
 			//salvar um epi e retornar seu id
 
+		
 	var EpiId int64
 	 err = tx.QueryRowContext(ctx, query,
 		sql.Named("nome", epi.Nome),

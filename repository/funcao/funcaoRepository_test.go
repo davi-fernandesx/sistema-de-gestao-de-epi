@@ -27,7 +27,7 @@ func Test_AddFuncao(t *testing.T) {
 	t.Run("sucesso ao adicionar uma funcao", func(t *testing.T) {
 		mock.ExpectExec(query).
 			WithArgs(funcao.Funcao).
-			WillReturnResult(sqlmock.NewResult(1, 1))
+			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		err := repo.AddFuncao(ctx, &funcao)
 		require.NoError(t, err)
