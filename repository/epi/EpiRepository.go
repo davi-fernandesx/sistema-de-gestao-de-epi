@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
@@ -15,6 +16,13 @@ type EpiInterface interface {
 	DeletarEpi(ctx context.Context, id int) error
 	BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 	BuscarTodosEpi(ctx context.Context) ([]model.Epi, error)
+	UpdateEpiNome(ctx context.Context,id int, nome string)error
+	UpdateEpiCa(ctx context.Context,id int, ca string)error
+	UpdateEpiFabricante(ctx context.Context,id int, fabricante string)error
+	UpdateEpiDescricao(ctx context.Context,id int, descricao string)error
+	UpdateEpiDataFabricacao(ctx context.Context,id int, dataFabricacao time.Time)error
+	UpdateEpiDataValidade(ctx context.Context,id int, dataValidade string)error
+	UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa string)error
 }
 
 type NewSqlLogin struct {
@@ -290,4 +298,112 @@ func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
 	}
 
 	return  tx.Commit()
+}
+
+func (n  *NewSqlLogin) UpdateEpiNome(ctx context.Context,id int, nome string)error {
+
+	query:= `update epi
+			set nome = @nome
+			where id = @id`
+	
+	_, err:=n.DB.ExecContext(ctx, query, sql.Named("nome", nome), sql.Named("id", id))
+	if err != nil {
+
+		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
+	}
+
+	return nil
+}
+
+func (n  *NewSqlLogin) UpdateEpiFabricante(ctx context.Context,id int, fabricante string)error {
+
+	query:= `update epi
+			set fabricante = @fabricante
+			where id = @id`
+	
+	_, err:=n.DB.ExecContext(ctx, query, sql.Named("fabricante", fabricante), sql.Named("id", id))
+	if err != nil {
+
+		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
+	}
+
+	return nil
+}
+
+
+
+func (n  *NewSqlLogin) UpdateEpiCa(ctx context.Context,id int, ca string)error {
+
+	query:= `update epi
+			set CA = @ca
+			where id = @id`
+	
+	_, err:=n.DB.ExecContext(ctx, query, sql.Named("ca", ca), sql.Named("id", id))
+	if err != nil {
+
+		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
+	}
+
+	return nil
+}
+
+func (n  *NewSqlLogin) UpdateEpiDescricao(ctx context.Context,id int, descricao string)error {
+
+	query:= `update epi
+			set descricao = @descricao
+			where id = @id`
+	
+	_, err:=n.DB.ExecContext(ctx, query, sql.Named("descricao", descricao), sql.Named("id", id))
+	if err != nil {
+
+		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
+	}
+
+	return nil
+}
+
+
+func (n  *NewSqlLogin) UpdateEpiDataFabricacao(ctx context.Context,id int, dataFabricacao time.Time)error {
+
+	query:= `update epi
+			set dataFabricacao = @dataFabricacao
+			where id = @id`
+	
+	_, err:=n.DB.ExecContext(ctx, query, sql.Named("ca", dataFabricacao), sql.Named("id", id))
+	if err != nil {
+
+		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
+	}
+
+	return nil
+}
+
+func (n  *NewSqlLogin) UpdateEpiDataValidade(ctx context.Context,id int, dataValidade string)error {
+
+	query:= `update epi
+			set dataValidade = @dataValidade
+			where id = @id`
+	
+	_, err:=n.DB.ExecContext(ctx, query, sql.Named("dataValidada", dataValidade), sql.Named("id", id))
+	if err != nil {
+
+		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
+	}
+
+	return nil
+}
+
+func (n  *NewSqlLogin) UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa string)error {
+
+	query:= `update epi
+			set validadeCa = @dataValidadeCa
+			where id = @id`
+	
+	_, err:=n.DB.ExecContext(ctx, query, sql.Named("dataValidade", dataValidadeCa), sql.Named("id", id))
+	if err != nil {
+
+		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
+	}
+
+	return nil
 }

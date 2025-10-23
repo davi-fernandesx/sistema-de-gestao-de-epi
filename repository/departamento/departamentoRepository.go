@@ -9,6 +9,7 @@ import (
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 	mssql "github.com/denisenkom/go-mssqldb"
+
 )
 
 type DepartamentoInterface interface {
@@ -16,6 +17,7 @@ type DepartamentoInterface interface {
 	DeletarDepartamento(ctx context.Context, id int) error
 	BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error)
 	BuscarTodosDepartamentos(ctx context.Context) (*[]model.Departamento, error)
+	UpdateDepartamento(ctx context.Context, id int, departamento string)error
 }
 
 type NewSqlLogin struct {
@@ -126,4 +128,20 @@ func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
 	}
 
 	return nil
+}
+
+func (n *NewSqlLogin) UpdateDepartamento(ctx context.Context, id int, departamento string)error{
+
+	query:= `update departamento
+			set departamento = @departamento
+			where id = @id`
+
+		_, err:= n.DB.ExecContext(ctx, query, sql.Named("departamento", departamento), sql.Named("id", id))
+		if err != nil {
+			
+			return fmt.Errorf("erro ao atualizar o nome do departamento, %w", Errors.ErrInternal)
+		}
+
+	return  nil
+			
 }

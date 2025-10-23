@@ -173,3 +173,18 @@ func (s *SqlServerLogin) DeletarTamanhos(ctx context.Context, id int) error {
 
 	return  nil
 }
+
+
+func (s *SqlServerLogin) UpdateIdEpi(ctx context.Context, id int, idAtualizado int)error{
+
+	query:= `update tamanho_epi
+			set id_epi = @idAtualizado
+			where id_epi = @id`
+
+	_, err:= s.DB.ExecContext(ctx, query, sql.Named("id_epi", idAtualizado), sql.Named("id_epi", id))
+	if err != nil {
+		return  fmt.Errorf("erro ao atualizar id do epi, %w", Errors.ErrInternal)
+	}
+
+	return  nil
+}

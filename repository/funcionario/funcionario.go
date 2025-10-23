@@ -16,6 +16,9 @@ type FuncionarioInterface interface {
 	BuscaFuncionario(ctx context.Context, id int) (*model.Funcionario, error)
 	BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionario, error)
 	DeletarFuncionario(ctx context.Context, id int) error
+	UpdateFuncionarioNome(ctx context.Context, id int, funcionario string)error
+	UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao string)error
+	UpdateFuncionarioDepartamento(ctx context.Context, id int, idDepartamento string)error
 }
 
 type ConnDB struct {
@@ -141,6 +144,48 @@ func (c *ConnDB) DeletarFuncionario(ctx context.Context, id int) error {
 	if linhas == 0 {
 
 		return fmt.Errorf("funcionario com o id %d nao  encontrado, %w ", id, Errors.ErrNaoEncontrado)
+	}
+
+	return  nil
+}
+
+func (c *ConnDB)UpdateFuncionarioNome(ctx context.Context, id int, funcionario string)error{
+
+	query:= `update funcionario
+		     set nome = @funcionario
+			 where id = @ id`
+
+	_, err:= c.DB.ExecContext(ctx, query, sql.Named("funcionario", funcionario), sql.Named("id", id))
+	if err != nil {
+		return  fmt.Errorf("erro ao atualizar nome do funcinariom, %w", Errors.ErrInternal)
+	}
+
+	return  nil
+}
+
+func (c *ConnDB)UpdateFuncionarioDepartamento(ctx context.Context, id int, idDepartamento string)error{
+
+	query:= `update funcionario
+		     set IdDepartamento = @idDepartamento
+			 where id = @ id`
+
+	_, err:= c.DB.ExecContext(ctx, query, sql.Named("Iddepartamento", idDepartamento), sql.Named("id", id))
+	if err != nil {
+		return  fmt.Errorf("erro ao atualizar nome do funcinariom, %w", Errors.ErrInternal)
+	}
+
+	return  nil
+}
+
+func (c *ConnDB)UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao string)error{
+
+	query:= `update funcionario
+		     set IdFuncao = @idFuncao
+			 where id = @ id`
+
+	_, err:= c.DB.ExecContext(ctx, query, sql.Named("IdFuncao", idFuncao), sql.Named("id", id))
+	if err != nil {
+		return  fmt.Errorf("erro ao atualizar funcao do funcinario, %w", Errors.ErrInternal)
 	}
 
 	return  nil

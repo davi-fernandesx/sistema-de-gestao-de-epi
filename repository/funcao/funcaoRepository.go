@@ -15,7 +15,7 @@ type FuncaoInterface interface {
 	AddFuncao(ctx context.Context, funcao *model.Funcao) error
 	DeletarFuncao(ctx context.Context, id int) error 
 	BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error)
-
+	UpdateFuncao(ctx context.Context, id int, funcao string)error
 	BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error)
 }
 
@@ -126,4 +126,19 @@ func (s *SqlServerLogin) DeletarFuncao(ctx context.Context, id int) error {
 
 	return nil
 
+}
+
+func (s *SqlServerLogin)UpdateFuncao(ctx context.Context, id int, funcao string)error{
+
+	query:= `update funcao
+			set funcao = @funcao
+			where id = @id`
+
+	_, err:= s.Db.ExecContext(ctx, query, sql.Named("funcao", funcao), sql.Named("id", id))
+
+	if err != nil {
+		 return  fmt.Errorf("erro ao atualizar funcao, %w", Errors.ErrInternal)
+	}
+
+	return  nil
 }
