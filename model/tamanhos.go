@@ -7,5 +7,5 @@ type Tamanhos struct {
 
 type TamanhoDto struct {
 	ID      int `json:"id"`
-	Tamanho int16 `json:"tamanho"`
+	Tamanho string `json:"tamanho"`
 }
