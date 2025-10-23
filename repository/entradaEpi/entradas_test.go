@@ -96,8 +96,8 @@ func Test_BuscarEntrada(t *testing.T) {
             tipo_protecao tp ON e.id_tipo_protecao = tp.id
         INNER JOIN
             tamanhos t ON ee.id_tamanho = t.id
-        WHERE 
-            ee.id = @id;
+		WHERE 
+            ee.cancelada_em IS NULL AND  ee.id = @id;
     `)
 
 	idParaBuscar := 1
@@ -241,6 +241,7 @@ func Test_BuscarTodasEntradas(t *testing.T) {
             tipo_protecao tp ON e.id_tipo_protecao = tp.id
         INNER JOIN
             tamanhos t ON ee.id_tamanho = t.id
+		where ee.cancelada_em IS NULL
     `) // Removido o "where ee.id = @id" para alinhar com o nome da função
 
 	// Dados de exemplo que esperamos que o banco retorne
@@ -426,7 +427,7 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 	})
 }
 
-func TestDeleteEntrada(t *testing.T) {
+func TestCancelarEntrada(t *testing.T) {
 
 	db, mock, ctx, err := mock(t)
 	require.NoError(t, err)
@@ -450,24 +451,26 @@ func TestDeleteEntrada(t *testing.T) {
 		Fornecedor:     "Fornecedor Principal",
 	}
 
-	query := regexp.QuoteMeta(`delete from  entrada where id = @id`)
+	query := regexp.QuoteMeta(`update entrada
+			set cancelada_em = GETDATE()
+			where id = @id AND cancelada_em IS NULL`)
 
-	t.Run("testando o sucesso ao deletar um epi da base de dados", func(t *testing.T) {
+	t.Run("testando o sucesso ao cancelar um epi da base de dados", func(t *testing.T) {
 
 		mock.ExpectExec(query).WithArgs(entradasMock.ID).WillReturnResult(sqlmock.NewResult(0, 1))
 
-		errEpi := repo.DeletarEntrada(ctx, entradasMock.ID)
+		errEpi := repo.CancelarEntrada(ctx, entradasMock.ID)
 		require.NoError(t, errEpi)
 
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("erro ao deletar uma entradas", func(t *testing.T) {
+	t.Run("erro ao cancelar uma entradas", func(t *testing.T) {
 
 		ErroGenericoDb := errors.New("erro ao se conectar com o banco")
 		mock.ExpectExec(query).WithArgs(entradasMock.ID).WillReturnError(ErroGenericoDb)
 
-		errEpi := repo.DeletarEntrada(ctx, entradasMock.ID)
+		errEpi := repo.CancelarEntrada(ctx, entradasMock.ID)
 
 		require.Error(t, errEpi)
 		assert.True(t, errors.Is(errEpi, Errors.ErrInternal), "erro tem que ser do tipo internal")
@@ -478,7 +481,7 @@ func TestDeleteEntrada(t *testing.T) {
 
 		mock.ExpectExec(query).WithArgs(entradasMock.ID).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 
-		errEpi := repo.DeletarEntrada(ctx, entradasMock.ID)
+		errEpi := repo.CancelarEntrada(ctx, entradasMock.ID)
 
 		require.Error(t, errEpi)
 		assert.True(t, errors.Is(errEpi, Errors.ErrLinhasAfetadas), "erro tem que ser do tipo linhas afetadas")
@@ -490,7 +493,7 @@ func TestDeleteEntrada(t *testing.T) {
 
 		mock.ExpectExec(query).WithArgs(entradasMock.ID).WillReturnResult(sqlmock.NewResult(0, 0))
 
-		errEpi := repo.DeletarEntrada(ctx, entradasMock.ID)
+		errEpi := repo.CancelarEntrada(ctx, entradasMock.ID)
 		require.Error(t, errEpi)
 		assert.True(t, errors.Is(errEpi, Errors.ErrNaoEncontrado), "erro tem que ser do tipo nao encontrado")
 

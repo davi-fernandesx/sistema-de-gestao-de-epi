@@ -12,7 +12,7 @@ import (
 
 type EntradaEpi interface {
 	AddEntradaEpi(ctx context.Context, EntradaEpi *model.EntradaEpiInserir) error
-	DeletarEntrada(ctx context.Context, id int) error
+	CancelarEntrada(ctx context.Context, id int) error
 	BuscarEntrada(ctx context.Context, id int) (*model.EntradaEpi, error)
 	BuscarTodasEntradas(ctx context.Context) ([]model.EntradaEpi, error)
 }
@@ -71,7 +71,7 @@ func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (*model.Entrada
         INNER JOIN
             tamanhos t ON ee.id_tamanho = t.id
         WHERE 
-            ee.id = @id;
+            ee.cancelada_em IS NULL AND  ee.id = @id;
 	`
 
 	var entrada model.EntradaEpi
@@ -125,6 +125,7 @@ func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaE
             tipo_protecao tp ON e.id_tipo_protecao = tp.id
         INNER JOIN
             tamanhos t ON ee.id_tamanho = t.id
+		where ee.cancelada_em IS NULL
 		`
 
 	linhas, err := n.DB.QueryContext(ctx, query)
@@ -174,14 +175,16 @@ func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaE
 }
 
 // DeletarEntrada implements EntradaEpi.
-func (n *NewSqlLogin) DeletarEntrada(ctx context.Context, id int) error {
+func (n *NewSqlLogin) CancelarEntrada(ctx context.Context, id int) error {
 
-	query := `delete from  entrada where id = @id`
+	query := `update entrada
+			set cancelada_em = GETDATE()
+			where id = @id AND cancelada_em IS NULL`
 
 	result, err := n.DB.ExecContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
-		return fmt.Errorf("erro interno ao deletar uma entrada %w", Errors.ErrInternal)
+		return fmt.Errorf("erro interno ao cancelar uma entrada %w", Errors.ErrInternal)
 	}
 
 	linhas, err := result.RowsAffected()
