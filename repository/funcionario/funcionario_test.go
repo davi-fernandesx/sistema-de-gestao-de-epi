@@ -32,19 +32,20 @@ func Test_addFuncinario(t *testing.T) {
 	defer db.Close()
 
 	repo := NewFuncionarioRepository(db)
+	id_dep := 1
+	id_func := 2
 	func1 := model.FuncionarioINserir{
-
-		ID:              1,
 		Nome:            "davi",
-		ID_departamento: 1,
-		ID_funcao:       2,
+		Matricula:       "123234",
+		ID_departamento: &id_dep,
+		ID_funcao:       &id_func,
 	}
 
-	query := regexp.QuoteMeta(`insert into funcionario(nome, id_departamento, id_funcao) values( @nome, @id_departamento, @id_funcao)`)
+	query := regexp.QuoteMeta(`insert into funcionario(nome, matricula, id_departamento, id_funcao) values( @nome, @matricula, @id_departamento, @id_funcao)`)
 
 	t.Run("testando o sucesso ao adicionar um funcionario", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(func1.Nome, func1.ID_departamento, func1.ID_funcao).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(query).WithArgs(func1.Nome, func1.Matricula, func1.ID_departamento, func1.ID_funcao).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		err := repo.AddFuncionario(ctx, &func1)
 		require.NoError(t, err)
@@ -54,7 +55,7 @@ func Test_addFuncinario(t *testing.T) {
 
 	t.Run("erro generico ao salvar um funcionario", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(func1.Nome, func1.ID_departamento, func1.ID_funcao).WillReturnError(Errors.ErrInternal)
+		mock.ExpectExec(query).WithArgs(func1.Nome, func1.Matricula, func1.ID_departamento, func1.ID_funcao).WillReturnError(Errors.ErrInternal)
 		err := repo.AddFuncionario(ctx, &func1)
 
 		require.Error(t, err)
@@ -67,7 +68,7 @@ func Test_addFuncinario(t *testing.T) {
 		mssqlErr := &mssql.Error{Number: 2627}
 
 		mock.ExpectExec(query).
-			WithArgs(func1.Nome, func1.ID_departamento, func1.ID_funcao).
+			WithArgs(func1.Nome,func1.Matricula, func1.ID_departamento,func1.ID_funcao).
 			WillReturnError(mssqlErr)
 
 		err := repo.AddFuncionario(ctx, &func1)
@@ -87,15 +88,16 @@ func Test_BuscaFuncionario(t *testing.T) {
 
 	repo := NewFuncionarioRepository(db)
 
-	query := regexp.QuoteMeta(`select fn.id, fn.nome, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
+	query := regexp.QuoteMeta(`select fn.id, fn.nome,fn.matricula, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
 			from funcionario fn
 			inner join departamento d on fn.id_departamento = d.id
 			inner jon funcao f on fn.id_funcao = f.funcao
-			where fn.id = @id`)
+			where fn.matricula = @matricula`)
 
 	func1 := model.Funcionario{
 		Id:              1,
 		Nome:            "davi",
+		Matricula:       4234535,
 		ID_departamento: 1,
 		Departamento:    "dessosa",
 		ID_funcao:       2,
@@ -107,6 +109,7 @@ func Test_BuscaFuncionario(t *testing.T) {
 		linhas := sqlmock.NewRows([]string{
 			"id",
 			"nome",
+			"matricula",
 			"id_departamento",
 			"departamento",
 			"id_funcao",
@@ -114,15 +117,16 @@ func Test_BuscaFuncionario(t *testing.T) {
 		}).AddRow(
 			func1.Id,
 			func1.Nome,
+			func1.Matricula,
 			func1.ID_departamento,
 			func1.Departamento,
 			func1.ID_funcao,
 			func1.Funcao,
 		)
 
-		mock.ExpectQuery(query).WithArgs(func1.Id).WillReturnRows(linhas)
+		mock.ExpectQuery(query).WithArgs(func1.Matricula).WillReturnRows(linhas)
 
-		funcionario, err := repo.BuscaFuncionario(ctx, func1.Id)
+		funcionario, err := repo.BuscaFuncionario(ctx, func1.Matricula)
 		require.NoError(t, err)
 		require.NotNil(t, funcionario)
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -131,9 +135,9 @@ func Test_BuscaFuncionario(t *testing.T) {
 
 	t.Run("testando o erro de funcionario nao encontrado", func(t *testing.T) {
 
-		mock.ExpectQuery(query).WithArgs(func1.Id).WillReturnError(sql.ErrNoRows)
+		mock.ExpectQuery(query).WithArgs(func1.Matricula).WillReturnError(sql.ErrNoRows)
 
-		funcionario, err := repo.BuscaFuncionario(ctx, func1.Id)
+		funcionario, err := repo.BuscaFuncionario(ctx, func1.Matricula)
 
 		require.Error(t, err)
 		require.Nil(t, funcionario)
@@ -146,6 +150,7 @@ func Test_BuscaFuncionario(t *testing.T) {
 		linhas := sqlmock.NewRows([]string{
 			"id",
 			"nome",
+			"matricula",
 			"id_departamento",
 			"departamento",
 			"id_funcao",
@@ -153,15 +158,16 @@ func Test_BuscaFuncionario(t *testing.T) {
 		}).AddRow(
 			"func1.Id",
 			func1.Nome,
+			func1.Matricula,
 			func1.ID_departamento,
 			func1.Departamento,
 			func1.ID_funcao,
 			func1.Funcao,
 		)
 
-		mock.ExpectQuery(query).WithArgs(func1.Id).WillReturnRows(linhas).WillReturnError(Errors.ErrFalhaAoEscanearDados)
+		mock.ExpectQuery(query).WithArgs(func1.Matricula).WillReturnRows(linhas).WillReturnError(Errors.ErrFalhaAoEscanearDados)
 
-		funcionario, err := repo.BuscaFuncionario(ctx, func1.Id)
+		funcionario, err := repo.BuscaFuncionario(ctx, func1.Matricula)
 		require.Error(t, err)
 		require.Nil(t, funcionario)
 		require.ErrorIs(t, err, Errors.ErrFalhaAoEscanearDados)
@@ -178,7 +184,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 
 	repo := NewFuncionarioRepository(db)
 
-	query := regexp.QuoteMeta(`select fn.id, fn.nome, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
+	query := regexp.QuoteMeta(`select fn.id,fn.matricula, fn.nome, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
 			from funcionario fn
 			inner join departamento d on fn.id_departamento = d.id
 			inner jon funcao f on fn.id_funcao = f.funcao`)
@@ -186,6 +192,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 	f1 := model.Funcionario{
 		Id:              1,
 		Nome:            "teste",
+		Matricula:       534564,
 		ID_departamento: 1,
 		Departamento:    "teste",
 		ID_funcao:       3,
@@ -195,6 +202,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 	f2 := model.Funcionario{
 		Id:              1,
 		Nome:            "teste",
+		Matricula:       52356,
 		ID_departamento: 1,
 		Departamento:    "teste",
 		ID_funcao:       3,
@@ -206,6 +214,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		linhas := sqlmock.NewRows([]string{
 			"id",
 			"nome",
+			"matricula",
 			"id_departamento",
 			"departamento",
 			"id_funcao",
@@ -213,6 +222,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		}).AddRow(
 			f1.Id,
 			f1.Nome,
+			f1.Matricula,
 			f1.ID_departamento,
 			f1.Departamento,
 			f1.ID_funcao,
@@ -220,6 +230,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		).AddRow(
 			f2.Id,
 			f2.Nome,
+			f2.Matricula,
 			f2.ID_departamento,
 			f2.Departamento,
 			f2.ID_funcao,
@@ -240,6 +251,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		linhas := sqlmock.NewRows([]string{
 			"id",
 			"nome",
+			"matricula",
 			"id_departamento",
 			"departamento",
 			"id_funcao",
@@ -272,6 +284,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		linhas := sqlmock.NewRows([]string{
 			"id",
 			"nome",
+			"matricula",
 			"id_departamento",
 			"departamento",
 			"id_funcao",
@@ -279,6 +292,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		}).AddRow(
 			"f1.Id",
 			f1.Nome,
+			f1.Matricula,
 			f1.ID_departamento,
 			f1.Departamento,
 			f1.ID_funcao,
@@ -286,6 +300,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		).AddRow(
 			"f2.Id",
 			f2.Nome,
+			f2.Matricula,
 			f2.ID_departamento,
 			f2.Departamento,
 			f2.ID_funcao,
@@ -307,6 +322,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		linhas := sqlmock.NewRows([]string{
 			"id",
 			"nome",
+			"matricula",
 			"id_departamento",
 			"departamento",
 			"id_funcao",
@@ -314,6 +330,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		}).AddRow(
 			f1.Id,
 			f1.Nome,
+			f1.Matricula,
 			f1.ID_departamento,
 			f1.Departamento,
 			f1.ID_funcao,
@@ -321,6 +338,7 @@ func Test_BuscarTodosoFuncionarios(t *testing.T) {
 		).AddRow(
 			f2.Id,
 			f2.Nome,
+			f2.Matricula,
 			f2.ID_departamento,
 			f2.Departamento,
 			f2.ID_funcao,
@@ -346,14 +364,14 @@ func Test_deletarFuncionario(t *testing.T) {
 
 	repo := NewFuncionarioRepository(db)
 
-	idDeletado := 1
-	query := regexp.QuoteMeta(`delete from funcionario where id = @id`)
+	matricula := 1
+	query := regexp.QuoteMeta(`delete from funcionario where matricula = @matricula`)
 
 	t.Run("sucesso ao deletar funcionario", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(idDeletado).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(query).WithArgs().WillReturnResult(sqlmock.NewResult(0, 1))
 
-		err := repo.DeletarFuncionario(ctx, idDeletado)
+		err := repo.DeletarFuncionario(ctx, matricula)
 		require.NoError(t, err)
 		require.NoError(t, mock.ExpectationsWereMet())
 
@@ -361,8 +379,8 @@ func Test_deletarFuncionario(t *testing.T) {
 
 	t.Run("testando o erro de funcionario nao encontrado", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(idDeletado).WillReturnResult(sqlmock.NewResult(0, 0))
-		err := repo.DeletarFuncionario(ctx, idDeletado)
+		mock.ExpectExec(query).WithArgs(matricula).WillReturnResult(sqlmock.NewResult(0, 0))
+		err := repo.DeletarFuncionario(ctx, matricula)
 		require.Error(t, err)
 		require.ErrorIs(t, err, Errors.ErrNaoEncontrado)
 
@@ -370,9 +388,8 @@ func Test_deletarFuncionario(t *testing.T) {
 
 	t.Run("testando erro de verificar linhas", func(t *testing.T) {
 
-
-		mock.ExpectExec(query).WithArgs(idDeletado).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
-		err := repo.DeletarFuncionario(ctx, idDeletado)
+		mock.ExpectExec(query).WithArgs(matricula).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
+		err := repo.DeletarFuncionario(ctx, matricula)
 		require.Error(t, err)
 		require.ErrorIs(t, err, Errors.ErrLinhasAfetadas)
 
@@ -380,8 +397,8 @@ func Test_deletarFuncionario(t *testing.T) {
 
 	t.Run("testando o erro ao deletar um funcionario", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(idDeletado).WillReturnError(errors.New("erro generico"))
-		err := repo.DeletarFuncionario(ctx, idDeletado)
+		mock.ExpectExec(query).WithArgs(matricula).WillReturnError(errors.New("erro generico"))
+		err := repo.DeletarFuncionario(ctx, matricula)
 		require.Error(t, err)
 		require.ErrorIs(t, err, Errors.ErrInternal)
 	})
