@@ -13,9 +13,9 @@ import (
 
 type FuncionarioInterface interface {
 	AddFuncionario(ctx context.Context, funcionario *model.FuncionarioINserir) error
-	BuscaFuncionario(ctx context.Context, id int) (*model.Funcionario, error)
+	BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error)
 	BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionario, error)
-	DeletarFuncionario(ctx context.Context, id int) error
+	DeletarFuncionario(ctx context.Context, matricula int) error
 	UpdateFuncionarioNome(ctx context.Context, id int, funcionario string)error
 	UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao string)error
 	UpdateFuncionarioDepartamento(ctx context.Context, id int, idDepartamento string)error
@@ -35,10 +35,11 @@ func NewFuncionarioRepository(db *sql.DB) FuncionarioInterface {
 // AddFuncionario implements FuncionarioInterface.
 func (c *ConnDB) AddFuncionario(ctx context.Context, funcionario *model.FuncionarioINserir) error {
 
-	query := `insert into funcionario(nome, id_departamento, id_funcao) values( @nome, @id_departamento, @id_funcao)`
+	query := `insert into funcionario(nome, matricula, id_departamento, id_funcao) values( @nome, @matricula, @id_departamento, @id_funcao)`
 
 	_, err := c.DB.ExecContext(ctx, query,
 		sql.Named("nome", funcionario.Nome),
+		sql.Named("matricula", funcionario.Matricula),
 		sql.Named("id_departamento", funcionario.ID_departamento),
 		sql.Named("id_funcao", funcionario.ID_funcao),
 	)
@@ -57,18 +58,19 @@ func (c *ConnDB) AddFuncionario(ctx context.Context, funcionario *model.Funciona
 }
 
 // BuscaFuncionario implements FuncionarioInterface.
-func (c *ConnDB) BuscaFuncionario(ctx context.Context, id int) (*model.Funcionario, error) {
+func (c *ConnDB) BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error) {
 
-	query := `select fn.id, fn.nome, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
+	query := `select fn.id, fn.nome,fn.matricula, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
 			from funcionario fn
 			inner join departamento d on fn.id_departamento = d.id
 			inner jon funcao f on fn.id_funcao = f.funcao
-			where fn.id = @id`
+			where fn.matricula = @matricula`
 
 	var funcionario model.Funcionario
-	err := c.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(
+	err := c.DB.QueryRowContext(ctx, query, sql.Named("matricula", matricula)).Scan(
 		&funcionario.Id,
 		&funcionario.Nome,
+		&funcionario.Matricula,
 		&funcionario.ID_departamento,
 		&funcionario.Departamento,
 		&funcionario.ID_funcao,
@@ -76,7 +78,7 @@ func (c *ConnDB) BuscaFuncionario(ctx context.Context, id int) (*model.Funcionar
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("funcionario com o id %d não encontrado: %w", funcionario.Id, Errors.ErrNaoEncontrado)
+			return nil, fmt.Errorf("funcionario com a matricula %d não encontrado: %w", funcionario.Matricula, Errors.ErrNaoEncontrado)
 		}
 		return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 	}
@@ -87,7 +89,7 @@ func (c *ConnDB) BuscaFuncionario(ctx context.Context, id int) (*model.Funcionar
 // BuscarTodosFuncionarios implements FuncionarioInterface.
 func (c *ConnDB) BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionario, error) {
 
-	query := `select fn.id, fn.nome, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
+	query := `select fn.id,fn.matricula, fn.nome, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
 			from funcionario fn
 			inner join departamento d on fn.id_departamento = d.id
 			inner jon funcao f on fn.id_funcao = f.funcao`
@@ -106,7 +108,7 @@ func (c *ConnDB) BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionar
 
 		var funcionario model.Funcionario
 
-		err := results.Scan(&funcionario.Id, &funcionario.Nome, &funcionario.ID_departamento, &funcionario.Departamento, &funcionario.ID_funcao, &funcionario.Funcao)
+		err := results.Scan(&funcionario.Id, &funcionario.Nome,&funcionario.Matricula, &funcionario.ID_departamento, &funcionario.Departamento, &funcionario.ID_funcao, &funcionario.Funcao)
 		if err != nil {
 			return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 		}
@@ -123,11 +125,11 @@ func (c *ConnDB) BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionar
 }
 
 // DeletarFuncionario implements FuncionarioInterface.
-func (c *ConnDB) DeletarFuncionario(ctx context.Context, id int) error {
+func (c *ConnDB) DeletarFuncionario(ctx context.Context, matricula int) error {
 
-	query:= `delete from funcionario where id = @id`
+	query:= `delete from funcionario where matricula = @matricula`
 
-	  result, err:= c.DB.ExecContext(ctx, query, sql.Named("id", id))
+	  result, err:= c.DB.ExecContext(ctx, query, sql.Named("matricula", matricula))
 	  if err != nil {
 		return  fmt.Errorf("%w", Errors.ErrInternal)
 	  }
@@ -143,7 +145,7 @@ func (c *ConnDB) DeletarFuncionario(ctx context.Context, id int) error {
 
 	if linhas == 0 {
 
-		return fmt.Errorf("funcionario com o id %d nao  encontrado, %w ", id, Errors.ErrNaoEncontrado)
+		return fmt.Errorf("funcionario com a matricula %d nao  encontrado, %w ", matricula, Errors.ErrNaoEncontrado)
 	}
 
 	return  nil
@@ -169,7 +171,7 @@ func (c *ConnDB)UpdateFuncionarioDepartamento(ctx context.Context, id int, idDep
 		     set IdDepartamento = @idDepartamento
 			 where id = @ id`
 
-	_, err:= c.DB.ExecContext(ctx, query, sql.Named("Iddepartamento", idDepartamento), sql.Named("id", id))
+	_, err:= c.DB.ExecContext(ctx, query, sql.Named("IdDepartamento", idDepartamento), sql.Named("id", id))
 	if err != nil {
 		return  fmt.Errorf("erro ao atualizar nome do funcinariom, %w", Errors.ErrInternal)
 	}
