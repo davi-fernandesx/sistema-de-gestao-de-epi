@@ -178,7 +178,7 @@ func TestSalvarFuncionario(t *testing.T) {
 
 			tc.mock(mockRepo)
 
-			service := &FuncionarioService{
+			service := FuncionarioService{
 				FuncionarioRepo: mockRepo,
 			}
 
