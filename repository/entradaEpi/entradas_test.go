@@ -12,6 +12,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,21 +38,24 @@ func Test_EntradaEpi(t *testing.T) {
 	entradaInserir := model.EntradaEpiInserir{
 		ID_epi:       1,
 		Data_entrada: time.Now(),
+		Id_tamanho: 2,
 		Quantidade:   10,
 		Lote:         "xyz",
 		Fornecedor:   "teste1",
+		ValorUnitario: decimal.NewFromFloat(12.77),
+
 	}
 
 	query := regexp.QuoteMeta(`
-		insert into Entrada (id_epi,id_tamanho, data_entrada, quantidade, lote, fornecedor)
-		values (@id_epi,@id_tamanho, @data_entrada, @quantidade, @lote, @fornecedor)
+		insert into Entrada (id_epi,id_tamanho, data_entrada, quantidade, lote, fornecedor, valorUnitario)
+		values (@id_epi,@id_tamanho, @data_entrada, @quantidade, @lote, @fornecedor, @valorUnitario)
 `)
 
 	t.Run("testando o sucesso ao adicionar uma entrada", func(t *testing.T) {
 
 		mock.ExpectExec(query).WithArgs(entradaInserir.ID_epi, entradaInserir.Id_tamanho, entradaInserir.Data_entrada,
 			entradaInserir.Quantidade, entradaInserir.Lote,
-			entradaInserir.Fornecedor).WillReturnResult(sqlmock.NewResult(0, 1))
+			entradaInserir.Fornecedor, entradaInserir.ValorUnitario).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		err := repo.AddEntradaEpi(ctx, &entradaInserir)
 		require.NoError(t, err)
@@ -63,7 +67,7 @@ func Test_EntradaEpi(t *testing.T) {
 
 		mock.ExpectExec(query).WithArgs(entradaInserir.ID_epi, entradaInserir.Id_tamanho, entradaInserir.Data_entrada,
 			entradaInserir.Quantidade, entradaInserir.Lote,
-			entradaInserir.Fornecedor).WillReturnError(Errors.ErrSalvar)
+			entradaInserir.Fornecedor, entradaInserir.ValorUnitario).WillReturnError(Errors.ErrSalvar)
 
 		err := repo.AddEntradaEpi(ctx, &entradaInserir)
 		require.Error(t, err)
@@ -84,7 +88,7 @@ func Test_BuscarEntrada(t *testing.T) {
 	query := regexp.QuoteMeta(`
      SELECT
             ee.id, ee.id_epi, ee.quantidade, ee.lote, ee.fornecedor, -- Campos da tabela de entrada
-            e.nome, e.fabricante, e.CA, e.descricao,
+            e.nome, e.fabricante, e.CA, e.descricao,ee.valorUnitario,
             e.data_fabricacao, e.data_validade, e.validade_CA, -- Campos do EPI
             tp.id as id_protecao, tp.protecao as nome_protecao, -- Campos do Tipo de Proteção
             t.id as id_tamanho, t.tamanho as tamanho_descricao -- Campos do Tamanho
@@ -103,29 +107,32 @@ func Test_BuscarEntrada(t *testing.T) {
 	idParaBuscar := 1
 	agora := time.Now()
 	entradaMock := model.EntradaEpi{
-		ID:             1,
-		ID_epi:         10,
-		Nome:           "Capacete de Segurança",
-		Fabricante:     "Marca Segura",
-		CA:             "12345",
-		Descricao:      "Capacete para proteção contra impactos.",
-		DataFabricacao: agora.AddDate(0, -6, 0), // 6 meses atrás
-		DataValidade:   agora.AddDate(2, 0, 0),  // Daqui a 2 anos
-		DataValidadeCa: agora.AddDate(1, 0, 0),  // Daqui a 1 ano
-		IDprotecao:     1,
-		NomeProtecao:   "Cabeça",
-		Quantidade:     10,
-		Lote:           "LOTE-2025-A1",
-		Fornecedor:     "Fornecedor Principal",
+		ID:               1,
+		ID_epi:           10,
+		Nome:             "Capacete de Segurança",
+		Fabricante:       "Marca Segura",
+		CA:               "12345",
+		Descricao:        "Capacete para proteção contra impactos.",
+		DataFabricacao:   agora.AddDate(0, -7,0), // 6 meses atrás
+		DataValidade:     agora.AddDate(2, 0, 0),  // Daqui a 2 anos
+		DataValidadeCa:   agora.AddDate(1, 0, 0),  // Daqui a 1 ano
+		IDprotecao:       1,
+		NomeProtecao:     "Cabeça",
+		Id_Tamanho:       1,
+		TamanhoDescricao: "g",
+		Quantidade:       10,
+		Lote:             "LOTE-2025-A1",
+		Fornecedor:       "Fornecedor Principal",
+		ValorUnitario:    decimal.NewFromFloat(29.99),
 	}
 
 	t.Run("sucesso ao buscar entrada", func(t *testing.T) {
 		// Define as colunas que a query retorna, na ordem correta
 		rows := sqlmock.NewRows([]string{
 			"id", "id_epi", "quantidade", "lote", "fornecedor", "nome",
-			"fabricante", "CA", "descricao",
+			"fabricante", "CA", "descricao","valorUnitario",
 			"dataFabricacao", "dataValidade", "dataValidadeCa",
-			"id_protecao", "nomeProtecao", "id_tamanho", "tamanhoDescricao",
+			"id_protecao", "nomeProtecao", "id_tamanho", "tamanhoDescricao", 
 		}).AddRow( // Adiciona uma linha com os dados do nosso mock
 			entradaMock.ID,
 			entradaMock.ID_epi,
@@ -136,6 +143,7 @@ func Test_BuscarEntrada(t *testing.T) {
 			entradaMock.Fabricante,
 			entradaMock.CA,
 			entradaMock.Descricao,
+			entradaMock.ValorUnitario,
 			entradaMock.DataFabricacao,
 			entradaMock.DataValidade,
 			entradaMock.DataValidadeCa,
@@ -143,6 +151,7 @@ func Test_BuscarEntrada(t *testing.T) {
 			entradaMock.NomeProtecao,
 			entradaMock.Id_Tamanho,
 			entradaMock.TamanhoDescricao,
+			
 		)
 
 		mock.ExpectQuery(query).
@@ -180,7 +189,7 @@ func Test_BuscarEntrada(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
 			"id", "id_epi", "quantidade", "lote", "fornecedor", "nome", "fabricante", "CA", "descricao",
 			"dataFabricacao", "dataValidade", "dataValidadeCa",
-			"id_protecao", "nomeProtecao", "id_tamanho", "tamanhoDescricao",
+			"id_protecao", "nomeProtecao", "id_tamanho", "tamanhoDescricao", "valorUnitario",
 		}).AddRow( // O primeiro campo `id` deveria ser `int`, mas passamos uma `string`
 			"id_invalido",
 			entradaMock.ID_epi,
@@ -198,6 +207,7 @@ func Test_BuscarEntrada(t *testing.T) {
 			entradaMock.NomeProtecao,
 			entradaMock.Id_Tamanho,
 			entradaMock.TamanhoDescricao,
+			entradaMock.ValorUnitario,
 		)
 
 		// Esperamos a query...
@@ -229,7 +239,7 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 	query := regexp.QuoteMeta(`
      SELECT
             ee.id, ee.id_epi, ee.quantidade, ee.lote, ee.fornecedor, -- Campos da tabela de entrada
-            e.nome, e.fabricante, e.CA, e.descricao,
+            e.nome, e.fabricante, e.CA, e.descricao,ee.valorUnitario,
             e.data_fabricacao, e.data_validade, e.validade_CA, -- Campos do EPI
             tp.id as id_protecao, tp.protecao as nome_protecao, -- Campos do Tipo de Proteção
             t.id as id_tamanho, t.tamanho as tamanho_descricao -- Campos do Tamanho
@@ -248,20 +258,23 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 	agora := time.Now()
 	entradasMock := []model.EntradaEpi{
 		{
-			ID:             1,
-			ID_epi:         10,
-			Nome:           "Capacete de Segurança",
-			Fabricante:     "Marca Segura",
-			CA:             "12345",
-			Descricao:      "Capacete para proteção contra impactos.",
-			DataFabricacao: agora.AddDate(0, -6, 0),
-			DataValidade:   agora.AddDate(2, 0, 0),
-			DataValidadeCa: agora.AddDate(1, 0, 0),
-			IDprotecao:     1,
-			NomeProtecao:   "Cabeça",
-			Quantidade:     10,
-			Lote:           "LOTE-2025-A1",
-			Fornecedor:     "Fornecedor Principal",
+			ID:               1,
+			ID_epi:           10,
+			Nome:             "Capacete de Segurança",
+			Fabricante:       "Marca Segura",
+			CA:               "12345",
+			Descricao:        "Capacete para proteção contra impactos.",
+			DataFabricacao:   agora.AddDate(0, -6, 0),
+			DataValidade:     agora.AddDate(2, 0, 0),
+			DataValidadeCa:   agora.AddDate(1, 0, 0),
+			IDprotecao:       1,
+			NomeProtecao:     "Cabeça",
+			Id_Tamanho:       3,
+			TamanhoDescricao: "m",
+			Quantidade:       10,
+			Lote:             "LOTE-2025-A1",
+			Fornecedor:       "Fornecedor Principal",
+			ValorUnitario:    decimal.NewFromFloat(56.99),
 		},
 		{
 			ID:             2,
@@ -275,9 +288,12 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 			DataValidadeCa: agora.AddDate(1, 0, 0),
 			IDprotecao:     2,
 			NomeProtecao:   "Mãos",
+			Id_Tamanho: 4,
+			TamanhoDescricao: "p",
 			Quantidade:     5,
 			Lote:           "LOTE-2024-B2",
 			Fornecedor:     "Fornecedor Secundário",
+			ValorUnitario:  decimal.NewFromFloat(67.99),
 		},
 	}
 
@@ -286,7 +302,7 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 	t.Run("sucesso ao buscar todas as entradas", func(t *testing.T) {
 		// Define as colunas que a query retorna, na ordem correta
 		rows := sqlmock.NewRows([]string{
-			"id", "id_epi", "quantidade", "lote", "fornecedor", "nome", "fabricante", "CA", "descricao",
+			"id", "id_epi", "quantidade", "lote", "fornecedor", "nome", "fabricante", "CA", "descricao","valorUnitario",
 			"dataFabricacao", "dataValidade", "dataValidadeCa",
 			"id_protecao", "nomeProtecao", "id_tamamho", "tamanhoDescricao",
 		})
@@ -296,7 +312,7 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 			rows.AddRow(
 				entrada.ID, entrada.ID_epi, entrada.Quantidade, entrada.Lote, entrada.Fornecedor,
 				entrada.Nome, entrada.Fabricante, entrada.CA,
-				entrada.Descricao, entrada.DataFabricacao, entrada.DataValidade,
+				entrada.Descricao,entrada.ValorUnitario, entrada.DataFabricacao, entrada.DataValidade,
 				entrada.DataValidadeCa, entrada.IDprotecao, entrada.NomeProtecao,
 				entrada.Id_Tamanho, entrada.TamanhoDescricao,
 			)
@@ -318,7 +334,7 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
 			"id", "id_epi", "nome", "fabricante", "CA", "descricao",
 			"dataFabricacao", "dataValidade", "dataValidadeCa",
-			"id_protecao", "nomeProtecao", "quantidade", "lote", "fornecedor",
+			"id_protecao", "nomeProtecao", "quantidade", "lote", "fornecedor","vaklorUnitario",
 		})
 
 		mock.ExpectQuery(query).WillReturnRows(rows)
@@ -376,6 +392,7 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 			Quantidade:       10,
 			Lote:             "LOTE-2025-A1",
 			Fornecedor:       "Fornecedor Principal",
+			ValorUnitario: decimal.NewFromFloat(45.99),
 		}
 		linhas := sqlmock.NewRows([]string{
 			"id",
@@ -387,6 +404,7 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 			"fabricante",
 			"CA",
 			"descricao",
+			"valorUnitario",
 			"dataFabricacao",
 			"dataValidade",
 			"dataValidadeCa",
@@ -404,6 +422,7 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 			entradasMock.Fabricante,
 			entradasMock.CA,
 			entradasMock.Descricao,
+			entradasMock.ValorUnitario,
 			entradasMock.DataFabricacao,
 			entradasMock.DataValidade,
 			entradasMock.DataValidadeCa,
@@ -411,7 +430,6 @@ func Test_BuscarTodasEntradas(t *testing.T) {
 			entradasMock.NomeProtecao,
 			entradasMock.Id_Tamanho,
 			entradasMock.TamanhoDescricao,
-
 		).CloseError(errors.New("erro de conexao simulado"))
 
 		// Simulamos um erro que ocorre após a leitura bem-sucedida das linhas (verificado por `linhas.Err()`)
@@ -449,6 +467,7 @@ func TestCancelarEntrada(t *testing.T) {
 		NomeProtecao:   "Cabeça",
 		Lote:           "LOTE-2025-A1",
 		Fornecedor:     "Fornecedor Principal",
+
 	}
 
 	query := regexp.QuoteMeta(`update entrada

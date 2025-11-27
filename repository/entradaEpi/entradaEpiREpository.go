@@ -32,8 +32,8 @@ func NewEntradaRepository(db *sql.DB) EntradaEpi {
 func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.EntradaEpiInserir) error {
 
 	query := `
-		insert into Entrada (id_epi,id_tamanho, data_entrada, quantidade, lote, fornecedor)
-		values (@id_epi,@id_tamanho, @data_entrada, @quantidade, @lote, @fornecedor)
+		insert into Entrada (id_epi,id_tamanho, data_entrada, quantidade, lote, fornecedor, valorUnitario)
+		values (@id_epi,@id_tamanho, @data_entrada, @quantidade, @lote, @fornecedor, @valorUnitario)
 	`
 
 	_, err := n.DB.ExecContext(ctx, query,
@@ -43,6 +43,7 @@ func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.Entra
 		sql.Named("quantidade", EntradaEpi.Quantidade),
 		sql.Named("lote", EntradaEpi.Lote),
 		sql.Named("fornecedor", EntradaEpi.Fornecedor),
+		sql.Named("valorUnitario", EntradaEpi.ValorUnitario),
 	)
 
 	if err != nil {
@@ -58,7 +59,7 @@ func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (*model.Entrada
 	query := `
      SELECT
             ee.id, ee.id_epi, ee.quantidade, ee.lote, ee.fornecedor, -- Campos da tabela de entrada
-            e.nome, e.fabricante, e.CA, e.descricao,
+            e.nome, e.fabricante, e.CA, e.descricao,ee.valorUnitario,
             e.data_fabricacao, e.data_validade, e.validade_CA, -- Campos do EPI
             tp.id as id_protecao, tp.protecao as nome_protecao, -- Campos do Tipo de Proteção
             t.id as id_tamanho, t.tamanho as tamanho_descricao -- Campos do Tamanho
@@ -86,6 +87,7 @@ func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (*model.Entrada
 		&entrada.Fabricante,
 		&entrada.CA,
 		&entrada.Descricao,
+		&entrada.ValorUnitario,
 		&entrada.DataFabricacao,
 		&entrada.DataValidade,
 		&entrada.DataValidadeCa,
@@ -93,6 +95,7 @@ func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (*model.Entrada
 		&entrada.NomeProtecao,
 		&entrada.Id_Tamanho,
 		&entrada.TamanhoDescricao,
+		
 	)
 
 	if err != nil {
@@ -113,7 +116,7 @@ func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaE
 	query := `
      SELECT
             ee.id, ee.id_epi, ee.quantidade, ee.lote, ee.fornecedor, -- Campos da tabela de entrada
-            e.nome, e.fabricante, e.CA, e.descricao,
+            e.nome, e.fabricante, e.CA, e.descricao,ee.valorUnitario,
             e.data_fabricacao, e.data_validade, e.validade_CA, -- Campos do EPI
             tp.id as id_protecao, tp.protecao as nome_protecao, -- Campos do Tipo de Proteção
             t.id as id_tamanho, t.tamanho as tamanho_descricao -- Campos do Tamanho
@@ -150,6 +153,7 @@ func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaE
 			&entrada.Fabricante,
 			&entrada.CA,
 			&entrada.Descricao,
+			&entrada.ValorUnitario,
 			&entrada.DataFabricacao,
 			&entrada.DataValidade,
 			&entrada.DataValidadeCa,
