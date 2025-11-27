@@ -548,9 +548,6 @@ func TestDeleteFuncionario(t *testing.T){
 			} else {
 				require.NoError(t, err)
 			}
-
-		
-
 			mockRepo.AssertExpectations(t)
 		})
 	}
