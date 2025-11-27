@@ -1,6 +1,5 @@
 package entregaepi
 
-
 import (
 	"context"
 	"database/sql"
@@ -11,11 +10,12 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	// Ajuste o caminho de import para o seu projeto
-	
+
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 )
@@ -28,166 +28,188 @@ func newMock(t *testing.T) (*sql.DB, sqlmock.Sqlmock, context.Context) {
 	return db, mock, ctx
 }
 
-func TestAddentrega(t *testing.T) {
-	db, mock, ctx := newMock(t)
-	defer db.Close()
-
-	repo := NewEntregaRepository(db)
-
-	entregaModel := model.EntregaParaInserir{
-		ID_funcionario:     1,
-		Data_entrega:       time.Date(2025, 10, 23, 0, 0, 0, 0, time.UTC),
-		Assinatura_Digital: "base64-string",
-		Itens: []model.ItemParaEntrega{
-			{ID_epi: 10, ID_tamanho: 2, Quantidade: 1},
-			{ID_epi: 11, ID_tamanho: 3, Quantidade: 2},
-		},
-	}
-	const newEntregaID int64 = 1
-
-	// Query CORRIGIDA (com @AssinaturaDigital)
-	queryEntrega := regexp.QuoteMeta(`insert into entrega (id_funcionario, data_entrega, AssinaturaDigital)
-     values (@idFuncionario, @dataEntrega, @AssinaturaDigital)
-     OUTPUT INSERTED.id`)
-
-	queryItem := regexp.QuoteMeta(`insert into epi_entregas(id_epi,id_tamanho, quantidade, id_entrega) values (@id_epi, @id_tamanho, @quantidade, @id_entrega)`)
-
-	t.Run("sucesso ao adicionar entrega com 2 itens", func(t *testing.T) {
-		mock.ExpectBegin() // 1. Espera a transação começar
-
-		// 2. Espera a query de inserção da entrega "pai"
-		mock.ExpectQuery(queryEntrega).
-			WithArgs(
-				sql.Named("idFuncionario", entregaModel.ID_funcionario),
-				sql.Named("dataEntrega", entregaModel.Data_entrega),
-				sql.Named("AssinaturaDigital", entregaModel.Assinatura_Digital),
-			).
-			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(newEntregaID))
-
-		// 3. Espera o "Prepare" da query dos itens
-		mock.ExpectPrepare(queryItem)
-
-		// 4. Espera a execução para o Item 1
-		mock.ExpectExec(queryItem). // O nome do "prepare" no SQL Server
-						WithArgs(
-				sql.Named("id_epi", entregaModel.Itens[0].ID_epi),
-				sql.Named("id_tamanho", entregaModel.Itens[0].ID_tamanho),
-				sql.Named("quantidade", entregaModel.Itens[0].Quantidade),
-				sql.Named("id_entrega", newEntregaID),
-			).
-			WillReturnResult(sqlmock.NewResult(0, 1))
-
-		// 5. Espera a execução para o Item 2
-		mock.ExpectExec(queryItem).
-			WithArgs(
-				sql.Named("id_epi", entregaModel.Itens[1].ID_epi),
-				sql.Named("id_tamanho", entregaModel.Itens[1].ID_tamanho),
-				sql.Named("quantidade", entregaModel.Itens[1].Quantidade),
-				sql.Named("id_entrega", newEntregaID),
-			).
-			WillReturnResult(sqlmock.NewResult(0, 1))
-
-		// 6. Espera o Commit final
-		mock.ExpectCommit()
-
-		err := repo.Addentrega(ctx, entregaModel)
-		require.NoError(t, err)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("erro ao iniciar transacao", func(t *testing.T) {
-		mock.ExpectBegin().WillReturnError(errors.New("db error"))
-
-		err := repo.Addentrega(ctx, entregaModel)
-		require.Error(t, err)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("erro ao inserir entrega (pai)", func(t *testing.T) {
-		dbError := errors.New("insert error")
-		mock.ExpectBegin()
-		mock.ExpectQuery(queryEntrega).WillReturnError(dbError)
-		mock.ExpectRollback() // Espera o rollback automático do defer
-
-		err := repo.Addentrega(ctx, entregaModel)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, Errors.ErrInternal) // Verifica o erro customizado
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("erro ao preparar query de itens", func(t *testing.T) {
-		dbError := errors.New("prepare error")
-		mock.ExpectBegin()
-		mock.ExpectQuery(queryEntrega).
-			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(newEntregaID))
-		mock.ExpectPrepare(queryItem).WillReturnError(dbError)
-		mock.ExpectRollback()
-
-		err := repo.Addentrega(ctx, entregaModel)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, Errors.ErrInternal)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("erro ao inserir um item (filho)", func(t *testing.T) {
-		dbError := errors.New("item exec error")
-		mock.ExpectBegin()
-		mock.ExpectQuery(queryEntrega).
-			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(newEntregaID))
-		mock.ExpectPrepare(queryItem)
-		mock.ExpectExec(queryItem).WillReturnError(dbError) // Falha no primeiro item
-		mock.ExpectRollback()
-
-		err := repo.Addentrega(ctx, entregaModel)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, Errors.ErrInternal)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("erro ao comitar transacao", func(t *testing.T) {
-		dbError := errors.New("commit error")
-		mock.ExpectBegin()
-		mock.ExpectQuery(queryEntrega).
-			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(newEntregaID))
-		mock.ExpectPrepare(queryItem)
-		mock.ExpectExec(queryItem). // Item 1 OK
-						WillReturnResult(sqlmock.NewResult(0, 1))
-		mock.ExpectExec(queryItem). // Item 2 OK
-						WillReturnResult(sqlmock.NewResult(0, 1))
-		mock.ExpectCommit().WillReturnError(dbError) // Commit falha
-		
-
-		err := repo.Addentrega(ctx, entregaModel)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, Errors.ErrInternal)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
+// Dados de teste para um item
+var testItem1 = model.ItemParaInserir{
+    ID_epi:     101,
+    ID_tamanho: 1,
+    Quantidade: 5,
 }
 
+// Dados de teste para a entrega
+var testEntregaModel = model.EntregaParaInserir{
+    ID_funcionario:     10,
+    Data_entrega:       time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC),
+    Assinatura_Digital: "hash-assinatura-teste",
+    Itens:              []model.ItemParaInserir{testItem1},
+}
+
+// Dados do Lote (para simular a ENTRADA)
+const LOTE_ID = 5
+const LOTE_SALDO = 10
+var LOTE_VALOR = decimal.NewFromFloat(15.50)
+
+// --- Casos de Teste ---
+
+func TestAddentrega_Success(t *testing.T) {
+
+	db, mock, ctx:= newMock(t)
+	defer db.Close()
+
+	repo := &NewsqlLogin{Db: db}
+    insertedEntregaID := int64(99)
+    
+    // 1. Início da Transação
+	mock.ExpectBegin()
+
+	// 2. Inserir Entrega (queryEntrega) e retornar ID
+	mock.ExpectQuery("insert into entrega").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(insertedEntregaID))
+
+    // 3. Preparar Statement para epi_entregues
+	mock.ExpectPrepare("insert into epi_entregas")
+    
+    // 4. Buscar Lote (buscaLote) - SUCESSO e Saldo OK
+    // O item.Quantidade (5) é menor que o LOTE_SALDO (10)
+    mock.ExpectQuery("select top 1 id, valorUnitario, quantidade from entradaEpi").
+        WithArgs(testItem1.ID_epi, testItem1.ID_tamanho).
+        WillReturnRows(sqlmock.NewRows([]string{"id", "valorUnitario", "quantidade"}).
+            AddRow(LOTE_ID, LOTE_VALOR, LOTE_SALDO))
+
+    // 5. Baixar Estoque (baixaEstoque) - UPDATE
+    mock.ExpectExec("update entrada_epi set quantidade").
+        WithArgs(testItem1.Quantidade, LOTE_ID).
+        WillReturnResult(sqlmock.NewResult(0, 1))
+
+    // 6. Inserir Item (queryItem)
+    mock.ExpectExec("insert into epi_entregas").
+        WithArgs(testItem1.ID_epi, testItem1.ID_tamanho, testItem1.Quantidade, insertedEntregaID, LOTE_ID, LOTE_VALOR).
+        WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// 7. Commit da Transação
+	mock.ExpectCommit()
+
+	// Execução
+	err:= repo.Addentrega(ctx, testEntregaModel)
+
+	// Verificação
+	if err != nil {
+		t.Errorf("Esperado nenhum erro, mas obteve: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectativas não atendidas: %s", err)
+	}
+}
+
+// --- CENÁRIO DE FALHA 1: ESTOQUE ZERO (sql.ErrNoRows) ---
+
+func TestAddentrega_Fail_EstoqueZero(t *testing.T) {
+	db, mock, ctx:= newMock(t)
+	defer db.Close()
+
+	repo := &NewsqlLogin{Db: db}
+    insertedEntregaID := int64(99)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("insert into entrega").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(insertedEntregaID))
+	mock.ExpectPrepare("insert into epi_entregas")
+    
+    // Simula sql.ErrNoRows: Nenhum lote encontrado (saldo zero)
+    mock.ExpectQuery("select top 1 id, valorUnitario, quantidade from entradaEpi").
+        WithArgs(testItem1.ID_epi, testItem1.ID_tamanho).
+        WillReturnError(sql.ErrNoRows)
+
+    // A função deve chamar Rollback
+    mock.ExpectRollback()
+
+	// Execução
+	err:= repo.Addentrega(ctx, testEntregaModel)
+
+	// Verificação
+    expectedError := "estoque  zero para o epi 101 (tamanho 1)" // Verifica a mensagem de erro específica
+	if err == nil || !errors.Is(err, Errors.ErrEstoqueInsuficiente) || err.Error() == expectedError {
+		t.Errorf("Esperava erro de estoque insuficiente, obteve: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectativas não atendidas: %s", err)
+	}
+}
+
+// --- CENÁRIO DE FALHA 2: LOTE INSUFICIENTE (QUEBRA DE PEDIDO) ---
+
+func TestAddentrega_Fail_LoteInsuficiente(t *testing.T) {
+	db, mock, ctx:= newMock(t)
+	defer db.Close()
+	repo := &NewsqlLogin{Db: db}
+    insertedEntregaID := int64(99)
+
+    // Item que pede mais que o saldo do lote (12 > 5)
+    itemPedidoGrande := model.ItemParaInserir{
+        ID_epi:     101,
+        ID_tamanho: 1,
+        Quantidade: 12, // Pede 12
+    }
+    modelPedidoGrande := model.EntregaParaInserir{
+        ID_funcionario: 10,
+        Data_entrega: time.Now(),
+        Itens:          []model.ItemParaInserir{itemPedidoGrande},
+    }
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("insert into entrega").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(insertedEntregaID))
+	mock.ExpectPrepare("insert into epi_entregas")
+    
+    // Simula um lote com SALDO INSUFICIENTE (5)
+    mock.ExpectQuery("select top 1 id, valorUnitario, quantidade from entradaEpi").
+        WithArgs(itemPedidoGrande.ID_epi, itemPedidoGrande.ID_tamanho).
+        WillReturnRows(sqlmock.NewRows([]string{"id", "valorUnitario", "quantidade"}).
+            AddRow(LOTE_ID, LOTE_VALOR, 5)) // Saldo de 5
+    
+    // A função deve chamar Rollback
+    mock.ExpectRollback()
+
+	// Execução
+	err := repo.Addentrega(ctx, modelPedidoGrande)
+
+	// Verificação
+    expectedMsg := "a quantidade de 12 excede o saldo do lote mais antigo (5), por favor , divida o pedido:"
+	if err == nil || !errors.Is(err, Errors.ErrEstoqueInsuficiente) || !isErrorMatching(err, expectedMsg) {
+		t.Errorf("Esperava erro de lote insuficiente, obteve: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectativas não atendidas: %s", err)
+	}
+}
+
+// Função auxiliar para verificar se a mensagem de erro contém a substring esperada
+func isErrorMatching(err error, expectedSubstr string) bool {
+    return err != nil && len(err.Error()) >= len(expectedSubstr) && err.Error()[:len(expectedSubstr)] == expectedSubstr
+}
 // Colunas esperadas pelas queries de busca
 var colunasBusca = []string{
 	"id", "data_Entrega", "id_funcionario", "nome", "id_departamento",
 	"departamento", "id_funcao", "funcao", "id_epi", "nome_epi",
 	"fabricante", "CA", "descricao", "data_fabricacao", "data_validade",
 	"data_validadeCa", "id_tipo_protecao", "protecao", "id_tamanho",
-	"tamanho", "quantidade", "AssinaturaDigital",
+	"tamanho", "quantidade", "AssinaturaDigital", "ValorUnitario",
 }
 
 // Dados de mock para uma linha de item
 var mockItem1 = []driver.Value{
 	1, time.Now(), 10, "Funcionario Teste", 2, "Produção", 3, "Operador",
 	101, "Capacete", "Marca X", "CA123", "Desc", time.Now(), time.Now(), time.Now(),
-	5, "Cabeça", 7, "Único", 1, "sig-base64",
+	5, "Cabeça", 7, "Único", 1, "sig-base64", 13.99,
 }
 var mockItem2 = []driver.Value{
 	1, time.Now(), 10, "Funcionario Teste", 2, "Produção", 3, "Operador",
 	102, "Luva", "Marca Y", "CA456", "Desc Luva", time.Now(), time.Now(), time.Now(),
-	6, "Mãos", 8, "M", 2, "sig-base64",
+	6, "Mãos", 8, "M", 2, "sig-base64", 12.44,
 }
 var mockItem3_Entrega2 = []driver.Value{
 	2, time.Now(), 11, "Outro Func", 2, "Produção", 4, "Ajudante",
 	103, "Bota", "Marca Z", "CA789", "Desc Bota", time.Now(), time.Now(), time.Now(),
-	7, "Pés", 9, "42", 1, "sig-base64-2",
+	7, "Pés", 9, "42", 1, "sig-base64-2", 18.99,
 }
 
 func TestBuscaEntrega(t *testing.T) {
@@ -219,7 +241,8 @@ func TestBuscaEntrega(t *testing.T) {
             i.id_tamanho, 
             t.tamanho, 
             i.quantidade,
-            ee.AssinaturaDigital
+            ee.AssinaturaDigital,
+			i.valorUnitario
             from entrega ee
             inner join
                 funcionario f on ee.id_funcionario = f.id
@@ -287,7 +310,7 @@ func TestBuscaEntrega(t *testing.T) {
 		rows := sqlmock.NewRows(colunasBusca).
 			AddRow("ID-INVALIDO", time.Now(), 10, "Func Teste", 2, "Prod", 3, "Op",
 				101, "Capacete", "Marca X", "CA123", "Desc", time.Now(), time.Now(), time.Now(),
-				5, "Cabeça", 7, "Único", 1, "sig-base64")
+				5, "Cabeça", 7, "Único", 1, "sig-base64", 12.99)
 
 		mock.ExpectQuery(query).WithArgs(sql.Named("id", 1)).WillReturnRows(rows)
 
@@ -308,46 +331,47 @@ func TestBuscaTodasEntregas(t *testing.T) {
 
 	// Query CORRIGIDA (com 'where' no lugar certo)
 	query := regexp.QuoteMeta(`select
-            ee.id,
-            ee.data_Entrega,
-            ee.id_funcionario,
-            f.nome, 
-            f.id_departamento, 
-            d.departamento, 
-            f.id_funcao, 
-            ff.funcao, 
-            i.id_epi, 
-            e.nome, 
-            e.fabricante, 
-            e.CA,
-            e.descricao, 
-            e.data_fabricacao, 
-            e.data_validade, 
-            e.data_validadeCa,
-            e.id_tipo_protecao,
-            tp.protecao, 
-            i.id_tamanho, 
-            t.tamanho, 
-            i.quantidade,
-            ee.AssinaturaDigital
-            from entrega ee
-            inner join
-                funcionario f on ee.id_funcionario = f.id
-            inner join
-                departamentos d on f.id_departamento = d.id
-            inner join 
-                funcao ff on f.id_funcao = ff.id
-            inner join 
-                epi_entregues i on i.id_entrega = ee.id
-            inner join 
-                epi e on i.id_epi = e.id
-            inner join
-                tipo_protecao tp on e.id_tipo_protecao = tp.id
-            inner join 
-                tamanho t on i.id_tamanho = t.id
-            where
-                 ee.cancelada_em IS NULL
-            ORDER BY ee.id`)
+		    ee.id,
+			ee.data_Entrega,
+			ee.id_funcionario,
+			f.nome, 
+			f.id_departamento, 
+			d.departamento, 
+			f.id_funcao, 
+			ff.funcao, 
+			i.id_epi, 
+			e.nome, 
+			e.fabricante, 
+			e.CA,
+			e.descricao, 
+			e.data_fabricacao, 
+			e.data_validade, 
+			e.data_validadeCa,
+			e.id_tipo_protecao,
+			tp.protecao, 
+			i.id_tamanho, 
+			t.tamanho, 
+			i.quantidade,
+			ee.AssinaturaDigital,
+			i.valorUnitario
+			from entrega ee
+			inner join
+				funcionario f on ee.id_funcionario = f.id
+			inner join
+				departamentos d on f.id_departamento = d.id
+			inner join 
+				funcao ff on f.id_funcao = ff.id
+			inner join 
+				epi_entregues i on i.id_entrega = ee.id
+			inner join 
+				epi e on i.id_epi = e.id
+			inner join
+				tipo_protecao tp on e.id_tipo_protecao = tp.id
+			inner join 
+				tamanho t on i.id_tamanho = t.id
+			where
+				 ee.cancelada_em IS NULL
+			ORDER BY ee.id`)
 
 	t.Run("sucesso ao buscar todas as entregas (2 entregas, 3 itens)", func(t *testing.T) {
 		rows := sqlmock.NewRows(colunasBusca).

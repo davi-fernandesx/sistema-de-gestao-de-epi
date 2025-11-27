@@ -9,6 +9,7 @@ import (
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+	"github.com/shopspring/decimal"
 )
 
 type EntregaInterface interface {
@@ -32,56 +33,112 @@ func NewEntregaRepository(db *sql.DB) EntregaInterface {
 
 // Addentrega implements EntregaInterface.
 func (n *NewsqlLogin) Addentrega(ctx context.Context, model model.EntregaParaInserir) error {
-	
-	tx, err:= n.Db.BeginTx(ctx, nil)
+
+	tx, err := n.Db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("erro ao iniciar a transação, %w", err)
 	}
 	defer tx.Rollback()
 
-	queryEntrega:=`insert into entrega (id_funcionario, data_entrega, AssinaturaDigital)
+	//add as entregas
+	queryEntrega := `insert into entrega (id_funcionario, data_entrega, AssinaturaDigital)
 	 values (@idFuncionario, @dataEntrega, @AssinaturaDigital)
 	 OUTPUT INSERTED.id`
 
-	 var id int64
-	 errSql:= tx.QueryRowContext(ctx, queryEntrega,
+	var id int64
+	errSql := tx.QueryRowContext(ctx, queryEntrega,
 		sql.Named("idFuncionario", model.ID_funcionario),
 		sql.Named("dataEntrega", model.Data_entrega),
 		sql.Named("AssinaturaDigital", model.Assinatura_Digital),
-
 	).Scan(&id)
 	if errSql != nil {
 
 		return fmt.Errorf("erro interno ao salvar entrega, %w", Errors.ErrInternal)
 	}
 
-	queryItem:= `insert into epi_entregas(id_epi,id_tamanho, quantidade, id_entrega) values (@id_epi, @id_tamanho, @quantidade, @id_entrega)`
-	itens, errStmt:= tx.PrepareContext(ctx, queryItem)
+	//query da tabela epi_entregas
+	queryItem := `insert into epi_entregas(id_epi,id_tamanho, quantidade,id_entrega,id_entrada ,valorUnitario) values (@id_epi, @id_tamanho, @quantidade, @id_entrega,@id_entrada ,@valorUnitario)`
+	itens, errStmt := tx.PrepareContext(ctx, queryItem)
 	if errStmt != nil {
-		return fmt.Errorf("erro interno ao preparar itens de entrega, %w", Errors.ErrInternal )
+		return fmt.Errorf("erro interno ao preparar itens de entrega, %w", Errors.ErrInternal)
 	}
 	defer itens.Close()
+	
+	for _, item:= range model.Itens {
 
-	for _, item:= range model.Itens{
+		buscaLote:= `
 
-		_, err:= itens.ExecContext(ctx, sql.Named("id_epi", item.ID_epi), sql.Named("id_tamanho", 
-		item.ID_tamanho),sql.Named("quantidade", item.Quantidade), sql.Named("id_entrega", id))
-		if err != nil {
-				return  fmt.Errorf("erro interno ao salvar itens para entrega, %w", Errors.ErrInternal)
+			select top 1 id, valorUnitario, quantidade 
+			from entradaEpi with (updlock)
+			where id_epi = @idEpi 
+				and id_tamanho = @id_tamanho 
+				and quantidade > 0
+			order by data_entrada asc
+		`
+		var IdEntrada int
+		var valorUnitario decimal.Decimal
+		var saldoLote int
+
+		err:= tx.QueryRowContext(ctx, buscaLote, sql.Named("idEpi", item.ID_epi), 
+												sql.Named("id_tamanho", item.ID_tamanho)).Scan(&IdEntrada, &valorUnitario, &saldoLote)
+
+		
+		//caso de esse erro em especifico, quer dizer quer não tem nenhum lote com esse epi
+		if err == sql.ErrNoRows{
+
+			return fmt.Errorf("estoque  zero para o epi %d (tamanho %d), %w", item.ID_epi, item.ID_tamanho,Errors.ErrEstoqueInsuficiente )
 		}
+
+		//provavelmente um erro do banco de dados
+		if err != nil {
+		
+			return  fmt.Errorf("erro ao buscar lote prioritario: %w", Errors.ErrInternal)
+		}
+
+		//verifico se a quantidade do epi pedido, existe no lote, caso não, peço ao usuario para dividir o pedido
+		if item.Quantidade > saldoLote {
+		
+			return fmt.Errorf("a quantidade de %d excede o saldo do lote mais antigo (%d), por favor , divida o pedido: %w", 
+											item.Quantidade, saldoLote, Errors.ErrEstoqueInsuficiente)
+		}
+
+	
+		//diminuido o estoque nessa entrada
+		baixaEstoque:= `
+
+				update entrada_epi set quantidade = quantidade - @quantidade
+				where id = @id_entrada
+		`
+
+		_, err = tx.ExecContext(ctx, baixaEstoque, sql.Named("id_entrada", IdEntrada),sql.Named("quantidade", item.Quantidade))
+		if err != nil {
+
+			return fmt.Errorf("erro ao dar baixa no estoque da entrada %d: %w", IdEntrada, Errors.ErrInternal)
+		}
+
+
+		//executando a query preparada
+			_, err = itens.ExecContext(ctx, sql.Named("id_epi", item.ID_epi), sql.Named("id_tamanho",
+				item.ID_tamanho), sql.Named("quantidade", item.Quantidade), sql.Named("id_entrega", id),sql.Named("id_entrada", IdEntrada) ,sql.Named("valorUnitario", valorUnitario))
+			if err != nil {
+				return fmt.Errorf("erro interno ao salvar itens para entrega, %w", Errors.ErrInternal)
+			}
+		
+		
 	}
 
-	if err:= tx.Commit(); err != nil {
-		return  fmt.Errorf("erro ao comitar transação: %w", Errors.ErrInternal)
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("erro ao comitar transação: %w", Errors.ErrInternal)
 	}
+
 
 	return nil
 }
 
 // BuscaEntrega implements EntregaInterface.
 func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error) {
-	
-	query:=`select
+
+	query := `select
 		    ee.id,
 			ee.data_Entrega,
 			ee.id_funcionario,
@@ -103,7 +160,8 @@ func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaD
 			i.id_tamanho, 
 			t.tamanho, 
 			i.quantidade,
-			ee.AssinaturaDigital
+			ee.AssinaturaDigital,
+			i.valorUnitario
 			from entrega ee
 			inner join
 				funcionario f on ee.id_funcionario = f.id
@@ -124,9 +182,9 @@ func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaD
 
 	var entrega *model.EntregaDto
 
-	linhas, err:= n.Db.QueryContext(ctx, query, sql.Named("id", id))
+	linhas, err := n.Db.QueryContext(ctx, query, sql.Named("id", id))
 	if err != nil {
-		return  nil, fmt.Errorf("erro ao buscar entregas, %w", Errors.ErrBuscarTodos)
+		return nil, fmt.Errorf("erro ao buscar entregas, %w", Errors.ErrBuscarTodos)
 	}
 	defer linhas.Close()
 
@@ -134,83 +192,85 @@ func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaD
 
 		var item model.ItemEntregueDto
 		var entregaID int
-        var dataEntrega time.Time
-        var assinatura string
-        var funcID int
-        var funcNome string
-        var depID int
-        var depNome string
-        var funcaoID int
-        var funcaoNome string
+		var dataEntrega time.Time
+		var assinatura string
+		var funcID int
+		var funcNome string
+		var depID int
+		var depNome string
+		var funcaoID int
+		var funcaoNome string
 
-		err:= linhas.Scan(
+		err := linhas.Scan(
 			&entregaID,
-            &dataEntrega,
-            &funcID,
-            &funcNome,
-            &depID,
-            &depNome,
-            &funcaoID,
-            &funcaoNome,
-            &item.Epi.Id, // Assumindo que EpiDto tem esses campos
-            &item.Epi.Nome,
-            &item.Epi.Fabricante,
-            &item.Epi.CA,
-            &item.Epi.Descricao,
-            &item.Epi.DataFabricacao,
-            &item.Epi.DataValidade,
-            &item.Epi.DataValidadeCa,
-            &item.Epi.Protecao.ID, // Assumindo estrutura aninhada
-            &item.Epi.Protecao.Nome,
-            &item.Tamanho.ID, // Assumindo que TamanhoDto tem Id e Nome
-            &item.Tamanho.Tamanho,
-            &item.Quantidade,
+			&dataEntrega,
+			&funcID,
+			&funcNome,
+			&depID,
+			&depNome,
+			&funcaoID,
+			&funcaoNome,
+			&item.Epi.Id, // Assumindo que EpiDto tem esses campos
+			&item.Epi.Nome,
+			&item.Epi.Fabricante,
+			&item.Epi.CA,
+			&item.Epi.Descricao,
+			&item.Epi.DataFabricacao,
+			&item.Epi.DataValidade,
+			&item.Epi.DataValidadeCa,
+			&item.Epi.Protecao.ID, // Assumindo estrutura aninhada
+			&item.Epi.Protecao.Nome,
+			&item.Tamanho.ID, // Assumindo que TamanhoDto tem Id e Nome
+			&item.Tamanho.Tamanho,
+			&item.Quantidade,
 			&assinatura,
-		); if err!= nil {
+			&item.ValorUnitario,
+		)
+		if err != nil {
 
-			return  nil, fmt.Errorf(" %w", Errors.ErrFalhaAoEscanearDados)
+			return nil, fmt.Errorf(" %w", Errors.ErrFalhaAoEscanearDados)
 		}
 
 		if entrega == nil {
 
 			entrega = &model.EntregaDto{
-					Id: entregaID,
-					Funcionario: model.Funcionario_Dto{
-						ID: funcID,
-						Nome: funcNome,
-						Departamento: model.DepartamentoDto{
-							ID: depID,
-							Departamento: depNome,
-						},
-						Funcao: model.FuncaoDto{
-							ID: funcID,
-							Funcao: funcaoNome,
-						},	
+				Id: entregaID,
+				Funcionario: model.Funcionario_Dto{
+					ID:   funcID,
+					Nome: funcNome,
+					Departamento: model.DepartamentoDto{
+						ID:           depID,
+						Departamento: depNome,
 					},
-					Data_entrega: dataEntrega,
-					Assinatura_Digital: assinatura,
-					Itens: []model.ItemEntregueDto{},
+					Funcao: model.FuncaoDto{
+						ID:     funcaoID,
+						Funcao: funcaoNome,
+					},
+				},
+				Data_entrega:       dataEntrega,
+				Assinatura_Digital: assinatura,
+				Itens:              []model.ItemEntregueDto{},
 			}
 		}
 
-		entrega.Itens = append(entrega.Itens, item )
+		entrega.Itens = append(entrega.Itens, item)
 	}
 
-	if err:= linhas.Err(); err != nil {
+	if err := linhas.Err(); err != nil {
 
 		return nil, fmt.Errorf("%w", Errors.ErrAoIterar)
 	}
 	if entrega == nil {
-    return nil, Errors.ErrNaoEncontrado // Retorna o erro específico
-}
+		return nil, Errors.ErrNaoEncontrado // Retorna o erro específico
+	}
 
-	return  entrega, nil
-	
+	return entrega, nil
+
 }
 
 // BuscaTodasEntregas implements EntregaInterface.
 func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaDto, error) {
-	query:= `select
+	query := `select
 		    ee.id,
 			ee.data_Entrega,
 			ee.id_funcionario,
@@ -232,7 +292,8 @@ func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaD
 			i.id_tamanho, 
 			t.tamanho, 
 			i.quantidade,
-			ee.AssinaturaDigital
+			ee.AssinaturaDigital,
+			i.valorUnitario
 			from entrega ee
 			inner join
 				funcionario f on ee.id_funcionario = f.id
@@ -252,90 +313,91 @@ func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaD
 				 ee.cancelada_em IS NULL
 			ORDER BY ee.id`
 
-		linhas, err:= n.Db.QueryContext(ctx, query)
-		if err != nil {
+	linhas, err := n.Db.QueryContext(ctx, query)
+	if err != nil {
 
-			return  nil, fmt.Errorf("falha ao buscas as entregas, %w", Errors.ErrBuscarTodos)
-		}
-		defer linhas.Close()
+		return nil, fmt.Errorf("falha ao buscas as entregas, %w", Errors.ErrBuscarTodos)
+	}
+	defer linhas.Close()
 
-		EntregaMap := make(map[int]*model.EntregaDto)
+	EntregaMap := make(map[int]*model.EntregaDto)
 
-		for linhas.Next(){
+	for linhas.Next() {
 		var item model.ItemEntregueDto
 		var entregaID int
-        var dataEntrega time.Time
-        var assinatura string
-        var funcID int
-        var funcNome string
-        var depID int
-        var depNome string
-        var funcaoID int
-        var funcaoNome string
+		var dataEntrega time.Time
+		var assinatura string
+		var funcID int
+		var funcNome string
+		var depID int
+		var depNome string
+		var funcaoID int
+		var funcaoNome string
 
-		err:= linhas.Scan(
+		err := linhas.Scan(
 			&entregaID,
-            &dataEntrega,
-            &funcID,
-            &funcNome,
-            &depID,
-            &depNome,
-            &funcaoID,
-            &funcaoNome,
-            &item.Epi.Id, 
-            &item.Epi.Nome,
-            &item.Epi.Fabricante,
-            &item.Epi.CA,
-            &item.Epi.Descricao,
-            &item.Epi.DataFabricacao,
-            &item.Epi.DataValidade,
-            &item.Epi.DataValidadeCa,
-            &item.Epi.Protecao.ID, 
-            &item.Epi.Protecao.Nome,
-            &item.Tamanho.ID,
-            &item.Tamanho.Tamanho,
-            &item.Quantidade,
-			  &assinatura,
-		); if err!= nil {
+			&dataEntrega,
+			&funcID,
+			&funcNome,
+			&depID,
+			&depNome,
+			&funcaoID,
+			&funcaoNome,
+			&item.Epi.Id,
+			&item.Epi.Nome,
+			&item.Epi.Fabricante,
+			&item.Epi.CA,
+			&item.Epi.Descricao,
+			&item.Epi.DataFabricacao,
+			&item.Epi.DataValidade,
+			&item.Epi.DataValidadeCa,
+			&item.Epi.Protecao.ID,
+			&item.Epi.Protecao.Nome,
+			&item.Tamanho.ID,
+			&item.Tamanho.Tamanho,
+			&item.Quantidade,
+			&assinatura,
+			&item.ValorUnitario,
+		)
+		if err != nil {
 
-			return  nil, fmt.Errorf(" %w", Errors.ErrFalhaAoEscanearDados)
+			return nil, fmt.Errorf(" %w", Errors.ErrFalhaAoEscanearDados)
 		}
 
-		if _ , ok := EntregaMap[entregaID]; !ok {
+		if _, ok := EntregaMap[entregaID]; !ok {
 
 			EntregaMap[entregaID] = &model.EntregaDto{ //verifico pelo id, se o map da entrega ja existe, se não, cria um
 
-					Id: entregaID,
-					Funcionario: model.Funcionario_Dto{
-						ID: funcID,
-						Nome: funcNome,
-						Departamento: model.DepartamentoDto{
-							ID: depID,
-							Departamento: depNome,
-						},
-						Funcao: model.FuncaoDto{
-							ID: funcID,
-							Funcao: funcaoNome,
-						},	
+				Id: entregaID,
+				Funcionario: model.Funcionario_Dto{
+					ID:   funcID,
+					Nome: funcNome,
+					Departamento: model.DepartamentoDto{
+						ID:           depID,
+						Departamento: depNome,
 					},
-					Data_entrega: dataEntrega,
-					Assinatura_Digital: assinatura,
-					Itens: []model.ItemEntregueDto{},
-			
-			    }
+					Funcao: model.FuncaoDto{
+						ID:     funcaoID,
+						Funcao: funcaoNome,
+					},
+				},
+				Data_entrega:       dataEntrega,
+				Assinatura_Digital: assinatura,
+				Itens:              []model.ItemEntregueDto{},
+			}
 		}
 
 		EntregaMap[entregaID].Itens = append(EntregaMap[entregaID].Itens, item) //caso ja exista, faço um append dos itens
 	}
 
-	if err:= linhas.Err(); err != nil {
+	if err := linhas.Err(); err != nil {
 
-		return  nil, fmt.Errorf("%w", Errors.ErrAoIterar)
+		return nil, fmt.Errorf("%w", Errors.ErrAoIterar)
 	}
 
 	EntregaSlice := make([]*model.EntregaDto, 0, len(EntregaMap))
 
-	for _, entrega:= range EntregaMap {
+	for _, entrega := range EntregaMap {
 		EntregaSlice = append(EntregaSlice, entrega)
 	}
 
@@ -344,40 +406,36 @@ func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaD
 		return nil, fmt.Errorf("nenhuma entrega encontrada, %w", Errors.ErrBuscarTodos)
 	}
 
-
 	return EntregaSlice, nil
 }
 
 // DeletarEntregas implements EntregaInterface.
 func (n *NewsqlLogin) CancelarEntrega(ctx context.Context, id int) error {
-	
-	query:= `update entrega
+
+	query := `update entrega
 			set cancelada_em  = GETDATE() 
 			where id = @id AND cancelada_em IS NULL;`
 
-	result, err:= n.Db.ExecContext(ctx, query, sql.Named("id",id))
+	result, err := n.Db.ExecContext(ctx, query, sql.Named("id", id))
 	if err != nil {
 
-		return  fmt.Errorf("%w", Errors.ErrInternal)
+		return fmt.Errorf("%w", Errors.ErrInternal)
 	}
 
-	 linha, err:= result.RowsAffected()
-	 if err != nil {
+	linha, err := result.RowsAffected()
+	if err != nil {
 
-			if errors.Is(err, Errors.ErrLinhasAfetadas){
+		if errors.Is(err, Errors.ErrLinhasAfetadas) {
 
 			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
 		}
-	 }
+	}
 
-	 if linha == 0 {
+	if linha == 0 {
 
 		return fmt.Errorf("entrega nao encontrada, %w", Errors.ErrNaoEncontrado)
-	 }
+	}
 
+	return nil
 
-	 return  nil
-	
 }
-
-
