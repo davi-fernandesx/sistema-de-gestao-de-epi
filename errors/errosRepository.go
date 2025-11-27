@@ -17,5 +17,6 @@ var (
 	ErrBuscarTodos = errors.New("erro ao buscar todo os itens")
     ErrNaoEncontrado = errors.New(" não encontrado")
 	ErrInternal      = errors.New("erro interno do repositório")
+	ErrEstoqueInsuficiente = errors.New("estoque do epi zerado")
 
 )
