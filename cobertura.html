@@ -1,0 +1,1194 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>auth: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/davi-fernandesx/sistema-de-gestao-de-epi/auth/auth.go (37.5%)</option>
+				
+				<option value="file1">github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs/conn.go (0.0%)</option>
+				
+				<option value="file2">github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs/init.go (0.0%)</option>
+				
+				<option value="file3">github.com/davi-fernandesx/sistema-de-gestao-de-epi/controller/LoginController.go (0.0%)</option>
+				
+				<option value="file4">github.com/davi-fernandesx/sistema-de-gestao-de-epi/main.go (0.0%)</option>
+				
+				<option value="file5">github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/departamento/departamentoRepository.go (95.1%)</option>
+				
+				<option value="file6">github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/epi/EpiRepository.go (100.0%)</option>
+				
+				<option value="file7">github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/funcao/funcaoRepository.go (100.0%)</option>
+				
+				<option value="file8">github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/login/loginRepository.go (96.3%)</option>
+				
+				<option value="file9">github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/tamanhos/tamanhosReposititory.go (100.0%)</option>
+				
+				<option value="file10">github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/tipo_protecao/tipo_protecao.go (100.0%)</option>
+				
+				<option value="file11">github.com/davi-fernandesx/sistema-de-gestao-de-epi/service/loginService.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package auth
+
+import (
+        "golang.org/x/crypto/bcrypt"
+        
+)
+
+//funcao criada para codificar a senha de login do usuario
+
+func HashPassword(senha string) ([]byte, error) <span class="cov8" title="1">{
+
+        hashPass, err:=bcrypt.GenerateFromPassword([]byte(senha), bcrypt.DefaultCost)
+        if err != nil </span><span class="cov0" title="0">{
+                return  nil, err
+        }</span> 
+
+        <span class="cov8" title="1">return  hashPass, nil</span>
+
+}
+
+//funcao que ira servir para comparar a senha que o usuario digitar, com a que esta salva no banco de dados
+func HashCompare(hash []byte, senha []byte)(bool, error)<span class="cov0" title="0">{
+
+        err:= bcrypt.CompareHashAndPassword(hash, senha)
+        if err != nil </span><span class="cov0" title="0">{
+                return false , err
+        }</span>
+
+        <span class="cov0" title="0">return  true, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package configs
+
+import (
+        "database/sql"
+        "fmt"
+        "os"
+        _ "github.com/microsoft/go-mssqldb"
+)
+
+
+
+
+func Conn()(*sql.DB, error) <span class="cov0" title="0">{
+
+        db_server:= os.Getenv("DB_SERVER")
+        db_port:= os.Getenv("DB_PORT")
+        db_database:= os.Getenv("DATABASE")
+        db_user:= os.Getenv("DB_USER")
+        db_pass:= os.Getenv("SA_PASSWORD")
+
+
+        connString:= fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s", db_user, db_pass, db_server, db_port, db_database)
+
+        db, err:= sql.Open("sqlserver",connString)
+        if err != nil </span><span class="cov0" title="0">{
+
+                return  nil, fmt.Errorf("erro ao se conectar com o banco de dados: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">err = db.Ping()
+        if err != nil </span><span class="cov0" title="0">{
+                return  nil, fmt.Errorf("erro ao verificar se a conexao ainda está ativa: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">return  db, nil</span>
+
+
+}</pre>
+		
+		<pre class="file" id="file2" style="display: none">package configs
+
+import (
+        "database/sql"
+        "fmt"
+        "log"
+
+        "github.com/joho/godotenv"
+)
+
+
+
+func InitAplicattion()(*sql.DB, error)<span class="cov0" title="0">{
+
+        err:= godotenv.Load("configs/.env")
+        if err != nil </span><span class="cov0" title="0">{
+                return  nil, fmt.Errorf("erro ao carregar arquivo .env: %v", err)
+        }</span>        
+        
+        <span class="cov0" title="0">db, err:= Conn()
+        if err != nil </span><span class="cov0" title="0">{
+
+                return  nil, err
+        }</span>
+
+        <span class="cov0" title="0">log.Println("conexao feita com sucesso!!")
+        return db, nil</span>
+}</pre>
+		
+		<pre class="file" id="file3" style="display: none">package controller
+
+import (
+        "net/http"
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/service"
+        "github.com/gin-gonic/gin"
+)
+
+type ControllerLogin struct {
+
+        ServiceLogin *service.LoginService
+}
+
+
+func NewControllerLogin(serviceLogin *service.LoginService) *ControllerLogin<span class="cov0" title="0">{
+
+        return &amp;ControllerLogin{
+                ServiceLogin: serviceLogin,
+        }
+}</span>
+
+
+func (Cl *ControllerLogin) SalvarLoginHttp() gin.HandlerFunc <span class="cov0" title="0">{
+
+        return  func(c *gin.Context) </span><span class="cov0" title="0">{
+
+                var  request model.LoginDto
+                ctx:= c
+                err:= c.BindJSON(&amp;request)
+                if err != nil </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusBadRequest, gin.H{"Erro": "erro ao realizar a decodificação do json"})
+                        return 
+                }</span>
+
+
+                <span class="cov0" title="0">err = Cl.ServiceLogin.SalvaLogin(ctx, request)
+                if err != nil </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusInternalServerError, gin.H{"Erro:": err.Error()})
+                        return 
+                }</span>
+
+
+                <span class="cov0" title="0">c.JSON(http.StatusOK, gin.H{
+                        "message": "usuario salvo com sucesso",
+                })</span>
+        }
+}
+
+func (Cl *ControllerLogin) AceitarLogin() gin.HandlerFunc<span class="cov0" title="0">{
+
+        return  func(c *gin.Context) </span><span class="cov0" title="0">{
+
+                var request model.LoginDto
+                ctx:= c
+                err:= c.BindJSON(&amp;request)
+                if err != nil </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusBadRequest, gin.H{
+                                "erro": err.Error(),
+                        })
+                        return 
+                }</span>
+
+                
+
+                <span class="cov0" title="0">loginAceito, err:= Cl.ServiceLogin.Login(ctx, request)
+                if err != nil </span><span class="cov0" title="0">{
+
+                        c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+                        return 
+                }</span>
+
+                <span class="cov0" title="0">if loginAceito </span><span class="cov0" title="0">{
+                        c.JSON(http.StatusOK, gin.H{"Login feito com sucesso": "ok"})
+                        return 
+                }</span>
+
+
+                <span class="cov0" title="0">c.JSON(http.StatusUnauthorized, gin.H{"erro":"senha ou usuario incorreto"})</span>
+                
+
+        }
+}</pre>
+		
+		<pre class="file" id="file4" style="display: none">package main
+
+import (
+        "log"
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/controller"
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/login"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/service"
+        "github.com/gin-gonic/gin"
+)
+
+func main()<span class="cov0" title="0">{
+
+
+        
+        router:= gin.Default()
+
+        db, err:= configs.InitAplicattion()
+        if err != nil </span><span class="cov0" title="0">{
+
+        log.Fatal(err)
+        }</span>
+
+        <span class="cov0" title="0">repoLogin:= login.NewSqlLogin(db)
+        ServiceLogin:= service.NewLoginService(repoLogin)
+        ControllerLogin:= controller.NewControllerLogin(ServiceLogin)
+
+        router.POST("/Salvar-login", ControllerLogin.SalvarLoginHttp())
+        router.GET("/Login", ControllerLogin.AceitarLogin())
+
+
+
+        router.Run(":8080")</span>
+
+
+
+
+}</pre>
+		
+		<pre class="file" id="file5" style="display: none">package departamento
+
+import (
+        "context"
+        "database/sql"
+        "errors"
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
+        mssql "github.com/denisenkom/go-mssqldb"
+)
+
+type DepartamentoInterface interface {
+        AddDepartamento(ctx context.Context, departamento *model.Departamento) error
+        DeletarDepartamento(ctx context.Context, id int) error
+        BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error)
+        BuscarTodosDepartamentos(ctx context.Context) (*[]model.Departamento, error)
+}
+
+type NewSqlLogin struct {
+        DB *sql.DB
+}
+
+func NewDepartamentoRepository(db *sql.DB) DepartamentoInterface <span class="cov8" title="1">{
+
+        return &amp;NewSqlLogin{
+                DB: db,
+        }
+}</span>
+
+// AddDepartamento implements DepartamentoInterface.
+func (n *NewSqlLogin) AddDepartamento(ctx context.Context, departamento *model.Departamento) error <span class="cov8" title="1">{
+
+        query := `insert into departamento (departamento) values (@departamento)`
+
+        _, err := n.DB.ExecContext(ctx, query, sql.Named("departamento", departamento.Departamento))
+        if err != nil </span><span class="cov8" title="1">{
+                var ErrSql *mssql.Error
+                if errors.As(err, &amp;ErrSql) &amp;&amp; ErrSql.Number == 2627 </span><span class="cov8" title="1">{
+                        return repository.ErrDepartamentoJaExistente
+
+                }</span>
+                <span class="cov8" title="1">return err</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// BuscarDepartamento implements DepartamentoInterface.
+func (n *NewSqlLogin) BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error) <span class="cov8" title="1">{
+
+        query := `select departamento from departamento where id = @id`
+
+        var departamento model.Departamento
+
+        err := n.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(
+                &amp;departamento.ID,
+                &amp;departamento.Departamento,
+        )
+
+        if err != nil </span><span class="cov8" title="1">{
+                if err == sql.ErrNoRows </span><span class="cov8" title="1">{
+                        return nil, repository.ErrDepartamentoNaoEncontrado
+                }</span>
+
+                <span class="cov8" title="1">return nil, repository.ErrFalhaAoEscanearDados</span>
+        }
+
+        <span class="cov8" title="1">return &amp;departamento, nil</span>
+}
+
+// BuscarTodosDepartamentos implements DepartamentoInterface.
+func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) (*[]model.Departamento, error) <span class="cov8" title="1">{
+
+        query := `select id, departamento from departamento`
+
+        linhas, err := n.DB.QueryContext(ctx, query)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, repository.ErrBuscarTodosDepartamentos
+        }</span>
+
+        <span class="cov8" title="1">defer linhas.Close()
+
+        var departamentos []model.Departamento
+
+        for linhas.Next() </span><span class="cov8" title="1">{
+                var departamento model.Departamento
+
+                if err := linhas.Scan(&amp;departamento.ID, &amp;departamento.Departamento); err != nil </span><span class="cov0" title="0">{
+                        return nil, repository.ErrFalhaAoEscanearDados
+                }</span>
+
+                <span class="cov8" title="1">departamentos = append(departamentos, departamento)</span>
+        }
+
+        <span class="cov8" title="1">if err := linhas.Err(); err != nil </span><span class="cov8" title="1">{
+
+                return nil, repository.ErrIterarSobreDepartamentos
+        }</span>
+
+        <span class="cov8" title="1">return &amp;departamentos, nil</span>
+
+}
+
+// DeletarDepartamento implements DepartamentoInterface.
+func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error <span class="cov8" title="1">{
+
+        query := `delete from departamento where id = @id`
+
+        result, err := n.DB.ExecContext(ctx, query, sql.Named("id", id))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">linhas, err := result.RowsAffected()
+        if err != nil </span><span class="cov8" title="1">{
+                return repository.ErrLinhasAfetadas
+        }</span>
+
+        <span class="cov8" title="1">if linhas == 0 </span><span class="cov8" title="1">{
+                return repository.ErrDepartamentoNaoEncontrado
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package epi
+
+import (
+        "context"
+        "database/sql"
+
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
+)
+
+type EpiInterface interface {
+        AddEpi(ctx context.Context, epi *model.Epi) error
+        DeletarEpi(ctx context.Context, id int) error
+        BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
+        BuscarTodosEpi(ctx context.Context) ([]model.Epi, error)
+}
+
+type NewSqlLogin struct {
+        DB *sql.DB
+}
+
+func NewEpiRepository(db *sql.DB) EpiInterface <span class="cov8" title="1">{
+
+        return &amp;NewSqlLogin{
+                DB: db,
+        }
+}</span>
+
+// AddEpi implements EpiInterface.
+func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.Epi) error <span class="cov8" title="1">{
+
+        query := `insert into epi (nome, fabricante, CA, descricao, data_fabricacao, data_validade, validade_CA, id_tipo_protecao, alerta_minimo) values (
+                        @nome, @fabricante, @CA, @descricao,@data_fabricacao, @data_validade, @validade_CA, @id_tipo_protecao, @alerta_minimo )`
+
+        _, err := n.DB.ExecContext(ctx, query,
+                sql.Named("nome", epi.Nome),
+                sql.Named("fabricantte", epi.Fabricante),
+                sql.Named("CA", epi.CA),
+                sql.Named("descricao", epi.Descricao),
+                sql.Named("data_fabricacao", epi.DataFabricacao),
+                sql.Named("data_validade", epi.DataValidade),
+                sql.Named("validade_CA", epi.DataValidadeCa),
+                sql.Named("id_tipo_protecao", epi.IDprotecao),
+                sql.Named("alerta_minimo", epi.AlertaMinimo))
+
+        if err != nil </span><span class="cov8" title="1">{
+                return repository.ErrEpiAoAdicionarEpi
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// BuscarEpi implements EpiInterface.
+func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error) <span class="cov8" title="1">{
+
+        query := `select id, nome, fabricante, CA, descricao, data_fabricacao, data_validade, validade_CA, id_tipo_protecao, alerta_minimo
+                        from epi where id = @id`
+
+        var epi model.Epi
+        err := n.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(
+                &amp;epi.ID,
+                &amp;epi.Nome,
+                &amp;epi.Fabricante,
+                &amp;epi.CA,
+                &amp;epi.Descricao,
+                &amp;epi.DataFabricacao,
+                &amp;epi.DataValidade,
+                &amp;epi.DataValidadeCa,
+                &amp;epi.IDprotecao,
+                &amp;epi.AlertaMinimo,
+        )
+
+        if err != nil </span><span class="cov8" title="1">{
+
+                if err == sql.ErrNoRows </span><span class="cov8" title="1">{
+                        return nil, repository.ErrAoProcurarEpi
+                }</span>
+
+                <span class="cov8" title="1">return nil, repository.ErrFalhaAoEscanearDados</span>
+        }
+
+        <span class="cov8" title="1">return &amp;epi, nil</span>
+}
+
+// BuscarTodosEpi implements EpiInterface.
+func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) <span class="cov8" title="1">{
+
+        query := `select id, nome, fabricante, CA, descricao,
+                         data_fabricacao, data_validade, validade_CA, 
+                         id_tipo_protecao, alerta_minimo
+                        from epi`
+
+        linhas, err := n.DB.QueryContext(ctx, query)
+        if err != nil </span><span class="cov8" title="1">{
+                return []model.Epi{}, repository.ErrAoBuscarTodosOsEpis
+        }</span>
+        <span class="cov8" title="1">defer linhas.Close()
+
+        var epis []model.Epi
+
+        for linhas.Next() </span><span class="cov8" title="1">{
+
+                var epi model.Epi
+
+                if err := linhas.Scan(&amp;epi.ID, &amp;epi.Nome, &amp;epi.Fabricante, &amp;epi.CA, &amp;epi.Descricao, &amp;epi.DataFabricacao, &amp;epi.DataValidade, &amp;epi.DataValidadeCa,
+                        &amp;epi.IDprotecao, &amp;epi.AlertaMinimo); err != nil </span><span class="cov8" title="1">{
+
+                        return nil, repository.ErrFalhaAoEscanearDados
+                }</span>
+
+                <span class="cov8" title="1">epis = append(epis, epi)</span>
+        }
+
+        <span class="cov8" title="1">if err := linhas.Err(); err != nil </span><span class="cov8" title="1">{
+
+                return nil, repository.ErrAoInterarSobreEpis
+        }</span>
+
+        <span class="cov8" title="1">return epis, nil</span>
+
+}
+
+// DeletarEpi implements EpiInterface.
+func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error <span class="cov8" title="1">{
+        
+        query:=  `delete from epi where id = @id`
+
+        result, err:= n.DB.ExecContext(ctx, query, sql.Named("id", id))
+
+        if err != nil </span><span class="cov8" title="1">{
+                return  err
+        }</span>
+
+        <span class="cov8" title="1">linhas, err:= result.RowsAffected()
+        if err != nil</span><span class="cov8" title="1">{
+
+                return  repository.ErrLinhasAfetadas
+        }</span>
+
+        <span class="cov8" title="1">if linhas == 0 </span><span class="cov8" title="1">{
+
+                return  repository.ErrEpiNaoEncontrado
+        }</span>
+
+        <span class="cov8" title="1">return  nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package funcao
+
+import (
+        "context"
+        "database/sql"
+        "errors"
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
+        mssql "github.com/microsoft/go-mssqldb"
+)
+
+type FuncaoInterface interface {
+        AddFuncao(ctx context.Context, funcao *model.Funcao) error
+        DeletarFuncao(ctx context.Context, id int) error
+        BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error)
+
+        BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error)
+}
+
+type SqlServerLogin struct {
+        Db *sql.DB
+}
+
+func NewfuncaoRepository(db *sql.DB) FuncaoInterface <span class="cov8" title="1">{
+
+        return &amp;SqlServerLogin{
+                Db: db,
+        }
+}</span>
+
+// AddFuncao implements FuncaoInterface.
+func (s *SqlServerLogin) AddFuncao(ctx context.Context, funcao *model.Funcao) error <span class="cov8" title="1">{
+                query:= `insert into funcao (funcao) values (@funcao)`
+
+                _, err:= s.Db.ExecContext(ctx, query, sql.Named("funcao",funcao.Funcao))
+                if err != nil</span><span class="cov8" title="1">{
+                        var ErrSql *mssql.Error
+                        if errors.As(err, &amp;ErrSql) &amp;&amp; ErrSql.Number == 2627 </span><span class="cov8" title="1">{
+                                return  repository.ErrFuncaoJaExistente
+                        }</span>
+
+                        <span class="cov8" title="1">return  err</span>
+                }
+
+                <span class="cov8" title="1">return  nil</span>
+}
+
+// BuscarFuncao implements FuncaoInterface.
+func (s *SqlServerLogin) BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error) <span class="cov8" title="1">{
+        
+        query:= `select id, funcao from funcao where id = @id`
+
+        var funcao model.Funcao
+
+        err:= s.Db.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(&amp;funcao.ID, &amp;funcao.Funcao)
+
+        if err != nil </span><span class="cov8" title="1">{
+                if err == sql.ErrNoRows </span><span class="cov8" title="1">{
+                        return  nil, repository.ErrAoProcurarFuncao
+                }</span>
+
+                <span class="cov8" title="1">return  nil, repository.ErrFalhaAoEscanearDados</span>
+        }
+
+        <span class="cov8" title="1">return &amp;funcao, nil</span>
+}
+
+// BuscarTodosCargos implements FuncaoInterface.
+func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error) <span class="cov8" title="1">{
+        query:= `select id, funcao from funcao`
+
+        linhas, err:= s.Db.QueryContext(ctx, query)
+        if err != nil </span><span class="cov8" title="1">{
+                return []model.Funcao{}, repository.ErrAoBuscarTodasAsFuncoes
+        }</span>
+
+        <span class="cov8" title="1">var Funcoes []model.Funcao
+        defer linhas.Close()
+
+        for linhas.Next()</span><span class="cov8" title="1">{
+
+                var funcao model.Funcao
+
+                if err:= linhas.Scan(&amp;funcao.ID, &amp;funcao.Funcao); err!= nil </span><span class="cov8" title="1">{
+
+                        return  nil, repository.ErrFalhaAoEscanearDados
+                }</span>
+
+                <span class="cov8" title="1">Funcoes = append(Funcoes, funcao)</span>
+        }
+        
+        <span class="cov8" title="1">err = linhas.Err()
+        if err != nil </span><span class="cov8" title="1">{
+                return  nil, repository.ErrAoIterarSobreFuncoes
+        }</span>
+
+        <span class="cov8" title="1">return  Funcoes, nil</span>
+
+}
+
+// DeletarFuncao implements FuncaoInterface.
+func (s *SqlServerLogin) DeletarFuncao(ctx context.Context, id int) error <span class="cov8" title="1">{
+        
+        query:= `delete from funcao where id = @id`
+
+        result, err:= s.Db.ExecContext(ctx, query, sql.Named("id", id))
+
+        if err != nil </span><span class="cov8" title="1">{
+                return  err
+        }</span>
+
+        
+        <span class="cov8" title="1">linhas, err:= result.RowsAffected()
+        if err != nil </span><span class="cov8" title="1">{
+                return repository.ErrLinhasAfetadas
+        }</span>
+
+        <span class="cov8" title="1">if linhas == 0 </span><span class="cov8" title="1">{
+
+                return repository.ErrAoProcurarFuncao
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package login
+
+import (
+        "context"
+        "database/sql"
+        "errors"
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
+        "github.com/microsoft/go-mssqldb"
+)
+
+//interface contendo os metados
+type LoginRepository interface{
+
+         AddLogin( ctx context.Context, model *model.Login) ( error)
+         DeletarLogin(ctx context.Context, id int) error
+         BuscaPorNome(ctx context.Context,  nome string) (*model.Login, error)
+
+
+}
+
+
+type SqlServerLogin struct {
+        db *sql.DB
+}
+
+//construtor
+func NewSqlLogin(DB *sql.DB) LoginRepository <span class="cov8" title="1">{
+
+        return &amp;SqlServerLogin{
+        db: DB,
+}
+}</span>
+// AddLogin implements loginRepository.
+//função para adicionar um login no sistema
+func (s *SqlServerLogin) AddLogin( ctx context.Context, model *model.Login) ( error) <span class="cov8" title="1">{
+        
+        query:= `
+                        INSERT INTO login (usuario, senha) values (@p1, @p2);
+
+        ` 
+        _, err:= s.db.ExecContext(ctx, query, model.Nome, model.Senha)
+        if err != nil </span><span class="cov8" title="1">{
+                var errSql *mssql.Error
+                if errors.As(err, &amp;errSql) &amp;&amp; errSql.Number == 2627</span><span class="cov8" title="1">{
+                        return  repository.ErrusuarioJaExistente
+                }</span>
+
+                <span class="cov8" title="1">return  err</span>
+        }
+        
+        <span class="cov8" title="1">return  nil</span>
+}
+
+// DeletarLogin implements loginRepository.
+func (s *SqlServerLogin) DeletarLogin(ctx context.Context, id int) error <span class="cov8" title="1">{
+
+        query:= `
+
+        delete from login where id = @id
+        `
+
+        result, err:= s.db.Exec(query, sql.Named("id", id))
+        if err != nil </span><span class="cov0" title="0">{
+
+                return err
+        }</span>
+        
+        <span class="cov8" title="1">row, err:= result.RowsAffected()
+        if err != nil</span><span class="cov8" title="1">{
+
+                return repository.ErrLinhasAfetadas
+        }</span>
+        
+        <span class="cov8" title="1">if row == 0</span><span class="cov8" title="1">{
+                return repository.ErrUsuarioNaoEncontrado
+        }</span>
+
+
+        <span class="cov8" title="1">return nil</span>
+
+}
+
+
+//busca o usuario pelo nome
+func (s *SqlServerLogin) BuscaPorNome(ctx context.Context,  nome string) (*model.Login, error)<span class="cov8" title="1">{
+
+        query:= `
+                select usuario, senha from login
+                where usuario = @usuario ;
+
+        `
+
+        var usuario model.Login
+
+        err:= s.db.QueryRow(query, sql.Named("usuario", nome)).Scan(
+                &amp;usuario.Nome,
+                &amp;usuario.Senha,
+
+        )
+
+        if err != nil </span><span class="cov8" title="1">{
+
+                if err == sql.ErrNoRows </span><span class="cov8" title="1">{
+                        return  nil, repository.ErrUsuarioNaoEncontrado
+                }</span>
+
+                <span class="cov8" title="1">return  nil, repository.ErrFalhaAoEscanearDados</span>
+        }
+
+
+                <span class="cov8" title="1">return  &amp;usuario, nil</span>
+        
+}
+
+// Login implements loginRepository.
+
+
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package tamanhos
+
+import (
+        "context"
+        "database/sql"
+        "errors"
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
+        mssql "github.com/microsoft/go-mssqldb"
+)
+
+type TamanhsoInterface interface {
+        AddTamanhos(ctx context.Context, tamanhos *model.Tamanhos) error
+        DeletarTamanhos(ctx context.Context, id int) error
+        BuscarTamanhos(ctx context.Context, id int) (*model.Tamanhos, error)
+        BuscarTodosTamanhos(ctx context.Context) ([]model.Tamanhos, error)
+}
+
+type SqlServerLogin struct {
+        DB *sql.DB
+}
+
+func NewTamanhoRepository(db *sql.DB) TamanhsoInterface <span class="cov8" title="1">{
+
+        return &amp;SqlServerLogin{
+                DB: db,
+        }
+}</span>
+
+// AddTamanhos implements TamanhsoInterface.
+func (s *SqlServerLogin) AddTamanhos(ctx context.Context, tamanhos *model.Tamanhos) error <span class="cov8" title="1">{
+        query:= `insert into tamanho values (@tamanho)`
+
+        _, err:= s.DB.ExecContext(ctx, query,sql.Named("tamanho", tamanhos.Tamanho))
+
+        if err != nil </span><span class="cov8" title="1">{
+                var ErrSql *mssql.Error
+                if errors.As(err, &amp;ErrSql) &amp;&amp; ErrSql.Number == 2627</span><span class="cov8" title="1">{
+                        return  repository.ErrTamanhoJaExistente
+                }</span>
+                <span class="cov8" title="1">return repository.ErrAoAdicionarTamanho</span>;
+        }
+
+        <span class="cov8" title="1">return  nil</span>
+}
+
+// BuscarTamanhos implements TamanhsoInterface.
+func (s *SqlServerLogin) BuscarTamanhos(ctx context.Context, id int) (*model.Tamanhos, error) <span class="cov8" title="1">{
+
+        query:= "select id, tamanho from tamanho where id = @id"
+
+        var tamanho model.Tamanhos
+
+        err:= s.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(&amp;tamanho.ID, &amp;tamanho.Tamanho)
+
+        if err != nil </span><span class="cov8" title="1">{
+                if err == sql.ErrNoRows </span><span class="cov8" title="1">{
+                        return  nil, repository.ErrAoProcurarTamanho
+                }</span>
+
+                <span class="cov8" title="1">return  nil, repository.ErrFalhaAoEscanearDados</span>
+        }
+
+        <span class="cov8" title="1">return  &amp;tamanho, nil</span>
+}
+
+// BuscarTodosTamanhos implements TamanhsoInterface.
+func (s *SqlServerLogin) BuscarTodosTamanhos(ctx context.Context) ([]model.Tamanhos, error) <span class="cov8" title="1">{
+        
+        query:= "select id, tamanho from tamanho"
+
+        linhas, err:= s.DB.QueryContext(ctx, query)
+        if err != nil </span><span class="cov8" title="1">{
+                return []model.Tamanhos{}, repository.ErrAoBuscarTodosOsTamanhos
+        }</span>
+
+        <span class="cov8" title="1">defer linhas.Close()
+
+        var tamanhos []model.Tamanhos
+
+        for linhas.Next()</span><span class="cov8" title="1">{
+                
+                var tamanho model.Tamanhos
+                err:= linhas.Scan(&amp;tamanho.ID, &amp;tamanho.Tamanho)
+                if err != nil </span><span class="cov8" title="1">{
+                        return  nil, repository.ErrFalhaAoEscanearDados
+                }</span>
+
+                <span class="cov8" title="1">tamanhos = append(tamanhos, tamanho)</span>
+        }
+
+        <span class="cov8" title="1">err = linhas.Err()
+        if err != nil </span><span class="cov8" title="1">{
+
+                return  nil, repository.ErrAoIterarSobreTamanhos
+        }</span>
+
+        <span class="cov8" title="1">return  tamanhos, nil</span>
+}
+
+// DeletarTamanhos implements TamanhsoInterface.
+func (s *SqlServerLogin) DeletarTamanhos(ctx context.Context, id int) error <span class="cov8" title="1">{
+        
+        query:= `delete from tamanho where id = @id`
+
+        result, err:= s.DB.ExecContext(ctx, query, sql.Named("id", id))
+        if err != nil </span><span class="cov8" title="1">{
+                return  err
+        }</span>
+
+        <span class="cov8" title="1">linhas, err:= result.RowsAffected()
+        if err != nil </span><span class="cov8" title="1">{
+                return  repository.ErrLinhasAfetadas
+        }</span>
+
+        <span class="cov8" title="1">if linhas == 0</span><span class="cov8" title="1">{
+                return repository.ErrTamanhoNaoEncontrado
+        }</span>
+
+        <span class="cov8" title="1">return  nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package tipoprotecao
+
+import (
+        "context"
+        "database/sql"
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
+)
+
+type TipoProtecaoInterface interface {
+        AddProtecao(ctx context.Context, protecao *model.TipoProtecao) error
+        DeletarProtecao(ctx context.Context, ind int) error
+        BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error)
+        BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error)
+}
+
+type SqlServerLogin struct {
+        DB *sql.DB
+}
+
+func NewTipoProtecaoRepository(db *sql.DB) TipoProtecaoInterface <span class="cov8" title="1">{
+
+        return &amp;SqlServerLogin{
+                DB: db,
+        }
+}</span>
+
+// AddProtecao implements TipoProtecaoInterface.
+func (s *SqlServerLogin) AddProtecao(ctx context.Context, protecao *model.TipoProtecao) error <span class="cov8" title="1">{
+        
+        query:= `insert into protecao values (@protecao)`
+
+        _, err:= s.DB.ExecContext(ctx, query, sql.Named("protecao", protecao.Nome))
+        if err != nil </span><span class="cov8" title="1">{
+                return repository.ErrAoAdicionarProtecao
+        }</span>
+
+        <span class="cov8" title="1">return  nil</span>
+
+}
+
+// BuscarProtecao implements TipoProtecaoInterface.
+func (s *SqlServerLogin) BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error) <span class="cov8" title="1">{
+        
+        query:= ` select id, protecao from protecao where id = @id`
+
+        var protecao model.TipoProtecao
+
+        err:= s.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(&amp;protecao.ID, &amp;protecao.Nome)
+
+        if err != nil </span><span class="cov8" title="1">{
+                if err == sql.ErrNoRows </span><span class="cov8" title="1">{
+                        return  nil, repository.ErrAoProcurarProtecao
+                }</span>
+
+                <span class="cov8" title="1">return nil, repository.ErrFalhaAoEscanearDados</span>
+        }
+
+        <span class="cov8" title="1">return &amp;protecao, nil</span>
+}
+
+// BuscarTodasProtecao implements TipoProtecaoInterface.
+func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error) <span class="cov8" title="1">{
+        
+        query:= `select id, protecao from protecao`
+
+        linhas, err:= s.DB.QueryContext(ctx, query)
+        if err != nil </span><span class="cov8" title="1">{
+                return  []model.TipoProtecao{}, repository.ErrAoBuscarTodasAsProtecoes
+        }</span>
+
+        <span class="cov8" title="1">defer linhas.Close()
+
+        var protecoes []model.TipoProtecao
+
+        for linhas.Next()</span><span class="cov8" title="1">{
+                
+                var protecao model.TipoProtecao
+                err:= linhas.Scan(&amp;protecao.ID, &amp;protecao.Nome)
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil, repository.ErrFalhaAoEscanearDados
+                }</span>
+
+                <span class="cov8" title="1">protecoes = append(protecoes, protecao)</span>
+        }
+
+        <span class="cov8" title="1">err = linhas.Err()
+        if err != nil </span><span class="cov8" title="1">{
+                return  nil, repository.ErrAoIterarSobreProtecoes
+        }</span>
+
+        <span class="cov8" title="1">return protecoes, nil</span>
+}
+
+// DeletarProtecao implements TipoProtecaoInterface.
+func (s *SqlServerLogin) DeletarProtecao(ctx context.Context, id int) error <span class="cov8" title="1">{
+        
+        query:= `delete from protecao where id = @id`
+
+        result, err:= s.DB.ExecContext(ctx, query, sql.Named("id", id))
+        
+        if err != nil </span><span class="cov8" title="1">{
+                return  err
+        }</span>
+
+        <span class="cov8" title="1">linhas, err:= result.RowsAffected()
+        if err != nil </span><span class="cov8" title="1">{
+                return  repository.ErrLinhasAfetadas
+        }</span>
+
+        <span class="cov8" title="1">if linhas == 0 </span><span class="cov8" title="1">{
+
+                return repository.ErrProtecaoNaoEncontrada
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package service
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "strings"
+
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/auth"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository"
+        "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/login"
+)
+
+type LoginService struct {
+        LoginRepo login.LoginRepository
+}
+
+func NewLoginService(Repo login.LoginRepository) *LoginService <span class="cov0" title="0">{
+
+        return &amp;LoginService{
+                LoginRepo: Repo,
+        }
+
+}</span>
+
+func (Ls *LoginService) SalvaLogin(ctx context.Context, LoginUsuario model.LoginDto) error <span class="cov0" title="0">{
+
+        if strings.TrimSpace(LoginUsuario.Nome) == " " </span><span class="cov0" title="0">{
+                return fmt.Errorf("nome de usuario nao pode ser em branco")
+        }</span>
+
+        <span class="cov0" title="0">SenhaHash, err := auth.HashPassword(LoginUsuario.Senha)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("erro ao criptografar a senha: %v", err)
+        }</span>
+        <span class="cov0" title="0">loginModel := model.Login{
+                Nome:  LoginUsuario.Nome,
+                Senha: string(SenhaHash),
+        }
+
+        err = Ls.LoginRepo.AddLogin(ctx, &amp;loginModel)
+        if err != nil </span><span class="cov0" title="0">{
+
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (Ls *LoginService) Login(ctx context.Context, LoginUsuario model.LoginDto) (bool, error) <span class="cov0" title="0">{
+
+        usuario, err := Ls.LoginRepo.BuscaPorNome(ctx, LoginUsuario.Nome)
+        if err != nil </span><span class="cov0" title="0">{
+
+                if errors.Is(err, repository.ErrLinhasAfetadas) </span><span class="cov0" title="0">{
+
+                        return false, nil
+                }</span>
+
+                <span class="cov0" title="0">return false, err</span>
+
+        }
+
+        <span class="cov0" title="0">senhaLogin, err := auth.HashCompare([]byte(usuario.Senha), []byte(LoginUsuario.Senha))
+        if err != nil </span><span class="cov0" title="0">{
+
+                return false, fmt.Errorf("erro ao comparar senhas")
+        }</span>
+
+        <span class="cov0" title="0">return senhaLogin, nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
