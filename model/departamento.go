@@ -1,7 +1,7 @@
 package model
 
 type Departamento struct {
-	ID           int    `json:"id"`
+	ID           int    `json:"-"`
 	Departamento string `json:"departamento"`
 }
 

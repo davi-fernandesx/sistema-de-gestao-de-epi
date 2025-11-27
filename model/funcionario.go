@@ -1,10 +1,10 @@
 package model
 
 type FuncionarioINserir struct {
-	Nome            string
-	Matricula       string
-	ID_departamento *int
-	ID_funcao       *int
+	Nome            string `json:"nome"`
+	Matricula       string `json:"matricula"`
+	ID_departamento *int   `json:"id_departamento"`
+	ID_funcao       *int   `json:"id_funcao"`
 }
 
 type Funcionario struct {
@@ -18,9 +18,9 @@ type Funcionario struct {
 }
 
 type Funcionario_Dto struct {
-	ID           int    `json:"id"`
-	Nome         string `json:"nome"`
-	Matricula    int
+	ID           int             `json:"id"`
+	Nome         string          `json:"nome"`
+	Matricula    int             `json:"matricula"`
 	Departamento DepartamentoDto `json:"departamento"`
 	Funcao       FuncaoDto       `json:"funcao"`
 }

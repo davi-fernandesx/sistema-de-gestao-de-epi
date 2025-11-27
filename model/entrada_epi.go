@@ -1,15 +1,18 @@
 package model
 
-import "time"
+import (
+	"github.com/shopspring/decimal"
+	"time"
+)
 
 type EntradaEpiInserir struct {
-	ID           int
-	ID_epi       int
-	Id_tamanho   int
-	Data_entrada time.Time
-	Quantidade   int
-	Lote         string
-	Fornecedor   string
+	ID_epi        int             `json:"id_epi"`
+	Id_tamanho    int             `json:"id_tamanho"`
+	Data_entrada  time.Time       `json:"data_entrada"`
+	Quantidade    int             `json:"quantidade"`
+	Lote          string          `json:"lote"`
+	Fornecedor    string          `json:"fornecedor"`
+	ValorUnitario decimal.Decimal `json:"valorUnitario"`
 }
 
 type EntradaEpi struct {
@@ -29,14 +32,16 @@ type EntradaEpi struct {
 	Quantidade       int
 	Lote             string
 	Fornecedor       string
+	ValorUnitario    decimal.Decimal
 }
 
 type EntradaEpiDto struct {
-	ID           int    `json:"id"`
-	Epi          EpiDto     `json:"epi"`
-	Tamanho      TamanhoDto `json:"tamanho"`
-	Data_entrada time.Time  `json:"data_entrada"`
-	Quantidade   int        `json:"quantidade"`
-	Lote         string     `json:"lote"`
-	Fornecedor   string     `json:"fornecedor"`
+	ID            int             `json:"id"`
+	Epi           EpiDto          `json:"epi"`
+	Tamanho       TamanhoDto      `json:"tamanho"`
+	Data_entrada  time.Time       `json:"data_entrada"`
+	Quantidade    int             `json:"quantidade"`
+	Lote          string          `json:"lote"`
+	Fornecedor    string          `json:"fornecedor"`
+	ValorUnitario decimal.Decimal `json:"valor_unitario"`
 }

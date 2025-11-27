@@ -1,23 +1,26 @@
 package model
 
 import (
+	"database/sql"
+	"github.com/shopspring/decimal"
 	"time"
 )
 
-type ItemParaEntrega struct {
-	Id         int
-	ID_epi     int
-	ID_tamanho int
-	Quantidade int
-	Id_entrega int
+type ItemParaInserir struct {
+	ID_epi         int             `json:"id_epi"`
+	ID_tamanho     int             `json:"id_tamanho"`
+	Quantidade     int             `json:"quantidade"`
+	IdEntrada      int             `json:"-"`
+	IdEntrega      int             `json:"-"`
+	Valor_unitario decimal.Decimal `json:"valor_unitario"`
 }
 
 type EntregaParaInserir struct {
-	Id                 int
 	ID_funcionario     int               `json:"id_funcionario"`
 	Data_entrega       time.Time         `json:"data_entrega"`
 	Assinatura_Digital string            `json:"assinatura_digital"`
-	Itens              []ItemParaEntrega `json:"itens"`
+	Itens              []ItemParaInserir `json:"itens"`
+	Id_troca           int               `json:""`
 }
 
 type Entrega struct {
@@ -41,13 +44,16 @@ type Entrega struct {
 	NomeProtecao    string
 	Tamanhos        string
 	Quantidade      int
+	Valor_unitario  decimal.Decimal
+	Id_troca        sql.NullInt64
 }
 
 type ItemEntregueDto struct {
-	Id         int        `json:"id"`
-	Epi        EpiDto     `json:"epi"`
-	Tamanho    TamanhoDto `json:"tamanho"`
-	Quantidade int        `json:"quantidade"`
+	Id            int             `json:"id"`
+	Epi           EpiDto          `json:"epi"`
+	Tamanho       TamanhoDto      `json:"tamanho"`
+	Quantidade    int             `json:"quantidade"`
+	ValorUnitario decimal.Decimal `json:"valor_unitario"`
 }
 
 type EntregaDto struct {

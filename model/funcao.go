@@ -1,8 +1,8 @@
 package model
 
 type Funcao struct {
-	ID     int
-	Funcao string
+	ID     int`json:"-"`
+	Funcao string`json:"funcao"`
 }
 
 type FuncaoDto struct {
