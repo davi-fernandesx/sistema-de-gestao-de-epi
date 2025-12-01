@@ -11,10 +11,11 @@ import (
 )
 
 type DevolucaoInterfaceRepository interface {
-	AddDevolucao(ctx context.Context, devolucao model.DevolucaoInserir) error
+	AddTrocaEPI(ctx context.Context, devolucao model.DevolucaoInserir) error
 	DeleteDevolucao(ctx context.Context, id int) error
 	BuscaDevoluvao(ctx context.Context, id int) (*model.Devolucao, error)
 	BuscaTodasDevolucoe(ctx context.Context) ([]model.Devolucao, error)
+	
 }
 
 type DevolucaoRepository struct {
@@ -29,7 +30,7 @@ func NewDevolucaoRepository(db *sql.DB) DevolucaoInterfaceRepository {
 }
 
 // AddDevolucao implements DevolucaoInterfaceRepository.
-func (d DevolucaoRepository) AddDevolucao(ctx context.Context, devolucao model.DevolucaoInserir) error {
+func (d DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.DevolucaoInserir) error {
 
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -116,8 +117,8 @@ func (d DevolucaoRepository) AddDevolucao(ctx context.Context, devolucao model.D
 
 	//Adicionando o epi novo na tabela de epi_entregas
 	queryEpiEntregas := `
-		insert into epi_entregas(id_epi, id_tamanho, quantidade, id_entrega, valorUnitario)
-		values (@idEpi, @idTamanho, @quantidade, @idEntrega, @valorUnitario)
+		insert into epi_entregas(id_epi, id_tamanho, quantidade, id_entrega,id_entrada, valorUnitario)
+		values (@idEpi, @idTamanho, @quantidade, @idEntrega, @valorUnitario, @idEntrada)
 	`
 
 	_, err = tx.ExecContext(ctx, queryEpiEntregas,
@@ -125,6 +126,7 @@ func (d DevolucaoRepository) AddDevolucao(ctx context.Context, devolucao model.D
 		sql.Named("idTamanho", devolucao.IdTamanhoNovo),
 		sql.Named("quantidade", devolucao.Quantidade),
 		sql.Named("idEntrega", idEntrega),
+		sql.Named("idEntrada", idEntrada),
 		sql.Named("valorUnitario", valorUnitario))
 
 		if err != nil {
