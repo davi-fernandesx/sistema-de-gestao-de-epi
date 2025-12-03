@@ -9,7 +9,7 @@ import (
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/shopspring/decimal"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/trocaEpi"
 )
 
 type EntregaInterface interface {
@@ -21,12 +21,15 @@ type EntregaInterface interface {
 
 type NewsqlLogin struct {
 	Db *sql.DB
+	BaixaEstoque trocaepi.DevolucaoInterfaceRepository
+
 }
 
-func NewEntregaRepository(db *sql.DB) EntregaInterface {
+func NewEntregaRepository(db *sql.DB, RepoDevolucao trocaepi.DevolucaoInterfaceRepository) EntregaInterface {
 
 	return &NewsqlLogin{
 		Db: db,
+		BaixaEstoque: RepoDevolucao,
 	}
 
 }
@@ -45,85 +48,23 @@ func (n *NewsqlLogin) Addentrega(ctx context.Context, model model.EntregaParaIns
 	 values (@idFuncionario, @dataEntrega, @AssinaturaDigital)
 	 OUTPUT INSERTED.id`
 
-	var id int64
+	var idEntrega int64
 	errSql := tx.QueryRowContext(ctx, queryEntrega,
 		sql.Named("idFuncionario", model.ID_funcionario),
 		sql.Named("dataEntrega", model.Data_entrega),
 		sql.Named("AssinaturaDigital", model.Assinatura_Digital),
-	).Scan(&id)
+	).Scan(&idEntrega)
 	if errSql != nil {
 
 		return fmt.Errorf("erro interno ao salvar entrega, %w", Errors.ErrInternal)
 	}
-
-	//query da tabela epi_entregas
-	queryItem := `insert into epi_entregas(id_epi,id_tamanho, quantidade,id_entrega,id_entrada ,valorUnitario) values (@id_epi, @id_tamanho, @quantidade, @id_entrega,@id_entrada ,@valorUnitario)`
-	itens, errStmt := tx.PrepareContext(ctx, queryItem)
-	if errStmt != nil {
-		return fmt.Errorf("erro interno ao preparar itens de entrega, %w", Errors.ErrInternal)
-	}
-	defer itens.Close()
 	
 	for _, item:= range model.Itens {
 
-		buscaLote:= `
-
-			select top 1 id, valorUnitario, quantidade 
-			from entradaEpi with (updlock)
-			where id_epi = @idEpi 
-				and id_tamanho = @id_tamanho 
-				and quantidade > 0
-			order by data_entrada asc
-		`
-		var IdEntrada int
-		var valorUnitario decimal.Decimal
-		var saldoLote int
-
-		err:= tx.QueryRowContext(ctx, buscaLote, sql.Named("idEpi", item.ID_epi), 
-												sql.Named("id_tamanho", item.ID_tamanho)).Scan(&IdEntrada, &valorUnitario, &saldoLote)
-
-		
-		//caso de esse erro em especifico, quer dizer quer não tem nenhum lote com esse epi
-		if err == sql.ErrNoRows{
-
-			return fmt.Errorf("estoque  zero para o epi %d (tamanho %d), %w", item.ID_epi, item.ID_tamanho,Errors.ErrEstoqueInsuficiente )
-		}
-
-		//provavelmente um erro do banco de dados
+		err:= n.BaixaEstoque.BaixaEstoque(ctx, tx, int64(item.ID_epi), int64(item.ID_tamanho), item.Quantidade, idEntrega)
 		if err != nil {
-		
-			return  fmt.Errorf("erro ao buscar lote prioritario: %w", Errors.ErrInternal)
+			return  err
 		}
-
-		//verifico se a quantidade do epi pedido, existe no lote, caso não, peço ao usuario para dividir o pedido
-		if item.Quantidade > saldoLote {
-		
-			return fmt.Errorf("a quantidade de %d excede o saldo do lote mais antigo (%d), por favor , divida o pedido: %w", 
-											item.Quantidade, saldoLote, Errors.ErrEstoqueInsuficiente)
-		}
-
-	
-		//diminuido o estoque nessa entrada
-		baixaEstoque:= `
-
-				update entrada_epi set quantidade = quantidade - @quantidade
-				where id = @id_entrada
-		`
-
-		_, err = tx.ExecContext(ctx, baixaEstoque, sql.Named("id_entrada", IdEntrada),sql.Named("quantidade", item.Quantidade))
-		if err != nil {
-
-			return fmt.Errorf("erro ao dar baixa no estoque da entrada %d: %w", IdEntrada, Errors.ErrInternal)
-		}
-
-
-		//executando a query preparada
-			_, err = itens.ExecContext(ctx, sql.Named("id_epi", item.ID_epi), sql.Named("id_tamanho",
-				item.ID_tamanho), sql.Named("quantidade", item.Quantidade), sql.Named("id_entrega", id),sql.Named("id_entrada", IdEntrada) ,sql.Named("valorUnitario", valorUnitario))
-			if err != nil {
-				return fmt.Errorf("erro interno ao salvar itens para entrega, %w", Errors.ErrInternal)
-			}
-		
 		
 	}
 
