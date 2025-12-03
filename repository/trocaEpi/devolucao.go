@@ -12,10 +12,11 @@ import (
 
 type DevolucaoInterfaceRepository interface {
 	AddTrocaEPI(ctx context.Context, devolucao model.DevolucaoInserir) error
+	AddDevolucaoEpi(ctx context.Context, devolucao model.DevolucaoInserir) error
 	DeleteDevolucao(ctx context.Context, id int) error
 	BuscaDevoluvao(ctx context.Context, id int) (*model.Devolucao, error)
 	BuscaTodasDevolucoe(ctx context.Context) ([]model.Devolucao, error)
-	
+	BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi, iDTamanho int64, quantidade int, idEntrega int64) error
 }
 
 type DevolucaoRepository struct {
@@ -29,6 +30,97 @@ func NewDevolucaoRepository(db *sql.DB) DevolucaoInterfaceRepository {
 	}
 }
 
+func (d DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi, iDTamanho int64, quantidade int, idEntrega int64) error {
+
+	//buscando o lote mais antigo e que tenha o saldo de epi nescessario
+	buscaLote := `
+
+			select top 1 id, valorUnitario, quantidade 
+			from entrada with (updlock)
+			where id_epi = @idEpi 
+				and id_tamanho = @id_tamanho 
+				and quantidade >= @quantidade
+			order by data_entrada asc
+		`
+
+	var idEntrada int64
+	var valorUnitario decimal.Decimal
+	var saldoLote int
+
+	err := tx.QueryRowContext(ctx, buscaLote,
+		sql.Named("idEpi", idEpi),
+		sql.Named("id_tamanho", iDTamanho),
+		sql.Named("quantidade", quantidade)).Scan(&idEntrada, &valorUnitario, &saldoLote) //adicionando os valores nessas variaveis
+
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("estoque  zero para o epi %d (tamanho %d), %w", idEpi, iDTamanho, Errors.ErrEstoqueInsuficiente)
+	}
+
+	if err != nil {
+
+		return fmt.Errorf("erro ao dar baixa no estoque, %w", Errors.ErrInternal)
+	}
+
+	//atualizando o saldo
+	queryBaixa := `
+
+			update entrada 
+				set quantidade = quantidade - @qtd 
+					where id = @idEntrada
+		`
+
+	_, err = tx.ExecContext(ctx, queryBaixa,
+		sql.Named("qtd", quantidade),
+		sql.Named("idEntrada", idEntrada))
+	if err != nil {
+
+		return fmt.Errorf("erro ao atualizar estoque da entrada %d, %w", idEntrada, Errors.ErrInternal)
+	}
+
+	//dando entrada dos epi na tabela auxiliar epi_entrega
+	queryItens := `
+
+			insert into epi_entregas(id_epi,id_tamanho, quantidade,id_entrega,id_entrada ,valorUnitario) values (@id_epi, @id_tamanho, @quantidade, @id_entrega,@id_entrada ,@valorUnitario)
+		`
+
+	_, err = tx.ExecContext(ctx, queryItens,
+		sql.Named("id_epi", idEpi),
+		sql.Named("id_tamanho", iDTamanho),
+		sql.Named("quantidade", quantidade),
+		sql.Named("id_entrega", idEntrega),
+		sql.Named("id_entrada", idEntrada),
+		sql.Named("valorUnitario", valorUnitario))
+
+	if err != nil {
+		return fmt.Errorf("erro ao inserir epi nas entregas")
+	}
+
+	return nil
+
+}
+
+// AddDevolucaoEpi implements DevolucaoInterfaceRepository.
+func (d DevolucaoRepository) AddDevolucaoEpi(ctx context.Context, devolucao model.DevolucaoInserir) error {
+
+	query := `
+		insert into devolucao (idFuncionario, idEpi, motivo ,dataDevolucao, quantidadeDevolucao, idEpiNovo, IdtamanhoEpiNovo, quantidadeNova,assinaturaDigital)
+	 values (@idFuncionario, @idEpi, @motivo ,@dataDevolucao, @quantidadeDevolucao, null, null,null, @assinaturaDigital)
+
+	`
+	_, err := d.db.ExecContext(ctx, query, sql.Named("idFuncionario", devolucao.IdFuncionario),
+		sql.Named("idEpi", devolucao.IdEpi),
+		sql.Named("motivo", devolucao.IdMotivo),
+		sql.Named("dataDevolucao", devolucao.DataDevolucao),
+		sql.Named("quantidadeDevolucao", devolucao.QuantidadeADevolver),
+		sql.Named("assinaturaDigital", devolucao.AssinaturaDigital))
+	if err != nil {
+
+		return fmt.Errorf("erro interno ao salvar devolucao do epi, %w", Errors.ErrInternal)
+	}
+
+	return nil
+}
+
 // AddDevolucao implements DevolucaoInterfaceRepository.
 func (d DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.DevolucaoInserir) error {
 
@@ -38,8 +130,8 @@ func (d DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.De
 	}
 
 	defer tx.Rollback()
-	queryInsertDevolucao := `insert into devolucao (idFuncionario, idEpi, motivo ,dataDevolucao, quantidade, idEpiNovo, IdtamanhoEpiNovo, assinaturaDigital)
-	 values (@idFuncionario, @idEpi, @motivo ,@dataDevolucao, @quantidade, @idEpiNovo, @IdtamanhoEpiNovo, @assinaturaDigital)
+	queryInsertDevolucao := `insert into devolucao (idFuncionario, idEpi, motivo ,dataDevolucao, quantidadeDevolucao, idEpiNovo, IdtamanhoEpiNovo, quantidadeNova,assinaturaDigital)
+	 values (@idFuncionario, @idEpi, @motivo ,@dataDevolucao, @quantidadeDevolucao, @idEpiNovo, @IdtamanhoEpiNovo,@quantidadeNova, @assinaturaDigital)
 	 OUTPUT INSERTED.id`
 
 	var idDevolucao int64 //resgando o id da tabela devolucao
@@ -48,9 +140,10 @@ func (d DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.De
 		sql.Named("idEpi", devolucao.IdEpi),
 		sql.Named("motivo", devolucao.IdMotivo),
 		sql.Named("dataDevolucao", devolucao.DataDevolucao),
-		sql.Named("quantidade", devolucao.Quantidade),
+		sql.Named("quantidadeDevolucao", devolucao.QuantidadeADevolver),
 		sql.Named("idEpiNovo", devolucao.IdEpiNovo),
 		sql.Named("IdtamanhoEpiNovo", devolucao.IdTamanhoNovo),
+		sql.Named("quantidadeNova", devolucao.NovaQuantidade),
 		sql.Named("assinaturaDigital", devolucao.AssinaturaDigital)).Scan(&idDevolucao)
 	if errSqlDevolucao != nil {
 
@@ -72,72 +165,22 @@ func (d DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.De
 		sql.Named("assinaturaDigital", devolucao.AssinaturaDigital),
 		sql.Named("idTroca", idDevolucao)).Scan(&idEntrega)
 	if errSql != nil {
-		
+
 		return fmt.Errorf("erro interno ao salvar entrega de um epi novo ao devolver epi antigo, %w", Errors.ErrInternal)
 	}
 
-	//pegando o valor unitario do novo epi por meio da tabela de entrada, usando o valor unitario do epi com a entrada mais antiga
-	//pegando tambem o id da entrega
-	var valorUnitario decimal.Decimal
-	var idEntrada int64
-	queryValorUnitario := `
 	
-		select top 1 id, valorUnitario 
-		from Entrada with (updlock) 
-		where id_epi = @idEpi 
-			and id_tamanho = @idTamanho 
-			and quantidade > 0
-		order by data_entrada asc
-	`
-
-	errQueryValorUnitario := tx.QueryRowContext(ctx, queryValorUnitario, sql.Named("idEpi", devolucao.IdEpiNovo),
-		sql.Named("idTamanho", devolucao.IdTamanhoNovo)).Scan(&idEntrada, &valorUnitario)
-
-	if errQueryValorUnitario == sql.ErrNoRows {
-	
-		return fmt.Errorf("epi com estoque zero (id %d), tamanho %d, %w", devolucao.IdEpiNovo, devolucao.IdTamanhoNovo, Errors.ErrEstoqueInsuficiente)
-	}
-
-	if errQueryValorUnitario != nil {
-		
-		return fmt.Errorf("erro ao buscar entrada prioritaria: %w", Errors.ErrInternal)
-	}
-
-	//diminuido o estoque nessa entrada
-	baixaEstoque := `
-
-				update entrada set quantidade = quantidade - @quantidade
-				where id = @id_entrada
-				`
-	_, err = tx.ExecContext(ctx, baixaEstoque, sql.Named("id_entrada", idEntrada), sql.Named("quantidade", devolucao.Quantidade))
+	err = d.BaixaEstoque(ctx, tx, int64(devolucao.IdEpiNovo), int64(devolucao.IdTamanhoNovo),devolucao.NovaQuantidade,idEntrega)
 	if err != nil {
-		
-		return fmt.Errorf("erro ao dar baixa no estoque da entrada %d: %w", idEntrada, Errors.ErrInternal)
+
+		return  err
 	}
 
-	//Adicionando o epi novo na tabela de epi_entregas
-	queryEpiEntregas := `
-		insert into epi_entregas(id_epi, id_tamanho, quantidade, id_entrega,id_entrada, valorUnitario)
-		values (@idEpi, @idTamanho, @quantidade, @idEntrega, @valorUnitario, @idEntrada)
-	`
+	err = tx.Commit()
+	if err != nil {
 
-	_, err = tx.ExecContext(ctx, queryEpiEntregas,
-		sql.Named("idEpi", devolucao.IdEpiNovo),
-		sql.Named("idTamanho", devolucao.IdTamanhoNovo),
-		sql.Named("quantidade", devolucao.Quantidade),
-		sql.Named("idEntrega", idEntrega),
-		sql.Named("idEntrada", idEntrada),
-		sql.Named("valorUnitario", valorUnitario))
-
-		if err != nil {
-			
-			return fmt.Errorf("erro interno ao salvar dados na tabela epio_entregas, %w", Errors.ErrInternal)
-
-		}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("erro ao comitar transação: %w", Errors.ErrInternal)
+		return fmt.Errorf("erro ao realizar o commit da transação, %w", Errors.ErrInternal)
 	}
-
 
 	return nil
 }
