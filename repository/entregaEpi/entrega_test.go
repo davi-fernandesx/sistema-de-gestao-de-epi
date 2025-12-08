@@ -26,7 +26,7 @@ type MockEstoqueRepo struct {
 }
 
 // BuscaDevoluvao implements trocaepi.DevolucaoInterfaceRepository.
-func (m *MockEstoqueRepo) BuscaDevoluvao(ctx context.Context, id int) (*model.Devolucao, error) {
+func (m *MockEstoqueRepo) BuscaDevoluvao(ctx context.Context, id int) ([]model.Devolucao, error) {
 	panic("unimplemented")
 }
 

@@ -20,7 +20,7 @@ type EntregaParaInserir struct {
 	Data_entrega       time.Time         `json:"data_entrega"`
 	Assinatura_Digital string            `json:"assinatura_digital"`
 	Itens              []ItemParaInserir `json:"itens"`
-	Id_troca           int               `json:""`
+	Id_troca           int               `json:"-"`
 }
 
 type Entrega struct {
