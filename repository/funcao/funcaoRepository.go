@@ -32,9 +32,9 @@ func NewfuncaoRepository(db *sql.DB) FuncaoInterface {
 
 // AddFuncao implements FuncaoInterface.
 func (s *SqlServerLogin) AddFuncao(ctx context.Context, funcao *model.Funcao) error {
-		query:= `insert into funcao (funcao) values (@funcao)`
+		query:= `insert into funcao (funcao, idDepartamento) values (@funcao, @idDepartamento)`
 
-		_, err:= s.Db.ExecContext(ctx, query, sql.Named("funcao",funcao.Funcao))
+		_, err:= s.Db.ExecContext(ctx, query, sql.Named("funcao",funcao.Funcao), sql.Named("idDepartamento", funcao.IdDepartamento))
 		if err != nil{
 			var ErrSql *mssql.Error
 			if errors.As(err, &ErrSql) && ErrSql.Number == 2627 {
@@ -68,7 +68,7 @@ func (s *SqlServerLogin) BuscarFuncao(ctx context.Context, id int) (*model.Funca
 
 // BuscarTodosCargos implements FuncaoInterface.
 func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error) {
-	query:= `select id, funcao from funcao`
+	query:= `select id, funcao, IdDepartamento from funcao`
 
 	linhas, err:= s.Db.QueryContext(ctx, query)
 	if err != nil {
@@ -82,7 +82,7 @@ func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao,
 
 		var funcao model.Funcao
 
-		if err:= linhas.Scan(&funcao.ID, &funcao.Funcao); err!= nil {
+		if err:= linhas.Scan(&funcao.ID, &funcao.Funcao, &funcao.IdDepartamento); err!= nil {
 
 			return  nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 		}

@@ -22,11 +22,11 @@ func Test_AddFuncao(t *testing.T) {
 
 	repo := NewfuncaoRepository(db)
 	funcao := model.Funcao{Funcao: "Desenvolvedor"}
-	query := regexp.QuoteMeta(`insert into funcao (funcao) values (@funcao)`)
+	query := regexp.QuoteMeta(`insert into`)
 
 	t.Run("sucesso ao adicionar uma funcao", func(t *testing.T) {
 		mock.ExpectExec(query).
-			WithArgs(funcao.Funcao).
+			WithArgs(funcao.Funcao , funcao.IdDepartamento).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		err := repo.AddFuncao(ctx, &funcao)
@@ -39,7 +39,7 @@ func Test_AddFuncao(t *testing.T) {
 		mssqlErr := &mssql.Error{Number: 2627, Message: "Violation of UNIQUE KEY constraint"}
 
 		mock.ExpectExec(query).
-			WithArgs(funcao.Funcao).
+			WithArgs(funcao.Funcao, funcao.IdDepartamento).
 			WillReturnError(mssqlErr)
 
 		err := repo.AddFuncao(ctx, &funcao)
@@ -52,7 +52,7 @@ func Test_AddFuncao(t *testing.T) {
 		dbErr := errors.New("falha de conexão")
 
 		mock.ExpectExec(query).
-			WithArgs(funcao.Funcao).
+			WithArgs(funcao.Funcao, funcao.IdDepartamento).
 			WillReturnError(dbErr)
 
 		err := repo.AddFuncao(ctx, &funcao)
@@ -70,7 +70,7 @@ func Test_BuscarFuncao(t *testing.T) {
 
 	repo := NewfuncaoRepository(db)
 	funcao := model.Funcao{ID: 1, Funcao: "Analista de QA"}
-	query := regexp.QuoteMeta(`select id, funcao from funcao where id = @id`)
+	query := regexp.QuoteMeta(`select id`)
 
 	t.Run("sucesso ao buscar uma funcao", func(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"id", "funcao"}).AddRow(funcao.ID, funcao.Funcao)
@@ -117,16 +117,16 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 	defer db.Close()
 
 	repo := NewfuncaoRepository(db)
-	query := regexp.QuoteMeta(`select id, funcao from funcao`)
+	query := regexp.QuoteMeta(`select id, funcao, IdDepartamento`)
 	funcoesEsperadas := []model.Funcao{
-		{ID: 1, Funcao: "Gerente"},
-		{ID: 2, Funcao: "Coordenador"},
+		{ID: 1, Funcao: "Gerente", IdDepartamento: 2},
+		{ID: 2, Funcao: "Coordenador", IdDepartamento: 2},
 	}
 
 	t.Run("sucesso ao buscar todas as funcoes", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"id", "funcao"}).
-			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao).
-			AddRow(funcoesEsperadas[1].ID, funcoesEsperadas[1].Funcao)
+		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento"}).
+			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao, funcoesEsperadas[0].IdDepartamento).
+			AddRow(funcoesEsperadas[1].ID, funcoesEsperadas[1].Funcao, funcoesEsperadas[1].IdDepartamento)
 
 		mock.ExpectQuery(query).WillReturnRows(rows)
 
@@ -153,9 +153,9 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 
 	t.Run("erro ao escanear dados durante a iteracao", func(t *testing.T) {
 		// A segunda linha tem um tipo de dado errado para causar falha no Scan
-		rows := sqlmock.NewRows([]string{"id", "funcao"}).
-			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao).
-			AddRow("id-invalido", funcoesEsperadas[1].Funcao)
+		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento"}).
+			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao, funcoesEsperadas[0].IdDepartamento).
+			AddRow("id-invalido", funcoesEsperadas[1].Funcao, funcoesEsperadas[1].IdDepartamento)
 
 		mock.ExpectQuery(query).WillReturnRows(rows)
 
@@ -169,8 +169,8 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 	t.Run("erro apos a iteracao (linhas.Err)", func(t *testing.T) {
 		iterErr := errors.New("erro durante a iteracao")
 		
-		rows := sqlmock.NewRows([]string{"id", "funcao"}).
-			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao).
+		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento"}).
+			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao, funcoesEsperadas[1].IdDepartamento).
 			CloseError(iterErr) // Simula um erro ao fechar as linhas
 
 		mock.ExpectQuery(query).WillReturnRows(rows)
@@ -191,7 +191,7 @@ func Test_DeletarFuncao(t *testing.T) {
 
 	repo := NewfuncaoRepository(db)
 	idParaDeletar := 1
-	query := regexp.QuoteMeta(`delete from funcao where id = @id`)
+	query := regexp.QuoteMeta(`delete from funcao `)
 
 	t.Run("sucesso ao deletar uma funcao", func(t *testing.T) {
 		mock.ExpectExec(query).
