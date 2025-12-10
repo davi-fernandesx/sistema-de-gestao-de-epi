@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"regexp"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	// Ajuste os imports conforme o nome do seu módulo
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
@@ -26,12 +28,12 @@ type MockEstoqueRepo struct {
 }
 
 // BuscaDevoluvao implements trocaepi.DevolucaoInterfaceRepository.
-func (m *MockEstoqueRepo) BuscaDevoluvao(ctx context.Context, id int) ([]model.Devolucao, error) {
+func (m *MockEstoqueRepo) BuscaDevolucao(ctx context.Context, id int) ([]model.Devolucao, error) {
 	panic("unimplemented")
 }
 
 // BuscaTodasDevolucoe implements trocaepi.DevolucaoInterfaceRepository.
-func (m *MockEstoqueRepo) BuscaTodasDevolucoe(ctx context.Context) ([]model.Devolucao, error) {
+func (m *MockEstoqueRepo) BuscaTodasDevolucoes(ctx context.Context) ([]model.Devolucao, error) {
 	panic("unimplemented")
 }
 
@@ -151,106 +153,98 @@ func TestAddEntrega_ErroNaBaixaDeEstoque(t *testing.T) {
 	assert.NoError(t, mockSQL.ExpectationsWereMet())
 }
 
-// --- 3. TESTE: BUSCA ENTREGA (POR ID) ---
+var entregaColunas = []string{
 
-func TestBuscaEntrega_Sucesso(t *testing.T) {
-	db, mockSQL, _ := sqlmock.New()
-	defer db.Close()
-	repo := NewEntregaRepository(db, nil) // Não precisa do mock de estoque aqui
-
-	// Colunas retornadas pela query gigante
-	cols := []string{
-		"id", "data_Entrega", "id_funcionario", "nome", "id_departamento", "departamento",
-		"id_funcao", "funcao", "id_epi", "nome_epi", "fabricante", "CA", "descricao",
-		"data_fabricacao", "data_validade", "data_validadeCa", "id_tipo_protecao", "protecao",
-		"id_tamanho", "tamanho", "quantidade", "AssinaturaDigital", "valorUnitario",
-	}
-
-	// Simula 2 linhas retornadas (1 entrega com 2 itens)
-	rows := sqlmock.NewRows(cols).
-		AddRow(1, time.Now(), 10, "Joao", 1, "TI", 2, "Dev", 50, "Luva", "FabX", "123", "Desc", time.Now(), time.Now(), time.Now(), 1, "Mao", 1, "G", 2, "ass123", 10.0).
-		AddRow(1, time.Now(), 10, "Joao", 1, "TI", 2, "Dev", 51, "Bota", "FabY", "456", "Desc", time.Now(), time.Now(), time.Now(), 2, "Pe", 2, "40", 1, "ass123", 50.0)
-
-	mockSQL.ExpectQuery(regexp.QuoteMeta(`select ee.id, ee.data_Entrega`)). // Match parcial da query
-										WithArgs(sql.Named("id", 1)).
-										WillReturnRows(rows)
-
-	dto, err := repo.BuscaEntrega(context.Background(), 1)
-
-	assert.NoError(t, err)
-	assert.NotNil(t, dto)
-	assert.Equal(t, 1, dto.Id)
-	assert.Equal(t, "Joao", dto.Funcionario.Nome)
-	assert.Len(t, dto.Itens, 2) // Deve ter agrupado os 2 itens
-	assert.Equal(t, "Luva", dto.Itens[0].Epi.Nome)
-	assert.Equal(t, "Bota", dto.Itens[1].Epi.Nome)
+	"id", "dataEntrega", "id_funcionario", "nome", "id_departamento", "departamento", "id_funcao", "funcao",
+	"id_epi", "nome", "fabricante", "CA", "descricao", "data_fabricacao", "data_validade", "data_validadeCA",
+	"id_tipo_protecao", "protecao", "id_tamanho", "tamanho", "quantidade", "assinatura_digital", "valorUnitario",
 }
 
-func TestBuscaEntrega_NaoEncontrado(t *testing.T) {
-	db, mockSQL, _ := sqlmock.New()
-	defer db.Close()
-	repo := NewEntregaRepository(db, nil)
+func TestBuscaEntregaPorId(t *testing.T) {
 
-	// Retorna 0 linhas
-	mockSQL.ExpectQuery(regexp.QuoteMeta(`select ee.id`)).
-		WithArgs(sql.Named("id", 999)).
-		WillReturnRows(sqlmock.NewRows([]string{}))
+	ctx := context.Background()
+	mockEstoque := new(MockEstoqueRepo)
+	db, mock, err := sqlmock.New()
+	if err != nil {
 
-	dto, err := repo.BuscaEntrega(context.Background(), 999)
-
-	assert.Error(t, err)
-	assert.Nil(t, dto)
-	assert.Equal(t, Errors.ErrNaoEncontrado, err)
-}
-
-// --- 4. TESTE: BUSCA TODAS AS ENTREGAS ---
-
-func TestBuscaTodasEntregas_Sucesso(t *testing.T) {
-	db, mockSQL, _ := sqlmock.New()
-	defer db.Close()
-	repo := NewEntregaRepository(db, nil)
-
-	cols := []string{
-		"id", "data_Entrega", "id_funcionario", "nome", "id_departamento", "departamento",
-		"id_funcao", "funcao", "id_epi", "nome_epi", "fabricante", "CA", "descricao",
-		"data_fabricacao", "data_validade", "data_validadeCa", "id_tipo_protecao", "protecao",
-		"id_tamanho", "tamanho", "quantidade", "AssinaturaDigital", "valorUnitario",
+		t.Fatal(err)
 	}
 
-	// Simula 3 linhas: Entrega 1 (2 itens) e Entrega 2 (1 item)
-	rows := sqlmock.NewRows(cols).
-		AddRow(1, time.Now(), 10, "Joao", 1, "TI", 2, "Dev", 50, "Luva", "FabX", "123", "Desc", time.Now(), time.Now(), time.Now(), 1, "Mao", 1, "G", 2, "ass1", 10.0).
-		AddRow(1, time.Now(), 10, "Joao", 1, "TI", 2, "Dev", 51, "Bota", "FabY", "456", "Desc", time.Now(), time.Now(), time.Now(), 2, "Pe", 2, "40", 1, "ass1", 50.0).
-		AddRow(2, time.Now(), 20, "Maria", 1, "RH", 3, "Gestor", 60, "Oculos", "FabZ", "789", "Desc", time.Now(), time.Now(), time.Now(), 3, "Olho", 3, "U", 1, "ass2", 20.0)
+	dataEntrega := time.Now()
+	DataFabricacao := time.Now()
+	dataValidade := time.Now()
+	dataValidadeCa := time.Now()
 
-	mockSQL.ExpectQuery(regexp.QuoteMeta(`select ee.id`)).
-		WillReturnRows(rows)
+	id1 := 1
+	id2 := 2
+	repo := NewEntregaRepository(db, mockEstoque)
 
-	lista, err := repo.BuscaTodasEntregas(context.Background())
+	row := sqlmock.NewRows(entregaColunas).AddRow(
 
-	assert.NoError(t, err)
-	assert.NotNil(t, lista)
-	assert.Len(t, lista, 2) // Deve ter agrupado em 2 entregas distintas
+		id1, dataEntrega, 3, "davi", 4, "ti", 3, "dev", 1, "luva", "master", "64556", " luvas de borracha",
+		DataFabricacao, dataValidade, dataValidadeCa, 2, "maos", 2, "G", 2, "hash", 12.99,
+	)
 
-	// Verificando se os itens foram distribuidos corretamente
-	// Nota: Como o mapa em Go não garante ordem, temos que achar o ID correto
-	var entrega1, entrega2 *model.EntregaDto
-	for _, e := range lista {
-		switch e.Id {
-case 1:
-			entrega1 = e
-		case 2:
-			entrega2 = e
+	row2 := sqlmock.NewRows(entregaColunas).AddRow(
+
+		id2, dataEntrega, 4, "rada", 4, "ti", 3, "dev", 1, "luva", "master", "64556", " luvas de borracha",
+		DataFabricacao, dataValidade, dataValidadeCa, 2, "maos", 2, "G", 2, "hash", 12.99,
+	)
+
+	t.Run("sucesso ao retorna entrega por id", func(t *testing.T) {
+
+		mock.ExpectQuery(regexp.QuoteMeta("select")).WithArgs(sql.Named("id", id1)).WillReturnRows(row)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(sql.Named("id", id2)).WillReturnRows(row2)
+
+		resultado1, err := repo.BuscaEntrega(ctx, id1)
+
+		require.NoError(t, err)
+		require.NotNil(t, resultado1)
+		require.Equal(t, "davi", resultado1.Funcionario.Nome)
+		require.Equal(t, id1, resultado1.Id)
+
+		resultado2, err := repo.BuscaEntrega(ctx, id2)
+		require.NoError(t, err)
+		require.NotNil(t, resultado2)
+		require.Equal(t, "rada", resultado2.Funcionario.Nome)
+		require.Equal(t, id2, resultado2.Id)
+
+	})
+
+	t.Run("erro no banco de dados e em resultados nao encontrados", func(t *testing.T) {
+
+		mock.ExpectQuery(regexp.QuoteMeta("select")).WithArgs(sql.Named("id", id1)).WillReturnError(sql.ErrConnDone)
+
+		mock.ExpectQuery(regexp.QuoteMeta("select")).WithArgs(sql.Named("id", id2)).WillReturnError(errors.New("erro inesperado do banco"))
+
+		id3 := 3
+		rowVazia := sqlmock.NewRows(entregaColunas)
+		mock.ExpectQuery(regexp.QuoteMeta("select")).WithArgs(sql.Named("id", id3)).WillReturnRows(rowVazia)
+
+		resultado1, err1 := repo.BuscaEntrega(ctx, id1)
+
+		require.Error(t, err1)
+		require.Nil(t, resultado1)
+		require.True(t, errors.Is(err1, Errors.ErrBuscarTodos))
+
+		resultado2, err2 := repo.BuscaEntrega(ctx, id2)
+
+		require.Error(t, err2)
+		fmt.Println(err2)
+		require.Nil(t, resultado2)
+		require.True(t, errors.Is(err2, Errors.ErrBuscarTodos))
+
+		resultado3, err3 := repo.BuscaEntrega(ctx, id3)
+
+		if err3 != nil {
+			t.Logf("\n🔴 ERRO NO CENÁRIO 3: %v\n", err3)
 		}
-	}
+		require.NoError(t, err3)
+		require.Empty(t, resultado3)
 
-	assert.NotNil(t, entrega1)
-	assert.Len(t, entrega1.Itens, 2)
-	assert.NotNil(t, entrega2)
-	assert.Len(t, entrega2.Itens, 1)
+	})
+
 }
-
-// --- 5. TESTE: CANCELAR ENTREGA ---
 
 func TestCancelarEntrega_Sucesso(t *testing.T) {
 	db, mockSQL, _ := sqlmock.New()

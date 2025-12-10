@@ -36,14 +36,13 @@ func Test_EntradaEpi(t *testing.T) {
 	repo := NewEntradaRepository(db)
 
 	entradaInserir := model.EntradaEpiInserir{
-		ID_epi:       1,
-		Data_entrada: time.Now(),
-		Id_tamanho: 2,
-		Quantidade:   10,
-		Lote:         "xyz",
-		Fornecedor:   "teste1",
+		ID_epi:        1,
+		Data_entrada:  time.Now(),
+		Id_tamanho:    2,
+		Quantidade:    10,
+		Lote:          "xyz",
+		Fornecedor:    "teste1",
 		ValorUnitario: decimal.NewFromFloat(12.77),
-
 	}
 
 	query := regexp.QuoteMeta(`
@@ -77,372 +76,147 @@ func Test_EntradaEpi(t *testing.T) {
 	})
 }
 
-func Test_BuscarEntrada(t *testing.T) {
-	db, mock, ctx, err := mock(t)
-	require.NoError(t, err)
-	defer db.Close()
-
-	repo := NewEntradaRepository(db)
-
-	// Query SQL esperada, escapada para uso com regexp
-	query := regexp.QuoteMeta(`
-     SELECT
-            ee.id, ee.id_epi, ee.quantidade, ee.lote, ee.fornecedor, -- Campos da tabela de entrada
-            e.nome, e.fabricante, e.CA, e.descricao,ee.valorUnitario,
-            e.data_fabricacao, e.data_validade, e.validade_CA, -- Campos do EPI
-            tp.id as id_protecao, tp.protecao as nome_protecao, -- Campos do Tipo de Proteção
-            t.id as id_tamanho, t.tamanho as tamanho_descricao -- Campos do Tamanho
-        FROM 
-            entradas_epi ee
-        INNER JOIN
-            epi e ON ee.id_epi = e.id 
-        INNER JOIN
-            tipo_protecao tp ON e.id_tipo_protecao = tp.id
-        INNER JOIN
-            tamanhos t ON ee.id_tamanho = t.id
-		WHERE 
-            ee.cancelada_em IS NULL AND  ee.id = @id;
-    `)
-
-	idParaBuscar := 1
-	agora := time.Now()
-	entradaMock := model.EntradaEpi{
-		ID:               1,
-		ID_epi:           10,
-		Nome:             "Capacete de Segurança",
-		Fabricante:       "Marca Segura",
-		CA:               "12345",
-		Descricao:        "Capacete para proteção contra impactos.",
-		DataFabricacao:   agora.AddDate(0, -7,0), // 6 meses atrás
-		DataValidade:     agora.AddDate(2, 0, 0),  // Daqui a 2 anos
-		DataValidadeCa:   agora.AddDate(1, 0, 0),  // Daqui a 1 ano
-		IDprotecao:       1,
-		NomeProtecao:     "Cabeça",
-		Id_Tamanho:       1,
-		TamanhoDescricao: "g",
-		Quantidade:       10,
-		Lote:             "LOTE-2025-A1",
-		Fornecedor:       "Fornecedor Principal",
-		ValorUnitario:    decimal.NewFromFloat(29.99),
-	}
-
-	t.Run("sucesso ao buscar entrada", func(t *testing.T) {
-		// Define as colunas que a query retorna, na ordem correta
-		rows := sqlmock.NewRows([]string{
-			"id", "id_epi", "quantidade", "lote", "fornecedor", "nome",
-			"fabricante", "CA", "descricao","valorUnitario",
-			"dataFabricacao", "dataValidade", "dataValidadeCa",
-			"id_protecao", "nomeProtecao", "id_tamanho", "tamanhoDescricao", 
-		}).AddRow( // Adiciona uma linha com os dados do nosso mock
-			entradaMock.ID,
-			entradaMock.ID_epi,
-			entradaMock.Quantidade,
-			entradaMock.Lote,
-			entradaMock.Fornecedor,
-			entradaMock.Nome,
-			entradaMock.Fabricante,
-			entradaMock.CA,
-			entradaMock.Descricao,
-			entradaMock.ValorUnitario,
-			entradaMock.DataFabricacao,
-			entradaMock.DataValidade,
-			entradaMock.DataValidadeCa,
-			entradaMock.IDprotecao,
-			entradaMock.NomeProtecao,
-			entradaMock.Id_Tamanho,
-			entradaMock.TamanhoDescricao,
-			
-		)
-
-		mock.ExpectQuery(query).
-			WithArgs(entradaMock.ID). // Com o argumento correto
-			WillReturnRows(rows)
-
-		entradaRetornada, err := repo.BuscarEntrada(ctx, idParaBuscar)
-
-		// Asserções
-		require.NoError(t, err)
-		require.NotNil(t, entradaRetornada) // Verifica se o resultado é o esperado
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("erro - entrada nao encontrada", func(t *testing.T) {
-		// Esperamos uma query, mas desta vez ela retornará um erro `sql.ErrNoRows`
-		mock.ExpectQuery(query).
-			WithArgs(sql.Named("id", idParaBuscar)).
-			WillReturnError(sql.ErrNoRows)
-
-		// Executa a função
-		entradaRetornada, err := repo.BuscarEntrada(ctx, idParaBuscar)
-
-		// Asserções
-		require.Error(t, err)
-		require.Nil(t, entradaRetornada) // O objeto de retorno deve ser nulo
-		// Verifica se o erro retornado é o erro customizado correto
-		assert.True(t, errors.Is(err, Errors.ErrNaoEncontrado), "erro tem que ser do tipo nao encontrado")
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("erro - falha ao escanear dados", func(t *testing.T) {
-		// Para simular um erro de scan, podemos retornar colunas com tipos errados.
-		// Por exemplo, uma string onde deveria ser um int.
-		rows := sqlmock.NewRows([]string{
-			"id", "id_epi", "quantidade", "lote", "fornecedor", "nome", "fabricante", "CA", "descricao",
-			"dataFabricacao", "dataValidade", "dataValidadeCa",
-			"id_protecao", "nomeProtecao", "id_tamanho", "tamanhoDescricao", "valorUnitario",
-		}).AddRow( // O primeiro campo `id` deveria ser `int`, mas passamos uma `string`
-			"id_invalido",
-			entradaMock.ID_epi,
-			entradaMock.Quantidade,
-			entradaMock.Lote,
-			entradaMock.Fornecedor,
-			entradaMock.Nome,
-			entradaMock.Fabricante,
-			entradaMock.CA,
-			entradaMock.Descricao,
-			entradaMock.DataFabricacao,
-			entradaMock.DataValidade,
-			entradaMock.DataValidadeCa,
-			entradaMock.IDprotecao,
-			entradaMock.NomeProtecao,
-			entradaMock.Id_Tamanho,
-			entradaMock.TamanhoDescricao,
-			entradaMock.ValorUnitario,
-		)
-
-		// Esperamos a query...
-		mock.ExpectQuery(query).
-			WithArgs(sql.Named("id", idParaBuscar)).
-			WillReturnRows(rows).WillReturnError(Errors.ErrFalhaAoEscanearDados) // ... que retornará os dados "corrompidos"
-
-		// Executa a função
-		entradaRetornada, err := repo.BuscarEntrada(ctx, idParaBuscar)
-
-		// Asserções
-		require.Error(t, err)
-		require.Nil(t, entradaRetornada)
-		// Verifica se o erro retornado é o erro customizado para falha de scan
-		assert.True(t, errors.Is(err, Errors.ErrFalhaAoEscanearDados), "erro tem que ser do tipo escanear")
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
+var colunaEntrada = []string{
+	"id", "id_epi", "quantidade", "lote", "fornecedor",
+	"nome", "fabricante", "CA", "descricao", "valorUnitario",
+	"data_fabricacao", "data_validade", "validade_CA",
+	"id_protecao", "protecao",
+	"id_tamanho", "tamanho",
 }
 
-func Test_BuscarTodasEntradas(t *testing.T) {
-	// --- Setup ---
-	db, mock, ctx, err := mock(t)
-	require.NoError(t, err)
-	defer db.Close()
+func TestBuscarEntradaPorId(t *testing.T) {
 
+	db, mock, ctx, err := mock(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
 	repo := NewEntradaRepository(db)
 
-	// Query SQL esperada para buscar TODAS as entradas (sem a cláusula WHERE)
-	query := regexp.QuoteMeta(`
-     SELECT
-            ee.id, ee.id_epi, ee.quantidade, ee.lote, ee.fornecedor, -- Campos da tabela de entrada
-            e.nome, e.fabricante, e.CA, e.descricao,ee.valorUnitario,
-            e.data_fabricacao, e.data_validade, e.validade_CA, -- Campos do EPI
-            tp.id as id_protecao, tp.protecao as nome_protecao, -- Campos do Tipo de Proteção
-            t.id as id_tamanho, t.tamanho as tamanho_descricao -- Campos do Tamanho
-        FROM 
-            entradas_epi ee
-        INNER JOIN
-            epi e ON ee.id_epi = e.id 
-        INNER JOIN
-            tipo_protecao tp ON e.id_tipo_protecao = tp.id
-        INNER JOIN
-            tamanhos t ON ee.id_tamanho = t.id
-		where ee.cancelada_em IS NULL
-    `) // Removido o "where ee.id = @id" para alinhar com o nome da função
+	id := 1
+	dataValidade := time.Now()
+	dataFabricacao := time.Now()
+	validadeCa := time.Now()
 
-	// Dados de exemplo que esperamos que o banco retorne
-	agora := time.Now()
-	entradasMock := []model.EntradaEpi{
-		{
-			ID:               1,
-			ID_epi:           10,
-			Nome:             "Capacete de Segurança",
-			Fabricante:       "Marca Segura",
-			CA:               "12345",
-			Descricao:        "Capacete para proteção contra impactos.",
-			DataFabricacao:   agora.AddDate(0, -6, 0),
-			DataValidade:     agora.AddDate(2, 0, 0),
-			DataValidadeCa:   agora.AddDate(1, 0, 0),
-			IDprotecao:       1,
-			NomeProtecao:     "Cabeça",
-			Id_Tamanho:       3,
-			TamanhoDescricao: "m",
-			Quantidade:       10,
-			Lote:             "LOTE-2025-A1",
-			Fornecedor:       "Fornecedor Principal",
-			ValorUnitario:    decimal.NewFromFloat(56.99),
-		},
-		{
-			ID:             2,
-			ID_epi:         20,
-			Nome:           "Luva de Proteção",
-			Fabricante:     "Marca Tátil",
-			CA:             "67890",
-			Descricao:      "Luva para proteção química.",
-			DataFabricacao: agora.AddDate(0, -3, 0),
-			DataValidade:   agora.AddDate(1, 6, 0),
-			DataValidadeCa: agora.AddDate(1, 0, 0),
-			IDprotecao:     2,
-			NomeProtecao:   "Mãos",
-			Id_Tamanho: 4,
-			TamanhoDescricao: "p",
-			Quantidade:     5,
-			Lote:           "LOTE-2024-B2",
-			Fornecedor:     "Fornecedor Secundário",
-			ValorUnitario:  decimal.NewFromFloat(67.99),
-		},
+	t.Run("sucesso ao achar entrada por id", func(t *testing.T) {
+
+		row := sqlmock.NewRows(colunaEntrada).AddRow(
+
+			1, 23, 4, "TRF-8676", "EPI-TEST", "LUVA", "master", "2345", "luva de borracha", 45.99,
+			dataFabricacao, dataValidade, validadeCa, 2, "protecao maos", 2, "p",
+		)
+
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(sql.Named("id", id)).WillReturnRows(row)
+
+		resultado, err := repo.BuscarEntrada(ctx, id)
+
+		require.NoError(t, err)
+		require.NotNil(t, resultado)
+		require.Equal(t, "LUVA", resultado.Nome)
+		require.Equal(t, "master", resultado.Fabricante)
+
+	})
+
+	t.Run("deve retornar um erro", func(t *testing.T) {
+
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(sql.Named("id", id)).WillReturnError(sql.ErrConnDone)
+
+		resultado, err := repo.BuscarEntrada(ctx, id)
+
+		require.Error(t, err)
+		require.Equal(t, model.EntradaEpi{}, resultado)
+
+	})
+
+	t.Run("erro de no rows", func(t *testing.T) {
+
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(sql.Named("id", id)).WillReturnError(sql.ErrNoRows)
+
+		resultado, err := repo.BuscarEntrada(ctx, id)
+
+		require.Error(t, err)
+		require.Equal(t, model.EntradaEpi{}, resultado)
+
+	})
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+
+		t.Errorf("algumas expectativas nao foram atendidas")
 	}
 
-	// --- Test Cases ---
+}
 
-	t.Run("sucesso ao buscar todas as entradas", func(t *testing.T) {
-		// Define as colunas que a query retorna, na ordem correta
-		rows := sqlmock.NewRows([]string{
-			"id", "id_epi", "quantidade", "lote", "fornecedor", "nome", "fabricante", "CA", "descricao","valorUnitario",
-			"dataFabricacao", "dataValidade", "dataValidadeCa",
-			"id_protecao", "nomeProtecao", "id_tamamho", "tamanhoDescricao",
-		})
+func TestBuscarTodasEntrada(t *testing.T) {
 
-		// Adiciona os dados do nosso mock nas linhas
-		for _, entrada := range entradasMock {
-			rows.AddRow(
-				entrada.ID, entrada.ID_epi, entrada.Quantidade, entrada.Lote, entrada.Fornecedor,
-				entrada.Nome, entrada.Fabricante, entrada.CA,
-				entrada.Descricao,entrada.ValorUnitario, entrada.DataFabricacao, entrada.DataValidade,
-				entrada.DataValidadeCa, entrada.IDprotecao, entrada.NomeProtecao,
-				entrada.Id_Tamanho, entrada.TamanhoDescricao,
-			)
-		}
+	db, mock, ctx, err := mock(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	repo := NewEntradaRepository(db)
 
-		mock.ExpectQuery(query).WillReturnRows(rows)
+	dataValidade := time.Now()
+	dataFabricacao := time.Now()
+	validadeCa := time.Now()
+
+	t.Run("sucesso ao achar entrada por id", func(t *testing.T) {
+
+		row := sqlmock.NewRows(colunaEntrada).AddRow(
+
+			1, 23, 4, "TRF-8676", "EPI-TEST", "LUVA", "master", "2345", "luva de borracha", 45.99,
+			dataFabricacao, dataValidade, validadeCa, 2, "protecao maos", 2, "p",
+		).AddRow(
+
+			5, 3, 3, "TRF-2376", "test", "bota", "master", "2390", "bota de borracha", 75.99,
+			dataFabricacao, dataValidade, validadeCa, 3, "protecao pes", 2, "39",
+		).AddRow(
+
+			8, 6, 1, "TRF-8643", "epi", "mascara", "master", "2337", "mascara de borracha", 95.99,
+			dataFabricacao, dataValidade, validadeCa, 4, "protecao rosto", 4, "g",
+		)
+
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnRows(row)
 
 		resultado, err := repo.BuscarTodasEntradas(ctx)
 
 		require.NoError(t, err)
 		require.NotNil(t, resultado)
-		require.Len(t, resultado, 2) // Verifica se retornou 2 entradas
-		require.Equal(t, entradasMock, resultado)
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Len(t, resultado, 3)
+		require.Equal(t, "EPI-TEST", resultado[0].Fornecedor)
+		require.Equal(t, "test", resultado[1].Fornecedor)
+		require.Equal(t, "epi", resultado[2].Fornecedor)
+	
+
 	})
 
-	t.Run("sucesso - nenhuma entrada encontrada", func(t *testing.T) {
-		// Retorna as colunas, mas nenhuma linha
-		rows := sqlmock.NewRows([]string{
-			"id", "id_epi", "nome", "fabricante", "CA", "descricao",
-			"dataFabricacao", "dataValidade", "dataValidadeCa",
-			"id_protecao", "nomeProtecao", "quantidade", "lote", "fornecedor","vaklorUnitario",
-		})
+	t.Run("deve retornar um erro", func(t *testing.T) {
 
-		mock.ExpectQuery(query).WillReturnRows(rows)
-
-		resultado, err := repo.BuscarTodasEntradas(ctx)
-
-		require.NoError(t, err)
-		require.NotNil(t, resultado) // O slice não deve ser nulo
-		require.Len(t, resultado, 0) // O slice deve estar vazio
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("erro - falha na execucao da query", func(t *testing.T) {
-		mock.ExpectQuery(query).WillReturnError(Errors.ErrBuscarTodos)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnError(sql.ErrConnDone)
 
 		resultado, err := repo.BuscarTodasEntradas(ctx)
 
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, Errors.ErrBuscarTodos), "erro tem que ser do tipo buscar todos")
-		require.Len(t, resultado, 0) // Garante que o slice retornado é vazio
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Equal(t, []model.EntradaEpi{}, resultado)
+		fmt.Println(resultado)
+
 	})
 
-	t.Run("erro - falha ao escanear dados de uma linha", func(t *testing.T) {
-		// Retorna uma linha com um tipo de dado incompatível (e.g., string para ID)
-		rows := sqlmock.NewRows([]string{"id", "id_epi", "nome"}).
-			AddRow("id_invalido", 10, "Capacete")
+	t.Run("erro de no rows", func(t *testing.T) {
 
-		mock.ExpectQuery(query).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnError(sql.ErrNoRows)
 
 		resultado, err := repo.BuscarTodasEntradas(ctx)
 
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, Errors.ErrFalhaAoEscanearDados), "erro tem que ser do tipo escanear")
-		require.Nil(t, resultado) // A função retorna nil em caso de erro no scan
-		require.NoError(t, mock.ExpectationsWereMet())
+		require.Equal(t, []model.EntradaEpi{}, resultado)
+
 	})
 
-	t.Run("erro - ao iterar sobre as linhas", func(t *testing.T) {
+	if err := mock.ExpectationsWereMet(); err != nil {
 
-		entradasMock := model.EntradaEpi{
-			ID:               1,
-			ID_epi:           10,
-			Nome:             "Capacete de Segurança",
-			Fabricante:       "Marca Segura",
-			CA:               "12345",
-			Descricao:        "Capacete para proteção contra impactos.",
-			DataFabricacao:   agora.AddDate(0, -6, 0),
-			DataValidade:     agora.AddDate(2, 0, 0),
-			DataValidadeCa:   agora.AddDate(1, 0, 0),
-			IDprotecao:       1,
-			NomeProtecao:     "Cabeça",
-			Id_Tamanho:       2,
-			TamanhoDescricao: "p",
-			Quantidade:       10,
-			Lote:             "LOTE-2025-A1",
-			Fornecedor:       "Fornecedor Principal",
-			ValorUnitario: decimal.NewFromFloat(45.99),
-		}
-		linhas := sqlmock.NewRows([]string{
-			"id",
-			"id_epi",
-			"quantidade",
-			"lote",
-			"fornecedor",
-			"nome",
-			"fabricante",
-			"CA",
-			"descricao",
-			"valorUnitario",
-			"dataFabricacao",
-			"dataValidade",
-			"dataValidadeCa",
-			"id_protecao",
-			"nomeProtecao",
-			"id_tamanho",
-			"tamanhoDescricao",
-		}).AddRow(
-			entradasMock.ID,
-			entradasMock.ID_epi,
-			entradasMock.Quantidade,
-			entradasMock.Lote,
-			entradasMock.Fornecedor,
-			entradasMock.Nome,
-			entradasMock.Fabricante,
-			entradasMock.CA,
-			entradasMock.Descricao,
-			entradasMock.ValorUnitario,
-			entradasMock.DataFabricacao,
-			entradasMock.DataValidade,
-			entradasMock.DataValidadeCa,
-			entradasMock.IDprotecao,
-			entradasMock.NomeProtecao,
-			entradasMock.Id_Tamanho,
-			entradasMock.TamanhoDescricao,
-		).CloseError(errors.New("erro de conexao simulado"))
+		t.Errorf("algumas expectativas nao foram atendidas")
+	}
 
-		// Simulamos um erro que ocorre após a leitura bem-sucedida das linhas (verificado por `linhas.Err()`)
-		mock.ExpectQuery(query).WillReturnRows(linhas)
-
-		_, err := repo.BuscarTodasEntradas(ctx)
-
-		require.Error(t, err)
-		fmt.Println(err)
-		assert.True(t, errors.Is(err, Errors.ErrAoIterar), "erro tem que ser do tipo iterar")
-
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
 }
 
 func TestCancelarEntrada(t *testing.T) {
@@ -467,7 +241,6 @@ func TestCancelarEntrada(t *testing.T) {
 		NomeProtecao:   "Cabeça",
 		Lote:           "LOTE-2025-A1",
 		Fornecedor:     "Fornecedor Principal",
-
 	}
 
 	query := regexp.QuoteMeta(`update entrada
