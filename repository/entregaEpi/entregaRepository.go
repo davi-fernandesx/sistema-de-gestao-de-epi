@@ -9,7 +9,7 @@ import (
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/trocaEpi"
+	trocaepi "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/trocaEpi"
 )
 
 type EntregaInterface interface {
@@ -20,66 +20,21 @@ type EntregaInterface interface {
 }
 
 type NewsqlLogin struct {
-	Db *sql.DB
+	Db           *sql.DB
 	BaixaEstoque trocaepi.DevolucaoInterfaceRepository
-
 }
 
 func NewEntregaRepository(db *sql.DB, RepoDevolucao trocaepi.DevolucaoInterfaceRepository) EntregaInterface {
 
 	return &NewsqlLogin{
-		Db: db,
+		Db:           db,
 		BaixaEstoque: RepoDevolucao,
 	}
 
 }
 
-// Addentrega implements EntregaInterface.
-func (n *NewsqlLogin) Addentrega(ctx context.Context, model model.EntregaParaInserir) error {
-
-	tx, err := n.Db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("erro ao iniciar a transação, %w", err)
-	}
-	defer tx.Rollback()
-
-	//add as entregas
-	queryEntrega := `insert into entrega (id_funcionario, data_entrega, AssinaturaDigital)
-	 values (@idFuncionario, @dataEntrega, @AssinaturaDigital)
-	 OUTPUT INSERTED.id`
-
-	var idEntrega int64
-	errSql := tx.QueryRowContext(ctx, queryEntrega,
-		sql.Named("idFuncionario", model.ID_funcionario),
-		sql.Named("dataEntrega", model.Data_entrega),
-		sql.Named("AssinaturaDigital", model.Assinatura_Digital),
-	).Scan(&idEntrega)
-	if errSql != nil {
-
-		return fmt.Errorf("erro interno ao salvar entrega, %w", Errors.ErrInternal)
-	}
-	
-	for _, item:= range model.Itens {
-
-		err:= n.BaixaEstoque.BaixaEstoque(ctx, tx, int64(item.ID_epi), int64(item.ID_tamanho), item.Quantidade, idEntrega)
-		if err != nil {
-			return  err
-		}
-		
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("erro ao comitar transação: %w", Errors.ErrInternal)
-	}
-
-
-	return nil
-}
-
-// BuscaEntrega implements EntregaInterface.
-func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error) {
-
-	query := `select
+const  entregaQueryJoin = `
+select
 		    ee.id,
 			ee.data_Entrega,
 			ee.id_funcionario,
@@ -118,143 +73,12 @@ func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaD
 				tipo_protecao tp on e.id_tipo_protecao = tp.id
 			inner join 
 				tamanho t on i.id_tamanho = t.id
-			where ee.cancelada_em IS NULL and ee.id = @id
-		`
+			where ee.cancelada_em IS NULL 
 
-	var entrega *model.EntregaDto
+`
 
-	linhas, err := n.Db.QueryContext(ctx, query, sql.Named("id", id))
-	if err != nil {
-		return nil, fmt.Errorf("erro ao buscar entregas, %w", Errors.ErrBuscarTodos)
-	}
-	defer linhas.Close()
-
-	for linhas.Next() {
-
-		var item model.ItemEntregueDto
-		var entregaID int
-		var dataEntrega time.Time
-		var assinatura string
-		var funcID int
-		var funcNome string
-		var depID int
-		var depNome string
-		var funcaoID int
-		var funcaoNome string
-
-		err := linhas.Scan(
-			&entregaID,
-			&dataEntrega,
-			&funcID,
-			&funcNome,
-			&depID,
-			&depNome,
-			&funcaoID,
-			&funcaoNome,
-			&item.Epi.Id, // Assumindo que EpiDto tem esses campos
-			&item.Epi.Nome,
-			&item.Epi.Fabricante,
-			&item.Epi.CA,
-			&item.Epi.Descricao,
-			&item.Epi.DataFabricacao,
-			&item.Epi.DataValidade,
-			&item.Epi.DataValidadeCa,
-			&item.Epi.Protecao.ID, // Assumindo estrutura aninhada
-			&item.Epi.Protecao.Nome,
-			&item.Tamanho.ID, // Assumindo que TamanhoDto tem Id e Nome
-			&item.Tamanho.Tamanho,
-			&item.Quantidade,
-			&assinatura,
-			&item.ValorUnitario,
-		)
-		if err != nil {
-
-			return nil, fmt.Errorf(" %w", Errors.ErrFalhaAoEscanearDados)
-		}
-
-		if entrega == nil {
-
-			entrega = &model.EntregaDto{
-				Id: entregaID,
-				Funcionario: model.Funcionario_Dto{
-					ID:   funcID,
-					Nome: funcNome,
-					Departamento: model.DepartamentoDto{
-						ID:           depID,
-						Departamento: depNome,
-					},
-					Funcao: model.FuncaoDto{
-						ID:     funcaoID,
-						Funcao: funcaoNome,
-					},
-				},
-				Data_entrega:       dataEntrega,
-				Assinatura_Digital: assinatura,
-				Itens:              []model.ItemEntregueDto{},
-			}
-		}
-
-		entrega.Itens = append(entrega.Itens, item)
-	}
-
-	if err := linhas.Err(); err != nil {
-
-		return nil, fmt.Errorf("%w", Errors.ErrAoIterar)
-	}
-	if entrega == nil {
-		return nil, Errors.ErrNaoEncontrado // Retorna o erro específico
-	}
-
-	return entrega, nil
-
-}
-
-// BuscaTodasEntregas implements EntregaInterface.
-func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaDto, error) {
-	query := `select
-		    ee.id,
-			ee.data_Entrega,
-			ee.id_funcionario,
-			f.nome, 
-			f.id_departamento, 
-			d.departamento, 
-			f.id_funcao, 
-			ff.funcao, 
-			i.id_epi, 
-			e.nome, 
-			e.fabricante, 
-			e.CA,
-			e.descricao, 
-			e.data_fabricacao, 
-			e.data_validade, 
-			e.data_validadeCa,
-			e.id_tipo_protecao,
-			tp.protecao, 
-			i.id_tamanho, 
-			t.tamanho, 
-			i.quantidade,
-			ee.AssinaturaDigital,
-			i.valorUnitario
-			from entrega ee
-			inner join
-				funcionario f on ee.id_funcionario = f.id
-			inner join
-				departamentos d on f.id_departamento = d.id
-			inner join 
-				funcao ff on f.id_funcao = ff.id
-			inner join 
-				epi_entregues i on i.id_entrega = ee.id
-			inner join 
-				epi e on i.id_epi = e.id
-			inner join
-				tipo_protecao tp on e.id_tipo_protecao = tp.id
-			inner join 
-				tamanho t on i.id_tamanho = t.id
-			where
-				 ee.cancelada_em IS NULL
-			ORDER BY ee.id`
-
-	linhas, err := n.Db.QueryContext(ctx, query)
+func ( n *NewsqlLogin) buscaEntregas(ctx context.Context, query string, args ...any)([]*model.EntregaDto, error){
+linhas, err := n.Db.QueryContext(ctx, query, args...)
 	if err != nil {
 
 		return nil, fmt.Errorf("falha ao buscas as entregas, %w", Errors.ErrBuscarTodos)
@@ -302,7 +126,7 @@ func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaD
 		)
 		if err != nil {
 
-			return nil, fmt.Errorf(" %w", Errors.ErrFalhaAoEscanearDados)
+			return nil, fmt.Errorf("a  %w", Errors.ErrFalhaAoEscanearDados)
 		}
 
 		if _, ok := EntregaMap[entregaID]; !ok {
@@ -342,12 +166,79 @@ func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaD
 		EntregaSlice = append(EntregaSlice, entrega)
 	}
 
-	if err == sql.ErrNoRows {
 
-		return nil, fmt.Errorf("nenhuma entrega encontrada, %w", Errors.ErrBuscarTodos)
-	}
 
 	return EntregaSlice, nil
+
+
+}
+// Addentrega implements EntregaInterface.
+func (n *NewsqlLogin) Addentrega(ctx context.Context, model model.EntregaParaInserir) error {
+
+	tx, err := n.Db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("erro ao iniciar a transação, %w", err)
+	}
+	defer tx.Rollback()
+
+	//add as entregas
+	queryEntrega := `insert into entrega (id_funcionario, data_entrega, AssinaturaDigital)
+	 values (@idFuncionario, @dataEntrega, @AssinaturaDigital)
+	 OUTPUT INSERTED.id`
+
+	var idEntrega int64
+	errSql := tx.QueryRowContext(ctx, queryEntrega,
+		sql.Named("idFuncionario", model.ID_funcionario),
+		sql.Named("dataEntrega", model.Data_entrega),
+		sql.Named("AssinaturaDigital", model.Assinatura_Digital),
+	).Scan(&idEntrega)
+	if errSql != nil {
+
+		return fmt.Errorf("erro interno ao salvar entrega, %w", Errors.ErrInternal)
+	}
+
+	for _, item := range model.Itens {
+
+		err := n.BaixaEstoque.BaixaEstoque(ctx, tx, int64(item.ID_epi), int64(item.ID_tamanho), item.Quantidade, idEntrega)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("erro ao comitar transação: %w", Errors.ErrInternal)
+	}
+
+	return nil
+}
+
+
+// BuscaEntrega implements EntregaInterface.
+func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error) {
+
+	query:= entregaQueryJoin + " and ee.id = @id"
+
+	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", id))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(entrega) == 0 {
+
+		return  nil,nil
+	}
+
+	return  entrega[0], nil
+	
+}
+
+// BuscaTodasEntregas implements EntregaInterface.
+func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaDto, error) {
+
+	return n.buscaEntregas(ctx, entregaQueryJoin)
+
+	
 }
 
 // DeletarEntregas implements EntregaInterface.
