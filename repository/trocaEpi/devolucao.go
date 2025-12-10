@@ -14,8 +14,8 @@ type DevolucaoInterfaceRepository interface {
 	AddTrocaEPI(ctx context.Context, devolucao model.DevolucaoInserir) error
 	AddDevolucaoEpi(ctx context.Context, devolucao model.DevolucaoInserir) error
 	DeleteDevolucao(ctx context.Context, id int) error
-	BuscaDevoluvao(ctx context.Context, id int) ([]model.Devolucao, error)
-	BuscaTodasDevolucoe(ctx context.Context) ([]model.Devolucao, error)
+	BuscaDevolucao(ctx context.Context, matricula int) ([]model.Devolucao, error)
+	BuscaTodasDevolucoes(ctx context.Context) ([]model.Devolucao, error)
 	BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi, iDTamanho int64, quantidade int, idEntrega int64) error
 }
 
@@ -28,6 +28,106 @@ func NewDevolucaoRepository(db *sql.DB) DevolucaoInterfaceRepository {
 	return DevolucaoRepository{
 		db: db,
 	}
+}
+
+const queryBuscaDevolucao = `
+		select 
+		d.id,
+		d.idFuncionario,
+		f.nome,
+		f.idDepartamento,
+		dd.departamento,
+		f.idFuncao,
+		ff.funcao,
+		d.id_epi, 
+		e.nome, 
+		e.fabricante, 
+		e.CA,
+		d.id_tamanho as id_tamanhoAntigo,
+		t.tamanho as tamanhoAntigo,
+		d.quantidadeAdevolver,
+		d.motivo,
+		d.id_epiNovo as epiNovo, 
+		en.nome as NomeEpiNovo, 
+		en.fabricante as FabricanteEpiNovo, 
+		en.CA as CAEpiNovo,
+		d.quantidadeNova as QuantidadeEpiNovo,
+		d.id_tamanhoNovo as TamanhoEpiNovo,
+		tn.tamanho as TamanhoNovo,
+		d.assinaturaDigital,
+		d.dataTroca
+
+		from devolucao d
+
+		inner join
+			epi e on d.id_epi = e.id
+		left join
+			epi en on d.id_epiNovo = en.id
+		inner join
+			funcionario f on d.idFuncionario = f.id	
+		inner join 
+			departamento dd on f.idDepartamento = dd.id
+		inner join 
+			funcao ff on f.idFuncao = ff.id
+		left join
+			tamanho tn on d.id_tamanhoNovo = tn.id
+		inner join
+			tamanho t on d.id_tamanho = t.id
+`
+
+func (d DevolucaoRepository) executaBusca(ctx context.Context, query string, args ...any) ([]model.Devolucao, error) {
+	linhas, err := d.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao buscar devolucões do colaborador, %w", Errors.ErrBuscarTodos)
+	}
+
+	var Devolucao []model.Devolucao
+	defer linhas.Close()
+
+	for linhas.Next() {
+
+		var devolucao model.Devolucao
+
+		err := linhas.Scan(
+			&devolucao.Id,
+			&devolucao.Id_funcionario,
+			&devolucao.NomeFuncionario,
+			&devolucao.Id_departamento,
+			&devolucao.Departamento,
+			&devolucao.Id_funcao,
+			&devolucao.Funcao,
+			&devolucao.ID_epiTroca,
+			&devolucao.NomeEpiTroca,
+			&devolucao.FabricanteTroca,
+			&devolucao.CAtroca,
+			&devolucao.IdTamanho,
+			&devolucao.Tamanho,
+			&devolucao.QuantidadeADevolver,
+			&devolucao.Motivo,
+			&devolucao.ID_epiNovo,
+			&devolucao.NomeEpiNovo,
+			&devolucao.FabricanteNovo,
+			&devolucao.CANovo,
+			&devolucao.NovaQuantidade,
+			&devolucao.Id_tamanhoNovo,
+			&devolucao.TamanhoNovo,
+			&devolucao.AssinaturaDigital,
+			&devolucao.DataEntrega,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
+		}
+
+		Devolucao = append(Devolucao, devolucao)
+	}
+
+	if err := linhas.Err(); err != nil {
+		return nil, fmt.Errorf("erro ao iterar sobre devolucoes, %w", Errors.ErrAoIterar)
+	}
+
+	return Devolucao, nil
+
 }
 
 func (d DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi, iDTamanho int64, quantidade int, idEntrega int64) error {
@@ -92,7 +192,7 @@ func (d DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi
 		sql.Named("valorUnitario", valorUnitario))
 
 	if err != nil {
-		return fmt.Errorf("erro ao inserir epi nas entregas")
+		return fmt.Errorf("erro ao inserir epi nas entregas, %w", err)
 	}
 
 	return nil
@@ -184,119 +284,27 @@ func (d DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.De
 	return nil
 }
 
+//******************************************************************************
+
+// executaBusca implements DevolucaoInterfaceRepository.
+
 // BuscaDevoluvao implements DevolucaoInterfaceRepository.
-func (d DevolucaoRepository) BuscaDevoluvao(ctx context.Context, matricula int) ([]model.Devolucao, error) {
+func (d DevolucaoRepository) BuscaDevolucao(ctx context.Context, matricula int) ([]model.Devolucao, error) {
 
-	query := `
-	
-		select 
-		d.id,
-		d.idFuncionario,
-		f.nome,
-		f.idDepartamento,
-		dd.departamento,
-		f.idFuncao,
-		ff.funcao,
-		d.id_epi, 
-		e.nome, 
-		e.fabricante, 
-		e.CA,
-		d.id_tamanho as id_tamanhoAntigo,
-		t.tamanho as tamanhoAntigo,
-		d.quantidadeAdevolver,
-		d.motivo,
-		d.id_epiNovo as epiNovo, 
-		en.nome as NomeEpiNovo, 
-		en.fabricante as FabricanteEpiNovo, 
-		en.CA as CAEpiNovo,
-		d.quantidadeNova as QuantidadeEpiNovo,
-		d.id_tamanhoNovo as TamanhoEpiNovo,
-		tn.tamanho as TamanhoNovo,
-		d.assinaturaDigital,
-		d.dataTroca
+	query := queryBuscaDevolucao + " where f.matricula = @matricula order by d.dataTroca DESC"
 
-		from devolucao d
-
-		inner join
-			epi e on d.id_epi = e.id
-		left join
-			epi en on d.id_epiNovo = en.id
-		inner join
-			funcionario f on d.idFuncionario = f.id	
-		inner join 
-			departamento dd on f.idDepartamento = dd.id
-		inner join 
-			funcao ff on f.idFuncao = ff.id
-		left join
-			tamanho tn on d.id_tamanhoNovo = tn.id
-		inner join
-			tamanho t on d.id_tamanho = t.id
-
-		where f.matricula = @matricula
-		order by d.dataTroca DESC
-	
-	`
-
-	var Devolucao []model.Devolucao
-
-	linhas, err:= d.db.QueryContext(ctx, query, sql.Named("matricula", matricula))
-	if err != nil {
-		return  nil, fmt.Errorf("erro ao buscar devolucões do colaborador, %w", Errors.ErrBuscarTodos)
-	}
-
-	defer linhas.Close()
-
-	for linhas.Next() {	
-
-		var devolucao model.Devolucao
-
-		err:=linhas.Scan(
-				&devolucao.Id,
-				&devolucao.Id_funcionario,
-				&devolucao.NomeFuncionario,
-				&devolucao.Id_departamento,
-				&devolucao.Departamento,
-				&devolucao.Id_funcao,
-				&devolucao.Funcao,
-				&devolucao.ID_epiTroca,
-				&devolucao.NomeEpiTroca,
-				&devolucao.FabricanteTroca,
-				&devolucao.CAtroca,
-				&devolucao.IdTamanho,
-				&devolucao.Tamanho,
-				&devolucao.QuantidadeADevolver,
-				&devolucao.Motivo,
-				&devolucao.ID_epiNovo,
-				&devolucao.NomeEpiNovo,
-				&devolucao.FabricanteNovo,
-				&devolucao.CANovo,
-				&devolucao.NovaQuantidade,
-				&devolucao.Id_tamanhoNovo,
-				&devolucao.TamanhoNovo,
-				&devolucao.AssinaturaDigital,
-				&devolucao.DataEntrega,
-		)
-
-		if err != nil {
-			return  nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
-		}
-
-		Devolucao = append(Devolucao, devolucao)
-	}
-
-	if err := linhas.Err(); err != nil {
-		return  nil, fmt.Errorf("erro ao iterar sobre devolucoes, %w", Errors.ErrAoIterar)
-	}
-
-
-	return  Devolucao, nil
-
+	return d.executaBusca(ctx, query, sql.Named("matricula", matricula))
 }
 
 // BuscaTodasDevolucoe implements DevolucaoInterfaceRepository.
-func (d DevolucaoRepository) BuscaTodasDevolucoe(ctx context.Context) ([]model.Devolucao, error) {
-	panic("unimplemented")
+func (d DevolucaoRepository) BuscaTodasDevolucoes(ctx context.Context) ([]model.Devolucao, error) {
+
+	query := queryBuscaDevolucao + " order by d.dataTroca DESC"
+
+	return d.executaBusca(ctx, query)
 }
+
+//***************************************************************************************************
 
 // DeleteDevolucao implements DevolucaoInterfaceRepository.
 func (d DevolucaoRepository) DeleteDevolucao(ctx context.Context, id int) error {
