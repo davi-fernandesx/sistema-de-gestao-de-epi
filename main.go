@@ -24,7 +24,13 @@ func main(){
 	db, err:= init.InitAplicattion()
 	if err != nil {
 
-	log.Fatal(err)
+		log.Fatal(err)
+	}
+
+	err = sqlServerConnection.RunMigrationSqlserver(db)
+	if err != nil {
+
+		log.Fatal(err)
 	}
 
 	repoLogin:= login.NewLogin(db)

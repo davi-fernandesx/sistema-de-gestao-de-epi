@@ -1,0 +1,1 @@
+EXEC sp_rename 'tamanho_epi', 'tamanho';

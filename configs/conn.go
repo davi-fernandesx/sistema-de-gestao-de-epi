@@ -3,44 +3,63 @@ package configs
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/sqlserver"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/microsoft/go-mssqldb"
 )
 
-type ConexaoDbSqlserver struct {}
 type Conexao interface {
-
-	Conn()( *sql.DB, error)
+	Conn() (*sql.DB, error)
 }
 
-func (C *ConexaoDbSqlserver) Conn()(*sql.DB, error) {
+type ConexaoDbSqlserver struct{}
 
-	db_server:= os.Getenv("DB_SERVER")
-	db_port:= os.Getenv("DB_PORT")
-	db_database:= os.Getenv("DATABASE")
-	db_user:= os.Getenv("DB_USER")
-	db_pass:= os.Getenv("SA_PASSWORD")
+func (C *ConexaoDbSqlserver) Conn() (*sql.DB, error) {
 
+	connString := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s", Env.DB_USER, Env.SA_PASSWORD, Env.DB_SERVER, Env.DB_PORT, Env.DATABASE)
 
-	connString:= fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s", db_user, db_pass, db_server, db_port, db_database)
-
-	db, err:= sql.Open("sqlserver",connString)
+	db, err := sql.Open("sqlserver", connString)
 	if err != nil {
 
-		return  nil, fmt.Errorf("erro ao se conectar com o banco de dados: %v", err)
+		return nil, fmt.Errorf("erro ao se conectar com o banco de dados: %v", err)
 	}
 
 	err = db.Ping()
 	if err != nil {
-		return  nil, fmt.Errorf("erro ao verificar se a conexao ainda está ativa: %v", err)
+		return nil, fmt.Errorf("erro ao verificar se a conexao ainda está ativa: %v", err)
 	}
 
-	return  db, nil
-
+	return db, nil
 
 }
 
+func (C *ConexaoDbSqlserver) RunMigrationSqlserver(db *sql.DB) error {
+
+	driver, err := sqlserver.WithInstance(db, &sqlserver.Config{})
+	if err != nil {
+
+		return fmt.Errorf("erro ao iniciar drive da migração, %w", err)
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://database/migrate",
+		"sqlserver", driver)
+	if err != nil {
+		return fmt.Errorf("erro ao instanciar migraççao no banco de dados")
+	}
+
+	dir, _ := os.Getwd()
+	fmt.Println("O programa está rodando na pasta:", dir)
+	fmt.Println("Tentando ler migrações de:", dir+"/database/migrate")
+	m.Up()
+
+	log.Println("Migrações aplicadas no banco de dados!....")
+	return nil
+}
 
 type ConexaoDbMysql struct{}
 
-func (m *ConexaoDbMysql) Conn()(*sql.DB, error){return  nil, nil}
+func (m *ConexaoDbMysql) Conn() (*sql.DB, error) { return nil, nil }
