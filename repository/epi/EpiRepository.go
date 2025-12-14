@@ -3,7 +3,6 @@ package epi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -286,10 +285,9 @@ func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
 
 	linhas, err:= result.RowsAffected()
 	if err != nil{
-			if errors.Is(err, Errors.ErrLinhasAfetadas){
 
 			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
-		}
+		
 	}
 
 	if linhas == 0 {

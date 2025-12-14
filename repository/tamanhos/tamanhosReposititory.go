@@ -161,10 +161,9 @@ func (s *SqlServerLogin) DeletarTamanhos(ctx context.Context, id int) error {
 
 	linhas, err:= result.RowsAffected()
 	if err != nil {
-		if errors.Is(err, Errors.ErrLinhasAfetadas){
 
 			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
-		}
+		
 	}
 
 	if linhas == 0{

@@ -70,9 +70,8 @@ func (s *ConnDB) DeletarLogin(ctx context.Context, id int) error {
 	
 	row, err:= result.RowsAffected()
 	if err != nil{
-		if errors.Is(err, Errors.ErrLinhasAfetadas){
 			return fmt.Errorf("erro ao verificar linhas afetadas: %w", Errors.ErrLinhasAfetadas)
-		}		
+			
 	}
 	
 	if row == 0{

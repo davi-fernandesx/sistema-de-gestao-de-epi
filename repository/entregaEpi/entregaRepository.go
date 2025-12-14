@@ -3,7 +3,6 @@ package entregaepi
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -257,10 +256,8 @@ func (n *NewsqlLogin) CancelarEntrega(ctx context.Context, id int) error {
 	linha, err := result.RowsAffected()
 	if err != nil {
 
-		if errors.Is(err, Errors.ErrLinhasAfetadas) {
-
 			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
-		}
+		
 	}
 
 	if linha == 0 {
