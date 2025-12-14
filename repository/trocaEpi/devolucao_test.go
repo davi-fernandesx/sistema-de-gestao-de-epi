@@ -279,7 +279,6 @@ func TestBaixaEstoque(t *testing.T) {
 			sql.Named("quantidade", quantidade),
 		).WillReturnError(sql.ErrNoRows)
 
-
 		err2 := repo.BaixaEstoque(ctx, tx, int64(idEpi), int64(idTamanho), quantidade, int64(idEntrega))
 
 		require.Error(t, err2)
@@ -289,123 +288,169 @@ func TestBaixaEstoque(t *testing.T) {
 
 }
 
-
 func TestAddTrocaEPI(t *testing.T) {
-    db, mock, err := sqlmock.New()
-    if err != nil {
-        t.Fatal(err)
-    }
-    defer db.Close()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
 
-    repo := NewDevolucaoRepository(db)
-    ctx := context.Background()
+	repo := NewDevolucaoRepository(db)
+	ctx := context.Background()
 
-    // Preparando dados (Ponteiros não podem ser nulos aqui pois o código usa *var)
-    var qtdNova int = 2
-    var idEpiNovo int = 5
-    var idTamNovo int = 3
-    
-    devolucao := model.DevolucaoInserir{
-        IdFuncionario:       1,
-        IdEpi:               10,
-        IdMotivo:            2,
-        DataDevolucao:       time.Now(),
-        QuantidadeADevolver: 1,
-        AssinaturaDigital:   "hash_teste",
-        // Campos da Troca (Ponteiros)
-        NovaQuantidade:      &qtdNova,
-        IdEpiNovo:           &idEpiNovo,
-        IdTamanhoNovo:       &idTamNovo,
-    }
+	// Preparando dados (Ponteiros não podem ser nulos aqui pois o código usa *var)
+	var qtdNova int = 2
+	var idEpiNovo int = 5
+	var idTamNovo int = 3
 
-    // IDs simulados que o banco retornaria nos OUTPUT INSERTED.id
-    idDevolucaoGerado := int64(999)
-    idEntregaGerado := int64(888)
+	devolucao := model.DevolucaoInserir{
+		IdFuncionario:       1,
+		IdEpi:               10,
+		IdMotivo:            2,
+		DataDevolucao:       time.Now(),
+		QuantidadeADevolver: 1,
+		AssinaturaDigital:   "hash_teste",
+		// Campos da Troca (Ponteiros)
+		NovaQuantidade: &qtdNova,
+		IdEpiNovo:      &idEpiNovo,
+		IdTamanhoNovo:  &idTamNovo,
+	}
 
-    // Dados simulados para o BaixaEstoque
-    idLoteEstoque := int64(50)
-    valorUnitario := decimal.NewFromFloat(15.99)
-    qtdNoLote := 10
+	// IDs simulados que o banco retornaria nos OUTPUT INSERTED.id
+	idDevolucaoGerado := int64(999)
+	idEntregaGerado := int64(888)
 
-    t.Run("sucesso ao realizar troca completa", func(t *testing.T) {
+	// Dados simulados para o BaixaEstoque
+	idLoteEstoque := int64(50)
+	valorUnitario := decimal.NewFromFloat(15.99)
+	qtdNoLote := 10
 
-        // 1. Iniciar Transação
-        mock.ExpectBegin()
+	t.Run("sucesso ao realizar troca completa", func(t *testing.T) {
 
-        // 2. Insert Devolucao (Usa QueryRow por causa do OUTPUT INSERTED.id)
-        // O mock deve retornar uma LINHA contendo o ID gerado
-        rowsDevolucao := sqlmock.NewRows([]string{"id"}).AddRow(idDevolucaoGerado)
-        
-        mock.ExpectQuery("(?i)insert into devolucao.*").
-            WithArgs(
-                sql.Named("idFuncionario", devolucao.IdFuncionario),
-                sql.Named("idEpi", devolucao.IdEpi),
-                sql.Named("motivo", devolucao.IdMotivo),
-                sql.Named("dataDevolucao", devolucao.DataDevolucao),
-                sql.Named("quantidadeDevolucao", devolucao.QuantidadeADevolver),
-                sql.Named("idEpiNovo", devolucao.IdEpiNovo),
-                sql.Named("IdtamanhoEpiNovo", devolucao.IdTamanhoNovo),
-                sql.Named("quantidadeNova", devolucao.NovaQuantidade),
-                sql.Named("assinaturaDigital", devolucao.AssinaturaDigital),
-            ).
-            WillReturnRows(rowsDevolucao)
+		// 1. Iniciar Transação
+		mock.ExpectBegin()
 
-        // 3. Insert Entrega (Usa QueryRow por causa do OUTPUT INSERTED.id)
-        rowsEntrega := sqlmock.NewRows([]string{"id"}).AddRow(idEntregaGerado)
+		// 2. Insert Devolucao (Usa QueryRow por causa do OUTPUT INSERTED.id)
+		// O mock deve retornar uma LINHA contendo o ID gerado
+		rowsDevolucao := sqlmock.NewRows([]string{"id"}).AddRow(idDevolucaoGerado)
 
-        mock.ExpectQuery("(?i)insert into entrega.*").
-            WithArgs(
-                sql.Named("idFuncionario", devolucao.IdFuncionario),
-                sql.Named("dataEntrega", devolucao.DataDevolucao), // Note que vc usa DataDevolucao aqui no codigo
-                sql.Named("assinaturaDigital", devolucao.AssinaturaDigital),
-                sql.Named("idTroca", idDevolucaoGerado), // O ID que veio do passo anterior!
-            ).
-            WillReturnRows(rowsEntrega)
+		mock.ExpectQuery("(?i)insert into devolucao.*").
+			WithArgs(
+				sql.Named("idFuncionario", devolucao.IdFuncionario),
+				sql.Named("idEpi", devolucao.IdEpi),
+				sql.Named("motivo", devolucao.IdMotivo),
+				sql.Named("dataDevolucao", devolucao.DataDevolucao),
+				sql.Named("quantidadeDevolucao", devolucao.QuantidadeADevolver),
+				sql.Named("idEpiNovo", devolucao.IdEpiNovo),
+				sql.Named("IdtamanhoEpiNovo", devolucao.IdTamanhoNovo),
+				sql.Named("quantidadeNova", devolucao.NovaQuantidade),
+				sql.Named("assinaturaDigital", devolucao.AssinaturaDigital),
+			).
+			WillReturnRows(rowsDevolucao)
 
-        // --- AGORA COMEÇA A SIMULAÇÃO DO 'BaixaEstoque' ---
-        
-        // 4. Select do Lote (Dentro do BaixaEstoque)
-        rowsLote := sqlmock.NewRows([]string{"id", "valorUnitario", "quantidade"}).
-            AddRow(idLoteEstoque, valorUnitario, qtdNoLote)
-            
-        mock.ExpectQuery("(?i)select top 1.*").
-            WithArgs(
-                sql.Named("idEpi", int64(*devolucao.IdEpiNovo)),
-                sql.Named("id_tamanho", int64(*devolucao.IdTamanhoNovo)),
-                sql.Named("quantidade", *devolucao.NovaQuantidade),
-            ).
-            WillReturnRows(rowsLote)
+		// 3. Insert Entrega (Usa QueryRow por causa do OUTPUT INSERTED.id)
+		rowsEntrega := sqlmock.NewRows([]string{"id"}).AddRow(idEntregaGerado)
 
-        // 5. Update do Estoque (Dentro do BaixaEstoque)
-        mock.ExpectExec("(?i)update entrada.*").
-            WithArgs(
-                sql.Named("qtd", *devolucao.NovaQuantidade),
-                sql.Named("idEntrada", idLoteEstoque),
-            ).
-            WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectQuery("(?i)insert into entrega.*").
+			WithArgs(
+				sql.Named("idFuncionario", devolucao.IdFuncionario),
+				sql.Named("dataEntrega", devolucao.DataDevolucao), // Note que vc usa DataDevolucao aqui no codigo
+				sql.Named("assinaturaDigital", devolucao.AssinaturaDigital),
+				sql.Named("idTroca", idDevolucaoGerado), // O ID que veio do passo anterior!
+			).
+			WillReturnRows(rowsEntrega)
 
-        // 6. Insert na Tabela epi_entregas (Dentro do BaixaEstoque)
-        mock.ExpectExec("(?i)insert into epi_entregas.*").
-            WithArgs(
-                sql.Named("id_epi", int64(*devolucao.IdEpiNovo)),
-                sql.Named("id_tamanho", int64(*devolucao.IdTamanhoNovo)),
-                sql.Named("quantidade", *devolucao.NovaQuantidade),
-                sql.Named("id_entrega", idEntregaGerado), // ID da entrega gerado no passo 3
-                sql.Named("id_entrada", idLoteEstoque),
-                sql.Named("valorUnitario", valorUnitario),
-            ).
-            WillReturnResult(sqlmock.NewResult(1, 1))
+		// --- AGORA COMEÇA A SIMULAÇÃO DO 'BaixaEstoque' ---
 
-        // --- FIM DO BaixaEstoque ---
+		// 4. Select do Lote (Dentro do BaixaEstoque)
+		rowsLote := sqlmock.NewRows([]string{"id", "valorUnitario", "quantidade"}).
+			AddRow(idLoteEstoque, valorUnitario, qtdNoLote)
 
-        // 7. Commit Final
-        mock.ExpectCommit()
+		mock.ExpectQuery("(?i)select top 1.*").
+			WithArgs(
+				sql.Named("idEpi", int64(*devolucao.IdEpiNovo)),
+				sql.Named("id_tamanho", int64(*devolucao.IdTamanhoNovo)),
+				sql.Named("quantidade", *devolucao.NovaQuantidade),
+			).
+			WillReturnRows(rowsLote)
 
-        // Execução
-        err := repo.AddTrocaEPI(ctx, devolucao)
+		// 5. Update do Estoque (Dentro do BaixaEstoque)
+		mock.ExpectExec("(?i)update entrada.*").
+			WithArgs(
+				sql.Named("qtd", *devolucao.NovaQuantidade),
+				sql.Named("idEntrada", idLoteEstoque),
+			).
+			WillReturnResult(sqlmock.NewResult(0, 1))
 
-        // Validação
-        require.NoError(t, err)
-        require.NoError(t, mock.ExpectationsWereMet())
-    })
+		// 6. Insert na Tabela epi_entregas (Dentro do BaixaEstoque)
+		mock.ExpectExec("(?i)insert into epi_entregas.*").
+			WithArgs(
+				sql.Named("id_epi", int64(*devolucao.IdEpiNovo)),
+				sql.Named("id_tamanho", int64(*devolucao.IdTamanhoNovo)),
+				sql.Named("quantidade", *devolucao.NovaQuantidade),
+				sql.Named("id_entrega", idEntregaGerado), // ID da entrega gerado no passo 3
+				sql.Named("id_entrada", idLoteEstoque),
+				sql.Named("valorUnitario", valorUnitario),
+			).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		// --- FIM DO BaixaEstoque ---
+
+		// 7. Commit Final
+		mock.ExpectCommit()
+
+		// Execução
+		err := repo.AddTrocaEPI(ctx, devolucao)
+
+		// Validação
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func TestDeleteDevolucao(t *testing.T) {
+
+	db, mock, ctx, err := mock(t)
+	if err != nil {
+
+		t.Fatal(err)
+	}
+
+	defer db.Close()
+
+	repo := NewDevolucaoRepository(db)
+
+	t.Run("sucesso ao fazer soft delete", func(t *testing.T) {
+
+		id := 1
+		mock.ExpectExec(regexp.QuoteMeta("update")).WithArgs(sql.Named("id", id)).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		err := repo.DeleteDevolucao(ctx, id)
+
+		require.NoError(t, err)
+	})
+
+	t.Run("id ja deletado (não encontrado)", func(t *testing.T) {
+
+		id := 44
+		mock.ExpectExec(regexp.QuoteMeta("update")).WithArgs(sql.Named("id", id)).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+
+		err := repo.DeleteDevolucao(ctx, id)
+
+		require.Error(t, err)
+	})
+
+	t.Run("problema no banco de dados", func(t *testing.T) {
+
+				id := 44
+		mock.ExpectExec(regexp.QuoteMeta("update")).WithArgs(sql.Named("id", id)).
+			WillReturnError(sql.ErrConnDone)
+
+		err := repo.DeleteDevolucao(ctx, id)
+
+		require.Error(t, err)
+
+	})
 }
