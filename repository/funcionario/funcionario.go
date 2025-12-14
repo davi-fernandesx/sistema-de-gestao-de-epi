@@ -137,10 +137,8 @@ func (c *ConnDB) DeletarFuncionario(ctx context.Context, matricula int) error {
 	linhas, err:= result.RowsAffected()
 
 	if err != nil {
-
-		if errors.Is(err, Errors.ErrLinhasAfetadas){
 			return  fmt.Errorf("erro ao verificar linhas afetadas, %w", Errors.ErrLinhasAfetadas)
-		}
+		
 	}
 
 	if linhas == 0 {

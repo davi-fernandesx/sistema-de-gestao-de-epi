@@ -25,7 +25,7 @@ type DevolucaoRepository struct {
 
 func NewDevolucaoRepository(db *sql.DB) DevolucaoInterfaceRepository {
 
-	return DevolucaoRepository{
+	return &DevolucaoRepository{
 		db: db,
 	}
 }
@@ -73,9 +73,11 @@ const queryBuscaDevolucao = `
 			tamanho tn on d.id_tamanhoNovo = tn.id
 		inner join
 			tamanho t on d.id_tamanho = t.id
+		where d.cancelada_em is null
+
 `
 
-func (d DevolucaoRepository) executaBusca(ctx context.Context, query string, args ...any) ([]model.Devolucao, error) {
+func (d *DevolucaoRepository) executaBusca(ctx context.Context, query string, args ...any) ([]model.Devolucao, error) {
 	linhas, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao buscar devolucões do colaborador, %w", Errors.ErrBuscarTodos)
@@ -130,7 +132,7 @@ func (d DevolucaoRepository) executaBusca(ctx context.Context, query string, arg
 
 }
 
-func (d DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi, iDTamanho int64, quantidade int, idEntrega int64) error {
+func (d *DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi, iDTamanho int64, quantidade int, idEntrega int64) error {
 
 	//buscando o lote mais antigo e que tenha o saldo de epi nescessario
 	buscaLote := `
@@ -200,7 +202,7 @@ func (d DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi
 }
 
 // AddDevolucaoEpi implements DevolucaoInterfaceRepository.
-func (d DevolucaoRepository) AddDevolucaoEpi(ctx context.Context, devolucao model.DevolucaoInserir) error {
+func (d *DevolucaoRepository) AddDevolucaoEpi(ctx context.Context, devolucao model.DevolucaoInserir) error {
 
 	query := `
 		insert into devolucao (idFuncionario, idEpi, motivo ,dataDevolucao, quantidadeDevolucao, idEpiNovo, IdtamanhoEpiNovo, quantidadeNova,assinaturaDigital)
@@ -222,7 +224,7 @@ func (d DevolucaoRepository) AddDevolucaoEpi(ctx context.Context, devolucao mode
 }
 
 // AddDevolucao implements DevolucaoInterfaceRepository.
-func (d DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.DevolucaoInserir) error {
+func (d *DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.DevolucaoInserir) error {
 
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -289,7 +291,7 @@ func (d DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.De
 // executaBusca implements DevolucaoInterfaceRepository.
 
 // BuscaDevoluvao implements DevolucaoInterfaceRepository.
-func (d DevolucaoRepository) BuscaDevolucao(ctx context.Context, matricula int) ([]model.Devolucao, error) {
+func (d *DevolucaoRepository) BuscaDevolucao(ctx context.Context, matricula int) ([]model.Devolucao, error) {
 
 	query := queryBuscaDevolucao + " where f.matricula = @matricula order by d.dataTroca DESC"
 
@@ -297,7 +299,7 @@ func (d DevolucaoRepository) BuscaDevolucao(ctx context.Context, matricula int) 
 }
 
 // BuscaTodasDevolucoe implements DevolucaoInterfaceRepository.
-func (d DevolucaoRepository) BuscaTodasDevolucoes(ctx context.Context) ([]model.Devolucao, error) {
+func (d *DevolucaoRepository) BuscaTodasDevolucoes(ctx context.Context) ([]model.Devolucao, error) {
 
 	query := queryBuscaDevolucao + " order by d.dataTroca DESC"
 
@@ -307,6 +309,34 @@ func (d DevolucaoRepository) BuscaTodasDevolucoes(ctx context.Context) ([]model.
 //***************************************************************************************************
 
 // DeleteDevolucao implements DevolucaoInterfaceRepository.
-func (d DevolucaoRepository) DeleteDevolucao(ctx context.Context, id int) error {
-	panic("unimplemented")
+func (d *DevolucaoRepository) DeleteDevolucao(ctx context.Context, id int) error {
+	
+	query := `
+	
+		update devolucao
+		set cancelada_em = GETDATE()
+		where id = @id and cancelada_em is null
+	`
+
+	result, err:= d.db.ExecContext(ctx, query,  sql.Named("id", id))
+
+	if err != nil {
+
+		return fmt.Errorf("erro interno ao cancelar devolucao, %w", Errors.ErrInternal)
+	}
+
+	linhas, err:= result.RowsAffected()
+	if err != nil {
+
+			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
+		
+	}
+
+	if linhas == 0{
+
+		return fmt.Errorf("entrada com o id %d não encontrado!, %w", id, Errors.ErrNaoEncontrado)
+	}
+
+	return nil
+
 }
