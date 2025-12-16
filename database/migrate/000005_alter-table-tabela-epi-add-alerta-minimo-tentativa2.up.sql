@@ -1,0 +1,2 @@
+ALTER TABLE epi
+ADD alerta_minimo INT NOT NULL DEFAULT 0;
