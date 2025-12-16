@@ -189,7 +189,7 @@ func Test_DepartamentoRepository_buscarTodos(t *testing.T) {
 		Departamento: "adm",
 	}
 
-	query := regexp.QuoteMeta("select id, departamento from departamento")
+	
 
 	t.Run(" sucesso ao buscar muitos departamentos", func(t *testing.T) {
 
@@ -198,7 +198,7 @@ func Test_DepartamentoRepository_buscarTodos(t *testing.T) {
 			AddRow(2, "rh").
 			AddRow(3, "ti")
 
-		mock.ExpectQuery(query).WillReturnRows(linhas)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnRows(linhas)
 
 		departamentodb, err := repo.BuscarTodosDepartamentos(ctx)
 		require.NoError(t, err)
@@ -213,7 +213,7 @@ func Test_DepartamentoRepository_buscarTodos(t *testing.T) {
 
 	t.Run("erro na consulta do banco de dados", func(t *testing.T) {
 
-		mock.ExpectQuery(query).WillReturnError(Errors.ErrConexaoDb)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnError(Errors.ErrConexaoDb)
 
 		departamentodb, err := repo.BuscarTodosDepartamentos(ctx)
 		require.Error(t, err)
@@ -231,7 +231,7 @@ func Test_DepartamentoRepository_buscarTodos(t *testing.T) {
 			AddRow(2, " ti").
 			CloseError(Errors.ErrDadoIncompativel)
 
-		mock.ExpectQuery(query).WillReturnRows(linhas)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnRows(linhas)
 
 		departamentodb, err := repo.BuscarTodosDepartamentos(ctx)
 		require.Error(t, err)

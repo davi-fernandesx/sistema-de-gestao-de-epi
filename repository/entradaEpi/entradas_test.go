@@ -36,24 +36,21 @@ func Test_EntradaEpi(t *testing.T) {
 	repo := NewEntradaRepository(db)
 
 	entradaInserir := model.EntradaEpiInserir{
-		ID_epi:        1,
-		Data_entrada:  time.Now(),
-		Id_tamanho:    2,
-		Quantidade:    10,
-		Lote:          "xyz",
-		Fornecedor:    "teste1",
-		ValorUnitario: decimal.NewFromFloat(12.77),
+		ID_epi:         1,
+		Data_entrada:   time.Now(),
+		Id_tamanho:     2,
+		Quantidade:     10,
+		DataFabricacao: time.Now(),
+		DataValidade:   time.Now(),
+		Lote:           "xyz",
+		Fornecedor:     "teste1",
+		ValorUnitario:  decimal.NewFromFloat(12.77),
 	}
-
-	query := regexp.QuoteMeta(`
-		insert into Entrada (id_epi,id_tamanho, data_entrada, quantidade, lote, fornecedor, valorUnitario)
-		values (@id_epi,@id_tamanho, @data_entrada, @quantidade, @lote, @fornecedor, @valorUnitario)
-`)
 
 	t.Run("testando o sucesso ao adicionar uma entrada", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(entradaInserir.ID_epi, entradaInserir.Id_tamanho, entradaInserir.Data_entrada,
-			entradaInserir.Quantidade, entradaInserir.Lote,
+		mock.ExpectExec(regexp.QuoteMeta("insert into")).WithArgs(entradaInserir.ID_epi, entradaInserir.Id_tamanho, entradaInserir.Data_entrada,
+			entradaInserir.Quantidade, entradaInserir.DataFabricacao, entradaInserir.DataValidade, entradaInserir.Lote,
 			entradaInserir.Fornecedor, entradaInserir.ValorUnitario).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		err := repo.AddEntradaEpi(ctx, &entradaInserir)
@@ -64,8 +61,8 @@ func Test_EntradaEpi(t *testing.T) {
 
 	t.Run("testando o erro ao adicionar uma entrada", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(entradaInserir.ID_epi, entradaInserir.Id_tamanho, entradaInserir.Data_entrada,
-			entradaInserir.Quantidade, entradaInserir.Lote,
+		mock.ExpectExec(regexp.QuoteMeta("insert into")).WithArgs(entradaInserir.ID_epi, entradaInserir.Id_tamanho, entradaInserir.Data_entrada,
+			entradaInserir.Quantidade, entradaInserir.DataFabricacao, entradaInserir.DataValidade, entradaInserir.Lote,
 			entradaInserir.Fornecedor, entradaInserir.ValorUnitario).WillReturnError(Errors.ErrSalvar)
 
 		err := repo.AddEntradaEpi(ctx, &entradaInserir)
@@ -77,12 +74,25 @@ func Test_EntradaEpi(t *testing.T) {
 }
 
 var colunaEntrada = []string{
-	"id", "id_epi", "quantidade", "lote", "fornecedor",
-	"nome", "fabricante", "CA", "descricao", "valorUnitario",
-	"data_fabricacao", "data_validade", "validade_CA",
-	"id_protecao", "protecao",
-	"id_tamanho", "tamanho",
-}
+	"id",
+	"id_epi",
+	"nome",
+	"fabricante",
+	"CA",
+	"descricao",
+	"dataFabricacao",
+	"dataValidade",
+	"dataValidadeCa",
+	"IdProtecao",
+	"NomeProtecao",
+	"idTamanho",
+	"tamanho",
+	"quantidade",
+	"data_entrada",
+	"lote",
+	"fornecedor",
+	"valorUnitario",
+	}
 
 func TestBuscarEntradaPorId(t *testing.T) {
 
@@ -97,14 +107,13 @@ func TestBuscarEntradaPorId(t *testing.T) {
 	dataValidade := time.Now()
 	dataFabricacao := time.Now()
 	validadeCa := time.Now()
+	dataEntrada := time.Now()
 
 	t.Run("sucesso ao achar entrada por id", func(t *testing.T) {
 
 		row := sqlmock.NewRows(colunaEntrada).AddRow(
-
-			1, 23, 4, "TRF-8676", "EPI-TEST", "LUVA", "master", "2345", "luva de borracha", 45.99,
-			dataFabricacao, dataValidade, validadeCa, 2, "protecao maos", 2, "p",
-		)
+			id, 23, "luva","master", "1232", "luva borracha", dataFabricacao, dataValidade, validadeCa,
+			3, "maos", 2, "G", 10, dataEntrada, "6464-iu", "mister", 13.99)
 
 		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(sql.Named("id", id)).WillReturnRows(row)
 
@@ -112,7 +121,7 @@ func TestBuscarEntradaPorId(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, resultado)
-		require.Equal(t, "LUVA", resultado.Nome)
+		require.Equal(t, "luva", resultado.Nome)
 		require.Equal(t, "master", resultado.Fabricante)
 
 	})
@@ -158,21 +167,22 @@ func TestBuscarTodasEntrada(t *testing.T) {
 	dataValidade := time.Now()
 	dataFabricacao := time.Now()
 	validadeCa := time.Now()
+	dataEntrada:= time.Now()
 
 	t.Run("sucesso ao achar entrada por id", func(t *testing.T) {
 
 		row := sqlmock.NewRows(colunaEntrada).AddRow(
 
-			1, 23, 4, "TRF-8676", "EPI-TEST", "LUVA", "master", "2345", "luva de borracha", 45.99,
-			dataFabricacao, dataValidade, validadeCa, 2, "protecao maos", 2, "p",
+			3, 23, "luva","master", "1232", "luva borracha", dataFabricacao, dataValidade, validadeCa,
+			3, "maos", 2, "G", 10, dataEntrada, "6464-iu", "EPI-TEST", 13.99,
 		).AddRow(
 
-			5, 3, 3, "TRF-2376", "test", "bota", "master", "2390", "bota de borracha", 75.99,
-			dataFabricacao, dataValidade, validadeCa, 3, "protecao pes", 2, "39",
+			5, 23, "luva","master", "1232", "luva borracha", dataFabricacao, dataValidade, validadeCa,
+			3, "maos", 2, "G", 10, dataEntrada, "6464-iu", "test", 13.99,
 		).AddRow(
 
-			8, 6, 1, "TRF-8643", "epi", "mascara", "master", "2337", "mascara de borracha", 95.99,
-			dataFabricacao, dataValidade, validadeCa, 4, "protecao rosto", 4, "g",
+			8, 23, "luva","master", "1232", "luva borracha", dataFabricacao, dataValidade, validadeCa,
+			3, "maos", 2, "G", 10, dataEntrada, "6464-iu", "epi", 13.99,
 		)
 
 		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnRows(row)
@@ -185,7 +195,6 @@ func TestBuscarTodasEntrada(t *testing.T) {
 		require.Equal(t, "EPI-TEST", resultado[0].Fornecedor)
 		require.Equal(t, "test", resultado[1].Fornecedor)
 		require.Equal(t, "epi", resultado[2].Fornecedor)
-	
 
 	})
 

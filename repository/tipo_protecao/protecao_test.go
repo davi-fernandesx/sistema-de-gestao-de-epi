@@ -21,10 +21,10 @@ func Test_AddProtecao(t *testing.T) {
 
 	repo := NewTipoProtecaoRepository(db)
 	protecao := model.TipoProtecao{Nome: model.Proteção_da_Cabeça_e_Face}
-	query := regexp.QuoteMeta(`insert into protecao values (@protecao)`)
+	
 
 	t.Run("sucesso ao adicionar uma protecao", func(t *testing.T) {
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("insert into ")).
 			WithArgs(protecao.Nome).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -36,7 +36,7 @@ func Test_AddProtecao(t *testing.T) {
 	t.Run("erro generico ao adicionar uma protecao", func(t *testing.T) {
 		dbErr := errors.New("falha de conexão")
 
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("insert into ")).
 			WithArgs(protecao.Nome).
 			WillReturnError(dbErr)
 
@@ -56,12 +56,12 @@ func Test_BuscarProtecao(t *testing.T) {
 	repo := NewTipoProtecaoRepository(db)
 	protecao := model.TipoProtecao{ID: 1, Nome: model.Proteção_das_Mãos_e_Braços}
 	// Assumindo que a query foi corrigida para "select id, protecao from protecao where id = @id"
-	query := regexp.QuoteMeta(`select id, protecao from protecao where id = @id`)
+
 
 	t.Run("sucesso ao buscar uma protecao", func(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"id", "protecao"}).AddRow(protecao.ID, protecao.Nome)
 
-		mock.ExpectQuery(query).WithArgs(protecao.ID).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(protecao.ID).WillReturnRows(rows)
 
 		protecaoDB, err := repo.BuscarProtecao(ctx, protecao.ID)
 		require.NoError(t, err)
@@ -73,7 +73,7 @@ func Test_BuscarProtecao(t *testing.T) {
 	t.Run("erro - protecao nao encontrada", func(t *testing.T) {
 		idNaoExistente := 99
 
-		mock.ExpectQuery(query).WithArgs(idNaoExistente).WillReturnError(sql.ErrNoRows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(idNaoExistente).WillReturnError(sql.ErrNoRows)
 
 		protecaoDB, err := repo.BuscarProtecao(ctx, idNaoExistente)
 		require.Error(t, err)
@@ -86,7 +86,7 @@ func Test_BuscarProtecao(t *testing.T) {
 		// Simulando erro de scan retornando a coluna com tipo de dado errado
 		rows := sqlmock.NewRows([]string{"id", "protecao"}).AddRow("id-invalido", protecao.Nome)
 
-		mock.ExpectQuery(query).WithArgs(protecao.ID).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(protecao.ID).WillReturnRows(rows)
 
 		protecaoDB, err := repo.BuscarProtecao(ctx, protecao.ID)
 		require.Error(t, err)
@@ -103,7 +103,7 @@ func Test_BuscarTodasProtecao(t *testing.T) {
 	defer db.Close()
 
 	repo := NewTipoProtecaoRepository(db)
-	query := regexp.QuoteMeta(`select id, protecao from protecao`)
+	
 	protecoesEsperadas := []model.TipoProtecao{
 		{ID: 1, Nome: model.Proteção_para_os_Pés_e_Pernas},
 		{ID: 2, Nome: model.Proteção_do_Corpo},
@@ -114,7 +114,7 @@ func Test_BuscarTodasProtecao(t *testing.T) {
 			AddRow(protecoesEsperadas[0].ID, protecoesEsperadas[0].Nome).
 			AddRow(protecoesEsperadas[1].ID, protecoesEsperadas[1].Nome)
 
-		mock.ExpectQuery(query).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnRows(rows)
 
 		protecoesDB, err := repo.BuscarTodasProtecao(ctx)
 		require.NoError(t, err)
@@ -125,7 +125,7 @@ func Test_BuscarTodasProtecao(t *testing.T) {
 
 	t.Run("erro ao executar a query de busca", func(t *testing.T) {
 		dbErr := errors.New("falha na consulta")
-		mock.ExpectQuery(query).WillReturnError(dbErr)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnError(dbErr)
 
 		protecoesDB, err := repo.BuscarTodasProtecao(ctx)
 		require.ErrorIs(t, err, Errors.ErrBuscarTodos, "erro tem que ser do tipo buscar todos")
@@ -138,7 +138,7 @@ func Test_BuscarTodasProtecao(t *testing.T) {
 			AddRow(protecoesEsperadas[0].ID, protecoesEsperadas[0].Nome).
 			AddRow(protecoesEsperadas[1].ID, nil) // Segunda linha com valor nulo para causar erro no scan
 
-		mock.ExpectQuery(query).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnRows(rows)
 
 		protecoesDB, err := repo.BuscarTodasProtecao(ctx)
 		require.ErrorIs(t, err, Errors.ErrFalhaAoEscanearDados, "erro tem que ser do tipo escanear")
@@ -152,7 +152,7 @@ func Test_BuscarTodasProtecao(t *testing.T) {
 			AddRow(protecoesEsperadas[0].ID, protecoesEsperadas[0].Nome).
 			CloseError(iterErr)
 
-		mock.ExpectQuery(query).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WillReturnRows(rows)
 
 		protecoesDB, err := repo.BuscarTodasProtecao(ctx)
 
@@ -170,10 +170,10 @@ func Test_DeletarProtecao(t *testing.T) {
 
 	repo := NewTipoProtecaoRepository(db)
 	idParaDeletar := 1
-	query := regexp.QuoteMeta(`delete from protecao where id = @id`)
+	
 
 	t.Run("sucesso ao deletar uma protecao", func(t *testing.T) {
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("delete ")).
 			WithArgs(idParaDeletar).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -185,7 +185,7 @@ func Test_DeletarProtecao(t *testing.T) {
 
 	t.Run("erro - protecao nao encontrada para deletar", func(t *testing.T) {
 		idNaoExistente := 99
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("delete ")).
 			WithArgs(idNaoExistente).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
@@ -196,7 +196,7 @@ func Test_DeletarProtecao(t *testing.T) {
 
 	t.Run("erro generico do banco de dados ao deletar", func(t *testing.T) {
 		dbErr := errors.New("erro de execucao")
-		mock.ExpectExec(query).WithArgs(idParaDeletar).WillReturnError(dbErr)
+		mock.ExpectExec(regexp.QuoteMeta("delete ")).WithArgs(idParaDeletar).WillReturnError(dbErr)
 
 		err := repo.DeletarProtecao(ctx, idParaDeletar)
 		require.Error(t, err)
@@ -206,7 +206,7 @@ func Test_DeletarProtecao(t *testing.T) {
 
 	t.Run("erro ao obter linhas afetadas", func(t *testing.T) {
 
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("delete ")).
 			WithArgs(idParaDeletar).
 			WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 

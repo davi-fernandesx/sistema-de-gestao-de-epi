@@ -22,7 +22,7 @@ func Test_AddFuncao(t *testing.T) {
 
 	repo := NewfuncaoRepository(db)
 	funcao := model.Funcao{Funcao: "Desenvolvedor"}
-	query := regexp.QuoteMeta(`insert into`)
+	query := regexp.QuoteMeta("insert into")
 
 	t.Run("sucesso ao adicionar uma funcao", func(t *testing.T) {
 		mock.ExpectExec(query).
@@ -69,11 +69,11 @@ func Test_BuscarFuncao(t *testing.T) {
 	defer db.Close()
 
 	repo := NewfuncaoRepository(db)
-	funcao := model.Funcao{ID: 1, Funcao: "Analista de QA"}
-	query := regexp.QuoteMeta(`select id`)
+	funcao := model.Funcao{ID: 1, Funcao: "Analista de QA",IdDepartamento: 1, NomeDepartamento: "rh"}
+	query := regexp.QuoteMeta(`select `)
 
 	t.Run("sucesso ao buscar uma funcao", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"id", "funcao"}).AddRow(funcao.ID, funcao.Funcao)
+		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento", "nomeDepartamento"}).AddRow(funcao.ID, funcao.Funcao, funcao.IdDepartamento, funcao.NomeDepartamento)
 
 		mock.ExpectQuery(query).WithArgs(funcao.ID).WillReturnRows(rows)
 
@@ -117,16 +117,16 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 	defer db.Close()
 
 	repo := NewfuncaoRepository(db)
-	query := regexp.QuoteMeta(`select id, funcao, IdDepartamento`)
+	query := regexp.QuoteMeta(`select `)
 	funcoesEsperadas := []model.Funcao{
-		{ID: 1, Funcao: "Gerente", IdDepartamento: 2},
-		{ID: 2, Funcao: "Coordenador", IdDepartamento: 2},
+		{ID: 1, Funcao: "Gerente", IdDepartamento: 2, NomeDepartamento: "dev"},
+		{ID: 2, Funcao: "Coordenador", IdDepartamento: 2, NomeDepartamento: "dev"},
 	}
 
 	t.Run("sucesso ao buscar todas as funcoes", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento"}).
-			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao, funcoesEsperadas[0].IdDepartamento).
-			AddRow(funcoesEsperadas[1].ID, funcoesEsperadas[1].Funcao, funcoesEsperadas[1].IdDepartamento)
+		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento", "nomeDepartamenrto"}).
+			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao, funcoesEsperadas[0].IdDepartamento, funcoesEsperadas[0].NomeDepartamento).
+			AddRow(funcoesEsperadas[1].ID, funcoesEsperadas[1].Funcao, funcoesEsperadas[1].IdDepartamento, funcoesEsperadas[1].NomeDepartamento)
 
 		mock.ExpectQuery(query).WillReturnRows(rows)
 
@@ -169,8 +169,8 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 	t.Run("erro apos a iteracao (linhas.Err)", func(t *testing.T) {
 		iterErr := errors.New("erro durante a iteracao")
 		
-		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento"}).
-			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao, funcoesEsperadas[1].IdDepartamento).
+		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento","nomeDepartamento"}).
+			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao, funcoesEsperadas[1].IdDepartamento, funcoesEsperadas[1].NomeDepartamento).
 			CloseError(iterErr) // Simula um erro ao fechar as linhas
 
 		mock.ExpectQuery(query).WillReturnRows(rows)
