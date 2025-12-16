@@ -1,9 +1,16 @@
 package model
 
-type Funcao struct {
-	ID     int`json:"-"`
+type FuncaoInserir struct {
+	ID     int`json:"id"`
 	Funcao string`json:"funcao"`
 	IdDepartamento int `json:"id_departamento"`
+}
+
+type Funcao struct {
+	ID     int`json:"id"`
+	Funcao string`json:"funcao"`
+	IdDepartamento int `json:"id_departamento"`
+	NomeDepartamento string `json:"departamento"`
 }
 
 type FuncaoDto struct {

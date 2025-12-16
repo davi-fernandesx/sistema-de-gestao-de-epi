@@ -12,8 +12,6 @@ type EpiInserir struct {
 	Fabricante     string`json:"fabricante"`
 	CA             string`json:"ca"`
 	Descricao      string`json:"descricao"`
-	DataFabricacao time.Time`json:"data_fabricacao"`
-	DataValidade   time.Time`json:"data_validade"`
 	DataValidadeCa time.Time`json:"data_validade_ca"`
 	Idtamanho      []int`json:"id_tamanho"`
 	IDprotecao     int`json:"id_protecao"`
@@ -26,8 +24,6 @@ type Epi struct {
 	Fabricante     string
 	CA             string
 	Descricao      string
-	DataFabricacao time.Time
-	DataValidade   time.Time
 	DataValidadeCa time.Time
 	AlertaMinimo   int
 	IDprotecao     int
