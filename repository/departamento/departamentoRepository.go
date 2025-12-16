@@ -75,7 +75,7 @@ func (n *NewSqlLogin) BuscarDepartamento(ctx context.Context, id int) (*model.De
 // BuscarTodosDepartamentos implements DepartamentoInterface.
 func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) (*[]model.Departamento, error) {
 
-	query := `select id, departamento from departamento`
+	query := `select id, nome from departamento`
 
 	linhas, err := n.DB.QueryContext(ctx, query)
 	if err != nil {
@@ -117,10 +117,8 @@ func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
 
 	linhas, err := result.RowsAffected()
 	if err != nil {
-		if errors.Is(err, Errors.ErrLinhasAfetadas){
-
 			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
-		}
+	
 	}
 
 	if linhas == 0 {
@@ -133,7 +131,7 @@ func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
 func (n *NewSqlLogin) UpdateDepartamento(ctx context.Context, id int, departamento string)error{
 
 	query:= `update departamento
-			set departamento = @departamento
+			set nome = @departamento
 			where id = @id`
 
 		_, err:= n.DB.ExecContext(ctx, query, sql.Named("departamento", departamento), sql.Named("id", id))

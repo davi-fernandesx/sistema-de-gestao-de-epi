@@ -30,7 +30,7 @@ func NewTipoProtecaoRepository(db *sql.DB) TipoProtecaoInterface {
 // AddProtecao implements TipoProtecaoInterface.
 func (s *SqlServerLogin) AddProtecao(ctx context.Context, protecao *model.TipoProtecao) error {
 	
-	query:= `insert into protecao values (@protecao)`
+	query:= `insert into tipo_protecao(nome) values (@protecao)`
 
 	_, err:= s.DB.ExecContext(ctx, query, sql.Named("protecao", protecao.Nome))
 	if err != nil {
@@ -44,7 +44,7 @@ func (s *SqlServerLogin) AddProtecao(ctx context.Context, protecao *model.TipoPr
 // BuscarProtecao implements TipoProtecaoInterface.
 func (s *SqlServerLogin) BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error) {
 	
-	query:= ` select id, protecao from protecao where id = @id`
+	query:= `select id, nome from tipo_protecao where id = @id`
 
 	var protecao model.TipoProtecao
 
@@ -64,7 +64,7 @@ func (s *SqlServerLogin) BuscarProtecao(ctx context.Context, id int) (*model.Tip
 // BuscarTodasProtecao implements TipoProtecaoInterface.
 func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error) {
 	
-	query:= `select id, protecao from protecao`
+	query:= `select id, nome from tipo_protecao`
 
 	linhas, err:= s.DB.QueryContext(ctx, query)
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoP
 // DeletarProtecao implements TipoProtecaoInterface.
 func (s *SqlServerLogin) DeletarProtecao(ctx context.Context, id int) error {
 	
-	query:= `delete from protecao where id = @id`
+	query:= `delete from tipo_protecao where id = 1`
 
 	result, err:= s.DB.ExecContext(ctx, query, sql.Named("id", id))
 	

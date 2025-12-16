@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
@@ -19,8 +18,6 @@ type EpiInterface interface {
 	UpdateEpiCa(ctx context.Context,id int, ca string)error
 	UpdateEpiFabricante(ctx context.Context,id int, fabricante string)error
 	UpdateEpiDescricao(ctx context.Context,id int, descricao string)error
-	UpdateEpiDataFabricacao(ctx context.Context,id int, dataFabricacao time.Time)error
-	UpdateEpiDataValidade(ctx context.Context,id int, dataValidade string)error
 	UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa string)error
 }
 
@@ -43,10 +40,10 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
         return fmt.Errorf("erro ao iniciar transação: %w", Errors.ErrInternal)
     }
 	defer tx.Rollback()
-	query := `insert into epi (nome, fabricante, CA, descricao, data_fabricacao, data_validade, validade_CA, id_tipo_protecao, alerta_minimo) 
+	query := `insert into epi (nome, fabricante, CA, descricao, validade_CA, IdTipoProtecao, alerta_minimo) 
 			OUTPUT INSERTED.id 
 			values 
-			(@nome, @fabricante, @CA, @descricao,@data_fabricacao, @data_validade, @validade_CA, @id_tipo_protecao, @alerta_minimo )`// quwry para
+			(@nome', @fabricante, @CA, '@descricao',validade_CA, @id_tipo_protecao, @alerta_minimo`// quwry para
 			//salvar um epi e retornar seu id
 
 		
@@ -56,8 +53,6 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 		sql.Named("fabricante", epi.Fabricante),
 		sql.Named("CA", epi.CA),
 		sql.Named("descricao", epi.Descricao),
-		sql.Named("data_fabricacao", epi.DataFabricacao),
-		sql.Named("data_validade", epi.DataValidade),
 		sql.Named("validade_CA", epi.DataValidadeCa),
 		sql.Named("id_tipo_protecao", epi.IDprotecao),
 		sql.Named("alerta_minimo", epi.AlertaMinimo)).Scan(&EpiId)//escaneado o id
@@ -66,7 +61,7 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 		return fmt.Errorf(" Erro interno ao salvar Epi: %w",  Errors.ErrInternal)
 	}
 
-	stmt, err:= tx.PrepareContext(ctx, "insert into tamanho_epi  (id_tamanho, id_epi) values (@id_tamanho, @id_epi)") 
+	stmt, err:= tx.PrepareContext(ctx, "insert into tamanhos_epis(IdEpi, IdTamanho) values (@id_epi, @id_tamanho)") 
 	//preparando a query para inserir na tabela de assosiação o id do epi salvar e o id do tamanho(vindo da model do epi)
 	if err != nil{
 		return fmt.Errorf("erro ao preparar statemnt para tamanho_epi: %w", Errors.ErrInternal)
@@ -74,11 +69,11 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 	defer stmt.Close()
 
 	for _, idTamanho:= range epi.Idtamanho {
-		_, err:= stmt.ExecContext(ctx, sql.Named("id_tamanho", idTamanho), sql.Named("id_epi", EpiId))
+		_, err:= stmt.ExecContext(ctx, sql.Named("id_epi", EpiId), sql.Named("id_tamanho", idTamanho))
 		//executando a query preparada, adicionando na tabela de associação os id do epi e o id dos tamanhos
 		if err != nil {
 
-			return fmt.Errorf("erro ao inserir na tabela epi_tamanhos para o tamanho ID %d: %w", idTamanho, Errors.ErrInternal)
+			return fmt.Errorf("erro ao inserir na tabela tamanhos_epis para o tamanho ID %d: %w", idTamanho, err)
 		}
 	}
 
@@ -95,13 +90,13 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error) {
 
 	query := `
-			select
-					e.id, e.nome, e.fabricante,e.CA, e.descricao, e.data_fabricacao, e.data_validade, 
-					e.validade_CA, e.alerta_minimo, e.id_tipo_protecao, tp.nome
+		select
+			e.id, e.nome, e.fabricante,e.CA, e.descricao,
+			e.validade_CA, e.alerta_minimo, e.IdTipoProtecao, tp.nome as 'nome da protecao'
 			from
 				epi e
 			inner join
-				tipo_protecao tp on	e.id_tipo_protecao = tp.id		
+				tipo_protecao tp on	e.IdTipoProtecao = tp.id		
 			where
 				e.id = @id
 	`
@@ -113,8 +108,6 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 		&epi.Fabricante,
 		&epi.CA,
 		&epi.Descricao,
-		&epi.DataFabricacao,
-		&epi.DataValidade,
 		&epi.DataValidadeCa,
 		&epi.AlertaMinimo,
 		&epi.IDprotecao,
@@ -131,14 +124,12 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 	//query usada para buscar os tamanhos por basee  do id do produto passado
 	queryTamanhos:=`
 	
-		select 
-			t.id, t.tamanho
+	select 	t.id, t.tamanho
 		from
 			tamanho t
 		inner join
-			tamanhosEpis te on t.id = te.id_tamanho
-		where
-			te.epiId = @epiId
+			tamanhos_epis te on t.id = te.IdTamanho
+		where te.IdEpi= @epiId
 		`
 
 	linhas, err:= n.DB.QueryContext(ctx, queryTamanhos, sql.Named("epiId", epi.ID))
@@ -173,13 +164,12 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 
 	query := `
-				select
-					e.id, e.nome, e.fabricante,e.CA, e.descricao, e.data_fabricacao, e.data_validade, 
-					e.validade_CA, e.alerta_minimo, e.id_tipo_protecao, tp.nome
+		select e.id, e.nome, e.fabricante,e.CA, e.descricao,
+		e.validade_CA, e.alerta_minimo, e.IdTipoProtecao, tp.nome as 'nome da protecao'
 			from
 				epi e
 			inner join
-				tipo_protecao tp on	e.id_tipo_protecao = tp.id`
+				tipo_protecao tp on	e.IdTipoProtecao = tp.id`
 
 	linhas, err := n.DB.QueryContext(ctx, query)
 	if err != nil {
@@ -198,8 +188,6 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 		&epi.Fabricante,
 		&epi.CA,
 		&epi.Descricao,
-		&epi.DataFabricacao,
-		&epi.DataValidade,
 		&epi.DataValidadeCa,
 		&epi.AlertaMinimo,
 		&epi.IDprotecao,
@@ -220,10 +208,12 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 	 //segunda query
 
 	 queryTamanhos:= ` 
-	 		select
-	 			 te.id_epi, t.id, t.tamanho
-			from tamanhos t
-			inner join tamanho_epi te on t.id = te.id_tamanho
+		select 
+			t.id, t.tamanho
+		from
+			tamanho t
+		inner join
+			tamanhos_epis te on t.id = te.IdTamanho
 	 `// query que retorna o id do epi, id do tamanho e o tamanho
 
 	 linhasTamanhos, err:= n.DB.QueryContext(ctx, queryTamanhos)
@@ -270,7 +260,7 @@ func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
 	}
 	defer tx.Rollback()
 
-	queryTamanhoEpi := ` delete from  tamanho_epi where id_epi = @id`
+	queryTamanhoEpi := ` delete from tamanhos_epis where IdEpi = @id`
 	_, err = tx.ExecContext(ctx, queryTamanhoEpi, sql.Named("id", id))
 	if err != nil {
 		return err
@@ -361,35 +351,6 @@ func (n  *NewSqlLogin) UpdateEpiDescricao(ctx context.Context,id int, descricao 
 }
 
 
-func (n  *NewSqlLogin) UpdateEpiDataFabricacao(ctx context.Context,id int, dataFabricacao time.Time)error {
-
-	query:= `update epi
-			set dataFabricacao = @dataFabricacao
-			where id = @id`
-	
-	_, err:=n.DB.ExecContext(ctx, query, sql.Named("ca", dataFabricacao), sql.Named("id", id))
-	if err != nil {
-
-		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
-	}
-
-	return nil
-}
-
-func (n  *NewSqlLogin) UpdateEpiDataValidade(ctx context.Context,id int, dataValidade string)error {
-
-	query:= `update epi
-			set dataValidade = @dataValidade
-			where id = @id`
-	
-	_, err:=n.DB.ExecContext(ctx, query, sql.Named("dataValidada", dataValidade), sql.Named("id", id))
-	if err != nil {
-
-		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
-	}
-
-	return nil
-}
 
 func (n  *NewSqlLogin) UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa string)error {
 

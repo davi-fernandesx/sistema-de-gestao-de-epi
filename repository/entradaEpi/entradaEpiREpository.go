@@ -14,6 +14,10 @@ type EntradaEpi interface {
 	CancelarEntrada(ctx context.Context, id int) error
 	BuscarEntrada(ctx context.Context, id int) (model.EntradaEpi, error)
 	BuscarTodasEntradas(ctx context.Context) ([]model.EntradaEpi, error)
+	BuscarEntradaPorIdEPI(ctx context.Context, idEpi int)([]model.EntradaEpi, error)
+	BuscaTodasEntradasCanceladas(ctx context.Context) ([]model.EntradaEpi, error)
+	BuscaEntradasCanceladas(ctx context.Context, id int) (model.EntradaEpi, error)
+	BuscaEntradasCanceladasPorIdEpi(ctx context.Context, idEpi int) ([]model.EntradaEpi, error)
 }
 
 type NewSqlLogin struct {
@@ -30,21 +34,17 @@ func NewEntradaRepository(db *sql.DB) EntradaEpi {
 
 
 const entradaQueryJoin = `  
-  select
-            ee.id, ee.id_epi, ee.quantidade, ee.lote, ee.fornecedor, -- Campos da tabela de entrada
-            e.nome, e.fabricante, e.CA, e.descricao,ee.valorUnitario,
-            e.data_fabricacao, e.data_validade, e.validade_CA, -- Campos do EPI
-            tp.id as id_protecao, tp.protecao as nome_protecao, -- Campos do Tipo de Proteção
-            t.id as id_tamanho, t.tamanho as tamanho_descricao -- Campos do Tamanho
-        FROM 
-            entradas_epi ee
-        INNER JOIN
-            epi e ON ee.id_epi = e.id 
-        INNER JOIN
-            tipo_protecao tp ON e.id_tipo_protecao = tp.id
-        INNER JOIN
-            tamanhos t ON ee.id_tamanho = t.id
-		where ee.cancelada_em IS NULL
+select ee.id, ee.IdEpi,  e.nome as epi,  e.fabricante, e.CA, e.descricao,ee.data_fabricacao, ee.data_validade, e.validade_CA,
+		e.IdTipoProtecao, tp.nome as 'protecao para',
+	   	ee.IdTamanho,t.tamanho as tamanho, ee.quantidade, ee.data_entrada,
+	   ee.lote, ee.fornecedor, ee.valor_unitario
+from entrada_epi ee
+inner join
+	epi e on ee.IdEpi = e.id
+inner join
+	tipo_protecao tp on e.IdTipoProtecao = tp.id
+inner join
+	tamanho t on ee.IdTamanho = t.id
 		`
 
 func (n *NewSqlLogin) buscaEntradas(ctx context.Context, query string, args ...any)([]model.EntradaEpi, error){
@@ -64,14 +64,10 @@ func (n *NewSqlLogin) buscaEntradas(ctx context.Context, query string, args ...a
 		err := linhas.Scan(
 			&entrada.ID,
 			&entrada.ID_epi,
-			&entrada.Quantidade,
-			&entrada.Lote,
-			&entrada.Fornecedor,
 			&entrada.Nome,
 			&entrada.Fabricante,
 			&entrada.CA,
 			&entrada.Descricao,
-			&entrada.ValorUnitario,
 			&entrada.DataFabricacao,
 			&entrada.DataValidade,
 			&entrada.DataValidadeCa,
@@ -79,6 +75,11 @@ func (n *NewSqlLogin) buscaEntradas(ctx context.Context, query string, args ...a
 			&entrada.NomeProtecao,
 			&entrada.Id_Tamanho,
 			&entrada.TamanhoDescricao,
+			&entrada.Quantidade,
+			&entrada.Data_entrada,
+			&entrada.Lote,
+			&entrada.Fornecedor,
+			&entrada.ValorUnitario,
 		)
 
 		if err != nil {
@@ -100,8 +101,8 @@ func (n *NewSqlLogin) buscaEntradas(ctx context.Context, query string, args ...a
 func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.EntradaEpiInserir) error {
 
 	query := `
-		insert into Entrada (id_epi,id_tamanho, data_entrada, quantidade, lote, fornecedor, valorUnitario)
-		values (@id_epi,@id_tamanho, @data_entrada, @quantidade, @lote, @fornecedor, @valorUnitario)
+		insert into entrada_epi(IdEpi,IdTamanho, data_entrada, quantidade,data_fabricacao, data_validade, lote, fornecedor, valor_unitario)
+			values (@id_epi,@id_tamanho, @data_entrada, @quantidade ,@dataFabricacao, @dataValidade, @lote, @fornecedor,@valorUnitario )
 	`
 
 	_, err := n.DB.ExecContext(ctx, query,
@@ -109,6 +110,8 @@ func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.Entra
 		sql.Named("id_tamanho", EntradaEpi.Id_tamanho),
 		sql.Named("data_entrada", EntradaEpi.Data_entrada),
 		sql.Named("quantidade", EntradaEpi.Quantidade),
+		sql.Named("dataFabricacao", EntradaEpi.DataFabricacao),
+		sql.Named("dataValidade", EntradaEpi.DataValidade),
 		sql.Named("lote", EntradaEpi.Lote),
 		sql.Named("fornecedor", EntradaEpi.Fornecedor),
 		sql.Named("valorUnitario", EntradaEpi.ValorUnitario),
@@ -121,10 +124,28 @@ func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.Entra
 	return nil
 }
 
+func (n *NewSqlLogin) BuscarEntradaPorIdEPI(ctx context.Context, idEpi int)([]model.EntradaEpi, error){
+	query:= entradaQueryJoin + " where ee.cancelada_em is null AND ee.IdEp = @id"
+
+	entrada, err:= n.buscaEntradas(ctx, query, sql.Named("id", idEpi))
+	if err != nil {
+
+		return []model.EntradaEpi{},err
+	}
+
+	if len(entrada) == 0 {
+
+		return  []model.EntradaEpi{}, nil
+	}
+
+	return  entrada, nil
+
+
+}
 // BuscarEntrada implements EntradaEpi.
 func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (model.EntradaEpi, error) {
 
-	query:= entradaQueryJoin + " AND  ee.id = @id"
+	query:= entradaQueryJoin + " where ee.cancelada_em is null AND ee.id = @id"
 
 	entrada, err:= n.buscaEntradas(ctx, query, sql.Named("id", id))
 	if err != nil {
@@ -145,9 +166,78 @@ func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (model.EntradaE
 func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaEpi, error) {
 
 
-		return n.buscaEntradas(ctx, entradaQueryJoin)
+	query:= entradaQueryJoin + " where ee.cancelada_em is null"
+
+	entrada, err:= n.buscaEntradas(ctx, query)
+	if err != nil {
+
+		return []model.EntradaEpi{},err
+	}
+
+	if len(entrada) == 0 {
+
+		return  []model.EntradaEpi{}, nil
+	}
+
+	return  entrada, nil
 }
 
+func (n *NewSqlLogin) BuscaTodasEntradasCanceladas(ctx context.Context) ([]model.EntradaEpi, error){
+
+	query:= entradaQueryJoin + " where ee.cancelada_em is not null"
+
+	entrada, err:= n.buscaEntradas(ctx, query)
+	if err != nil {
+
+		return []model.EntradaEpi{},err
+	}
+
+	if len(entrada) == 0 {
+
+		return  []model.EntradaEpi{}, nil
+	}
+
+	return  entrada, nil
+
+}
+
+func (n *NewSqlLogin) BuscaEntradasCanceladas(ctx context.Context, id int) (model.EntradaEpi, error){
+	
+	query:= entradaQueryJoin + " where ee.cancelada_em is not null AND ee.id = @id"
+
+	entrada, err:= n.buscaEntradas(ctx, query, sql.Named("id", id))
+	if err != nil {
+
+		return model.EntradaEpi{},err
+	}
+
+	if len(entrada) == 0 {
+
+		return  model.EntradaEpi{}, nil
+	}
+
+	return  entrada[0], nil
+
+}
+
+func (n *NewSqlLogin) BuscaEntradasCanceladasPorIdEpi(ctx context.Context, idEpi int) ([]model.EntradaEpi, error){
+
+	query:= entradaQueryJoin + " where ee.cancelada_em is not null AND ee.IdEp = @id"
+
+	entrada, err:= n.buscaEntradas(ctx, query, sql.Named("id", idEpi))
+	if err != nil {
+
+		return []model.EntradaEpi{},err
+	}
+
+	if len(entrada) == 0 {
+
+		return  []model.EntradaEpi{}, nil
+	}
+
+	return  entrada, nil
+
+}
 // DeletarEntrada implements EntradaEpi.
 func (n *NewSqlLogin) CancelarEntrada(ctx context.Context, id int) error {
 

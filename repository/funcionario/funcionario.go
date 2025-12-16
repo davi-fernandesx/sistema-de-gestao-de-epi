@@ -35,7 +35,7 @@ func NewFuncionarioRepository(db *sql.DB) FuncionarioInterface {
 // AddFuncionario implements FuncionarioInterface.
 func (c *ConnDB) AddFuncionario(ctx context.Context, funcionario *model.FuncionarioINserir) error {
 
-	query := `insert into funcionario(nome, matricula, id_departamento, id_funcao) values( @nome, @matricula, @id_departamento, @id_funcao)`
+	query := `insert into funcionario(nome, matricula, IdDepartamento, IdFuncao) values( @nome, @matricula, @id_departamento, @id_funcao)`
 
 	_, err := c.DB.ExecContext(ctx, query,
 		sql.Named("nome", funcionario.Nome),
@@ -60,11 +60,14 @@ func (c *ConnDB) AddFuncionario(ctx context.Context, funcionario *model.Funciona
 // BuscaFuncionario implements FuncionarioInterface.
 func (c *ConnDB) BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error) {
 
-	query := `select fn.id, fn.nome,fn.matricula, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
+	query := `select fn.id, fn.nome,fn.matricula, fn.IdDepartamento, d.nome as departamento, 
+			fn.IdFuncao, f.nome as funcao
 			from funcionario fn
-			inner join departamento d on fn.id_departamento = d.id
-			inner jon funcao f on fn.id_funcao = f.funcao
-			where fn.matricula = @matricula`
+			inner join	
+					departamento d on fn.IdDepartamento = d.id
+			inner join 	
+					funcao f on fn.IdFuncao = f.id
+				where fn.matricula = @matricula`
 
 	var funcionario model.Funcionario
 	err := c.DB.QueryRowContext(ctx, query, sql.Named("matricula", matricula)).Scan(
@@ -89,10 +92,11 @@ func (c *ConnDB) BuscaFuncionario(ctx context.Context, matricula int) (*model.Fu
 // BuscarTodosFuncionarios implements FuncionarioInterface.
 func (c *ConnDB) BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionario, error) {
 
-	query := `select fn.id,fn.matricula, fn.nome, fn.id_departamento, d.departamento, fn.id_funcao, f.funcao
+	query := `select fn.id, fn.nome,fn.matricula, fn.IdDepartamento, d.nome as departamento, 
+			fn.IdFuncao, f.nome as funcao
 			from funcionario fn
-			inner join departamento d on fn.id_departamento = d.id
-			inner jon funcao f on fn.id_funcao = f.funcao`
+			inner join departamento d on fn.IdDepartamento = d.id
+			inner join funcao f on fn.IdFuncao = f.id`
 
 	var funcionarios []model.Funcionario
 
@@ -153,7 +157,7 @@ func (c *ConnDB)UpdateFuncionarioNome(ctx context.Context, id int, funcionario s
 
 	query:= `update funcionario
 		     set nome = @funcionario
-			 where id = @ id`
+			 where id = @id`
 
 	_, err:= c.DB.ExecContext(ctx, query, sql.Named("funcionario", funcionario), sql.Named("id", id))
 	if err != nil {
@@ -167,7 +171,7 @@ func (c *ConnDB)UpdateFuncionarioDepartamento(ctx context.Context, id int, idDep
 
 	query:= `update funcionario
 		     set IdDepartamento = @idDepartamento
-			 where id = @ id`
+			 where id = @id`
 
 	_, err:= c.DB.ExecContext(ctx, query, sql.Named("IdDepartamento", idDepartamento), sql.Named("id", id))
 	if err != nil {
@@ -181,7 +185,7 @@ func (c *ConnDB)UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao st
 
 	query:= `update funcionario
 		     set IdFuncao = @idFuncao
-			 where id = @ id`
+			 where id = @id`
 
 	_, err:= c.DB.ExecContext(ctx, query, sql.Named("IdFuncao", idFuncao), sql.Named("id", id))
 	if err != nil {
