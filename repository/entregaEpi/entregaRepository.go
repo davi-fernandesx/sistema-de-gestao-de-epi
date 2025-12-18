@@ -14,7 +14,13 @@ import (
 type EntregaInterface interface {
 	Addentrega(ctx context.Context, model model.EntregaParaInserir) error
 	BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error)
+	BuscaEntregaPorIdFuncionario(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error)
+	BuscaEntregaPorIdFuncionarioCanceladas(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error)
 	BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaDto, error)
+	BuscaTodasEntregasCanceladas(ctx context.Context) ([]*model.EntregaDto, error)
+	BuscaEntregaCancelada(ctx context.Context, id int) (*model.EntregaDto, error)
+	
+
 	CancelarEntrega(ctx context.Context, id int) error
 }
 
@@ -36,42 +42,40 @@ const  entregaQueryJoin = `
 select
 		    ee.id,
 			ee.data_Entrega,
-			ee.id_funcionario,
+			ee.IdFuncionario,
 			f.nome, 
-			f.id_departamento, 
-			d.departamento, 
-			f.id_funcao, 
-			ff.funcao, 
-			i.id_epi, 
+			f.IdDepartamento, 
+			d.nome, 
+			f.IdFuncao, 
+			ff.nome, 
+			i.id, 
 			e.nome, 
 			e.fabricante, 
 			e.CA,
-			e.descricao, 
-			e.data_fabricacao, 
-			e.data_validade, 
-			e.data_validadeCa,
-			e.id_tipo_protecao,
-			tp.protecao, 
-			i.id_tamanho, 
+			e.descricao,  
+			e.validade_CA,
+			e.IdTipoProtecao,
+			tp.id, 
+			i.IdTamanho, 
 			t.tamanho, 
 			i.quantidade,
-			ee.AssinaturaDigital,
-			i.valorUnitario
-			from entrega ee
+			ee.assinatura,
+			i.valor_unitario
+			from entrega_epi ee
 			inner join
-				funcionario f on ee.id_funcionario = f.id
+				funcionario f on ee.IdFuncionario = f.id
 			inner join
-				departamentos d on f.id_departamento = d.id
+				departamento d on f.IdDepartamento = d.id
 			inner join 
-				funcao ff on f.id_funcao = ff.id
+				funcao ff on f.IdFuncao = ff.id
 			inner join 
-				epi_entregues i on i.id_entrega = ee.id
+				epis_entregues i on i.IdEntrega = ee.id
 			inner join 
-				epi e on i.id_epi = e.id
+				epi e on i.IdEpi = e.id
 			inner join
-				tipo_protecao tp on e.id_tipo_protecao = tp.id
+				tipo_protecao tp on e.IdTipoProtecao = tp.id
 			inner join 
-				tamanho t on i.id_tamanho = t.id
+				tamanho t on i.IdTamanho = t.id
 			where ee.cancelada_em IS NULL 
 
 `
@@ -112,8 +116,6 @@ linhas, err := n.Db.QueryContext(ctx, query, args...)
 			&item.Epi.Fabricante,
 			&item.Epi.CA,
 			&item.Epi.Descricao,
-			&item.Epi.DataFabricacao,
-			&item.Epi.DataValidade,
 			&item.Epi.DataValidadeCa,
 			&item.Epi.Protecao.ID,
 			&item.Epi.Protecao.Nome,
@@ -181,9 +183,10 @@ func (n *NewsqlLogin) Addentrega(ctx context.Context, model model.EntregaParaIns
 	defer tx.Rollback()
 
 	//add as entregas
-	queryEntrega := `insert into entrega (id_funcionario, data_entrega, AssinaturaDigital)
-	 values (@idFuncionario, @dataEntrega, @AssinaturaDigital)
-	 OUTPUT INSERTED.id`
+	queryEntrega := `insert into entrega_epi(IdFuncionario, data_entrega, assinatura)
+	OUTPUT INSERTED.id
+	 values (@idFuncionario, @dataEntrega, CAST( @AssinaturaDigital AS VARBINARY(MAX)))
+	`
 
 	var idEntrega int64
 	errSql := tx.QueryRowContext(ctx, queryEntrega,
@@ -212,11 +215,10 @@ func (n *NewsqlLogin) Addentrega(ctx context.Context, model model.EntregaParaIns
 	return nil
 }
 
-
 // BuscaEntrega implements EntregaInterface.
 func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error) {
 
-	query:= entregaQueryJoin + " and ee.id = @id"
+	query:= entregaQueryJoin + " where ee.cancelada_em IS NUL and ee.id = @id"
 
 	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", id))
 	if err != nil {
@@ -232,12 +234,82 @@ func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaD
 	
 }
 
+func (n *NewsqlLogin) BuscaEntregaPorIdFuncionario(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error){
+
+	query:= entregaQueryJoin + " where ee.cancelada_em IS NULL and ee.IdFuncionario = @id"
+
+	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", idFuncionario))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(entrega) == 0 {
+
+		return  nil,nil
+	}
+
+	return  entrega, nil
+
+}
+
+func (n *NewsqlLogin) BuscaEntregaPorIdFuncionarioCanceladas(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error){
+
+	query:= entregaQueryJoin + " where ee.cancelada_em IS NOT NULL and ee.IdFuncionario = @id"
+
+	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", idFuncionario))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(entrega) == 0 {
+
+		return  nil,nil
+	}
+
+	return  entrega, nil
+
+}
 // BuscaTodasEntregas implements EntregaInterface.
 func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaDto, error) {
 
 	return n.buscaEntregas(ctx, entregaQueryJoin)
 
 	
+}
+
+func (n *NewsqlLogin) BuscaTodasEntregasCanceladas(ctx context.Context) ([]*model.EntregaDto, error){
+
+	query:= entregaQueryJoin + " where ee.cancelada_em IS not NULL"
+
+	entrega, err:= n.buscaEntregas(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(entrega) == 0 {
+
+		return  nil,nil
+	}
+
+	return  entrega, nil
+}
+
+func (n *NewsqlLogin) BuscaEntregaCancelada(ctx context.Context, id int) (*model.EntregaDto, error){
+
+	query:= entregaQueryJoin + " where ee.cancelada_em IS not NULL and ee.id = @id"
+
+	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", id))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(entrega) == 0 {
+
+		return  nil,nil
+	}
+
+	return  entrega[0], nil
+
 }
 
 // DeletarEntregas implements EntregaInterface.
