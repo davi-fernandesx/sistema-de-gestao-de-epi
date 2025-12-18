@@ -10,12 +10,14 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/sqlserver"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/microsoft/go-mssqldb"
+	"github.com/jmoiron/sqlx"
 )
 
 type Conexao interface {
 	Conn() (*sql.DB, error)
 }
 
+type ConexaoDbSqlserverSqlx struct{}
 type ConexaoDbSqlserver struct{}
 
 func (C *ConexaoDbSqlserver) Conn() (*sql.DB, error) {
@@ -23,6 +25,26 @@ func (C *ConexaoDbSqlserver) Conn() (*sql.DB, error) {
 	connString := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s", Env.DB_USER, Env.SA_PASSWORD, Env.DB_SERVER, Env.DB_PORT, Env.DATABASE)
 
 	db, err := sql.Open("sqlserver", connString)
+	if err != nil {
+
+		return nil, fmt.Errorf("erro ao se conectar com o banco de dados: %v", err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		return nil, fmt.Errorf("erro ao verificar se a conexao ainda está ativa: %v", err)
+	}
+
+	return db, nil
+
+}
+
+
+func (Cx *ConexaoDbSqlserverSqlx) Conn() (*sqlx.DB, error ){
+
+	connString := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s", Env.DB_USER, Env.SA_PASSWORD, Env.DB_SERVER, Env.DB_PORT, Env.DATABASE)
+
+	db, err := sqlx.Open("sqlserver", connString)
 	if err != nil {
 
 		return nil, fmt.Errorf("erro ao se conectar com o banco de dados: %v", err)
