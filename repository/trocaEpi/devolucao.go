@@ -137,12 +137,11 @@ func (d *DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEp
 	//buscando o lote mais antigo e que tenha o saldo de epi nescessario
 	buscaLote := `
 
-			select top 1 id, valorUnitario, quantidade 
-			from entrada with (updlock)
-			where id_epi = @idEpi 
-				and id_tamanho = @id_tamanho 
-				and quantidade >= @quantidade
-			order by data_entrada asc
+	select  top 1 id as entrada, valor_unitario ,lote
+	from entrada_epi
+	where IdEpi = 1003 AND IdTamanho = 2 and quantidade >= 1
+	order by data_entrada asc
+
 		`
 
 	var idEntrada int64
@@ -166,7 +165,7 @@ func (d *DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEp
 	//atualizando o saldo
 	queryBaixa := `
 
-			update entrada 
+			update entrada_epi 
 				set quantidade = quantidade - @qtd 
 					where id = @idEntrada
 		`
@@ -182,7 +181,7 @@ func (d *DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEp
 	//dando entrada dos epi na tabela auxiliar epi_entrega
 	queryItens := `
 
-			insert into epi_entregas(id_epi,id_tamanho, quantidade,id_entrega,id_entrada ,valorUnitario) values (@id_epi, @id_tamanho, @quantidade, @id_entrega,@id_entrada ,@valorUnitario)
+			insert into epis_entregues(IdEpi,IdTamanho, quantidade,IdEntrega,IdEntrada ,valor_unitario) values (@id_epi, @id_tamanho, @quantidade, @id_entrega,@id_entrada ,@valorUnitario)
 		`
 
 	_, err = tx.ExecContext(ctx, queryItens,
@@ -205,14 +204,15 @@ func (d *DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEp
 func (d *DevolucaoRepository) AddDevolucaoEpi(ctx context.Context, devolucao model.DevolucaoInserir) error {
 
 	query := `
-		insert into devolucao (idFuncionario, idEpi, motivo ,dataDevolucao, quantidadeDevolucao, idEpiNovo, IdtamanhoEpiNovo, quantidadeNova,assinaturaDigital)
-	 values (@idFuncionario, @idEpi, @motivo ,@dataDevolucao, @quantidadeDevolucao, null, null,null, @assinaturaDigital)
+		insert into devolucao (IdFuncionario, IdEpi, IdMotivo ,data_devolucao, IdTamanho, quantidadeAdevolver, idEpiNovo, IdTamanhoNovo,quantidade_nova,assinatura_digital)
+	 	values (@idFuncionario, @idEpi, @motivo ,@dataDevolucao,@idTamanho ,@quantidadeDevolucao, null,null, null, cast( @assinaturaDigital as varbinary(max)))
 
 	`
 	_, err := d.db.ExecContext(ctx, query, sql.Named("idFuncionario", devolucao.IdFuncionario),
 		sql.Named("idEpi", devolucao.IdEpi),
 		sql.Named("motivo", devolucao.IdMotivo),
 		sql.Named("dataDevolucao", devolucao.DataDevolucao),
+		sql.Named("idTamanho",devolucao.IdTamanho),
 		sql.Named("quantidadeDevolucao", devolucao.QuantidadeADevolver),
 		sql.Named("assinaturaDigital", devolucao.AssinaturaDigital))
 	if err != nil {
@@ -232,9 +232,10 @@ func (d *DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.D
 	}
 
 	defer tx.Rollback()
-	queryInsertDevolucao := `insert into devolucao (idFuncionario, idEpi, motivo ,dataDevolucao, quantidadeDevolucao, idEpiNovo, IdtamanhoEpiNovo, quantidadeNova,assinaturaDigital)
-	 values (@idFuncionario, @idEpi, @motivo ,@dataDevolucao, @quantidadeDevolucao, @idEpiNovo, @IdtamanhoEpiNovo,@quantidadeNova, @assinaturaDigital)
-	 OUTPUT INSERTED.id`
+	queryInsertDevolucao := `insert into devolucao (IdFuncionario, IdEpi, IdMotivo ,data_devolucao, IdTamanho, quantidadeAdevolver, idEpiNovo, IdTamanhoNovo,quantidade_nova,assinatura_digital)
+		OUTPUT INSERTED.id
+	 	values (@idFuncionario, @idEpi, @motivo ,@dataDevolucao,@idTamanho ,@quantidadeDevolucao, @idEpiNovo,@IdtamanhoEpiNovo, @quantidadeNova, cast( @assinaturaDigital as varbinary(max)))
+	 `
 
 	var idDevolucao int64 //resgando o id da tabela devolucao
 	errSqlDevolucao := tx.QueryRowContext(ctx, queryInsertDevolucao,
@@ -242,6 +243,7 @@ func (d *DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.D
 		sql.Named("idEpi", devolucao.IdEpi),
 		sql.Named("motivo", devolucao.IdMotivo),
 		sql.Named("dataDevolucao", devolucao.DataDevolucao),
+		sql.Named("idTamanho", devolucao.IdTamanho),
 		sql.Named("quantidadeDevolucao", devolucao.QuantidadeADevolver),
 		sql.Named("idEpiNovo", devolucao.IdEpiNovo),
 		sql.Named("IdtamanhoEpiNovo", devolucao.IdTamanhoNovo),
@@ -249,16 +251,16 @@ func (d *DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.D
 		sql.Named("assinaturaDigital", devolucao.AssinaturaDigital)).Scan(&idDevolucao)
 	if errSqlDevolucao != nil {
 
-		return fmt.Errorf("erro interno ao salvar devolucao, %w", Errors.ErrInternal)
+		return fmt.Errorf("erro interno ao salvar devolucao, %w", errSqlDevolucao)
 	}
 
 	//adicionando o epi na tabela de entregas e pegando seu id
 	var idEntrega int64
 	queryEntrega := `
 
-		insert into entrega (idFuncionario, dataEntrega, assinaturaDigital, idTroca)
-		values (@idFuncionario, @dataEntrega, @assinaturaDigital, @idTroca)
+		insert into entrega_epi(IdFuncionario, data_entrega, assinatura, IdTroca)
 		OUTPUT INSERTED.id
+		values (@idFuncionario, @dataEntrega, cast(@assinaturaDigital as varbinary(max)), @idTroca)
 	`
 
 	errSql := tx.QueryRowContext(ctx, queryEntrega,
