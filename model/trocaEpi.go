@@ -6,6 +6,7 @@ type DevolucaoInserir struct {
 	IdFuncionario       int       `json:"id_funcionario"`
 	IdEpi               int       `json:"id_epi"`
 	IdMotivo            int       `json:"id_motivo"`
+	IdTamanho           int       `json:"id_tamanho"`
 	DataDevolucao       time.Time `json:"data_devolucao"`
 	QuantidadeADevolver int       `json:"quantidade_a_devolver"`
 	NovaQuantidade      *int      `json:"nova_quantidade"`
