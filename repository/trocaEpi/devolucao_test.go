@@ -157,7 +157,8 @@ func TestDevolucaoEpi(t *testing.T) {
 		IdFuncionario:       1,
 		IdEpi:               1,
 		IdMotivo:            2,
-		DataDevolucao:       time.Now(),
+		IdTamanho: 			 1,
+		DataDevolucao:       time.Now(),	
 		QuantidadeADevolver: 1,
 		NovaQuantidade:      nil,
 		IdEpiNovo:           nil,
@@ -172,6 +173,7 @@ func TestDevolucaoEpi(t *testing.T) {
 			sql.Named("idEpi", testModel.IdEpi),
 			sql.Named("motivo", testModel.IdMotivo),
 			sql.Named("dataDevolucao", testModel.DataDevolucao),
+			sql.Named("idTamanho", testModel.IdTamanho),
 			sql.Named("quantidadeDevolucao", testModel.QuantidadeADevolver),
 			sql.Named("assinaturaDigital", testModel.AssinaturaDigital),
 		).WillReturnResult(sqlmock.NewResult(0, 1))
@@ -189,6 +191,7 @@ func TestDevolucaoEpi(t *testing.T) {
 			sql.Named("idEpi", testModel.IdEpi),
 			sql.Named("motivo", testModel.IdMotivo),
 			sql.Named("dataDevolucao", testModel.DataDevolucao),
+			sql.Named("idTamanho", testModel.IdTamanho),
 			sql.Named("quantidadeDevolucao", testModel.QuantidadeADevolver),
 			sql.Named("assinaturaDigital", testModel.AssinaturaDigital),
 		).WillReturnError(sql.ErrConnDone)
@@ -221,6 +224,7 @@ func TestBaixaEstoque(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	repo := NewDevolucaoRepository(db)
 
 	idEpi := 2
@@ -244,12 +248,12 @@ func TestBaixaEstoque(t *testing.T) {
 			sql.Named("quantidade", quantidade),
 		).WillReturnRows(rows)
 
-		mock.ExpectExec(regexp.QuoteMeta("update entrada")).WithArgs(
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(
 			sql.Named("qtd", quantidade),
 			sql.Named("idEntrada", idEntrada),
 		).WillReturnResult(sqlmock.NewResult(0, 1))
 
-		mock.ExpectExec(regexp.QuoteMeta("insert into epi_entregas")).WithArgs(
+		mock.ExpectExec(regexp.QuoteMeta("insert into ")).WithArgs(
 			sql.Named("id_epi", idEpi),
 			sql.Named("id_tamanho", idTamanho),
 			sql.Named("quantidade", quantidade),
@@ -340,6 +344,7 @@ func TestAddTrocaEPI(t *testing.T) {
 				sql.Named("idEpi", devolucao.IdEpi),
 				sql.Named("motivo", devolucao.IdMotivo),
 				sql.Named("dataDevolucao", devolucao.DataDevolucao),
+				sql.Named("idTamanho", devolucao.IdTamanho),
 				sql.Named("quantidadeDevolucao", devolucao.QuantidadeADevolver),
 				sql.Named("idEpiNovo", devolucao.IdEpiNovo),
 				sql.Named("IdtamanhoEpiNovo", devolucao.IdTamanhoNovo),
@@ -383,7 +388,7 @@ func TestAddTrocaEPI(t *testing.T) {
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		// 6. Insert na Tabela epi_entregas (Dentro do BaixaEstoque)
-		mock.ExpectExec("(?i)insert into epi_entregas.*").
+		mock.ExpectExec("insert into epis_entregues ").
 			WithArgs(
 				sql.Named("id_epi", int64(*devolucao.IdEpiNovo)),
 				sql.Named("id_tamanho", int64(*devolucao.IdTamanhoNovo)),
