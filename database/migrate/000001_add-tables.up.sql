@@ -15,7 +15,7 @@ CREATE TABLE tipo_protecao(
     nome varchar(100) not null unique
 );
 
-CREATE TABLE tamanho_epi(
+CREATE TABLE tamanho(
     id int primary key identity(1,1),
     tamanho varchar(50) not null unique
 );
@@ -28,6 +28,7 @@ CREATE TABLE epi(
     descricao text not null,
     validade_CA date not null,
     IdTipoProtecao int not null, -- Vírgula adicionada aqui
+    alerta_minimo INT NOT NULL,
     foreign key (IdTipoProtecao) references tipo_protecao(id)
 );
 
@@ -36,7 +37,7 @@ CREATE TABLE tamanhos_epis(
     IdEpi int not null,
     IdTamanho int not null, -- Vírgula adicionada aqui
     foreign key (IdEpi) references epi(id),
-    foreign key (IdTamanho) references tamanho_epi(id)
+    foreign key (IdTamanho) references tamanho(id)
 );
 
 CREATE TABLE funcionario (
@@ -60,10 +61,9 @@ CREATE TABLE entrada_epi(
     lote varchar(50) not null,
     fornecedor varchar(100) not null,
     valor_unitario decimal(10,2) not null,
-    idtroca int null,
     cancelada_em datetime null, -- Vírgula adicionada aqui
     foreign key (IdEpi) references epi(id), -- Vírgula adicionada aqui entre as FKs
-    foreign key (IdTamanho) references tamanho_epi(id)
+    foreign key (IdTamanho) references tamanho(id)
 );
 
 CREATE TABLE entrega_epi(
@@ -71,6 +71,7 @@ CREATE TABLE entrega_epi(
     IdFuncionario int not null,
     data_entrega date not null,
     assinatura varbinary(MAX) not null, -- MUDADO: De varbinary para varbinary(MAX)
+    IdTroca int null,
     cancelada_em datetime null, -- Vírgula adicionada aqui
     foreign key (IdFuncionario) references funcionario(id)
 );
@@ -103,12 +104,13 @@ CREATE TABLE devolucao(
     quantidadeAdevolver int not null,
     IdEpiNovo int null,
     IdTamanhoNovo int null,
-    quantidaNova int null,
+    quantidadeNova int null,
+    cancelada_em datetime null,
     assinatura_digital varbinary(MAX) not null, -- MUDADO: De varbinary para varbinary(MAX) e adicionado vírgula antes
     foreign key (IdEpi) references epi(id),
     foreign key (IdFuncionario) references funcionario(id),
     foreign key (IdMotivo) references motivo_devolucao(id),
     foreign key (IdEpiNovo) references epi(id),
-    foreign key (IdTamanhoNovo) references tamanho_epi(id),
-    foreign key (IdTamanho) references tamanho_epi(id)
+    foreign key (IdTamanhoNovo) references tamanho(id),
+    foreign key (IdTamanho) references tamanho(id)
 );

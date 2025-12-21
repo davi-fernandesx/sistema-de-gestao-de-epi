@@ -1,1 +1,0 @@
-EXEC sp_rename 'devolucao.quantidaNova', 'quantidade_nova', 'COLUMN';
