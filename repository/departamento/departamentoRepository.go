@@ -16,8 +16,8 @@ type DepartamentoInterface interface {
 	AddDepartamento(ctx context.Context, departamento *model.Departamento) error
 	DeletarDepartamento(ctx context.Context, id int) error
 	BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error)
-	BuscarTodosDepartamentos(ctx context.Context) (*[]model.Departamento, error)
-	UpdateDepartamento(ctx context.Context, id int, departamento string)error
+	BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error)
+	UpdateDepartamento(ctx context.Context, id int, departamento string)(int64,error)
 }
 
 type NewSqlLogin struct {
@@ -73,7 +73,7 @@ func (n *NewSqlLogin) BuscarDepartamento(ctx context.Context, id int) (*model.De
 }
 
 // BuscarTodosDepartamentos implements DepartamentoInterface.
-func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) (*[]model.Departamento, error) {
+func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error) {
 
 	query := `select id, nome from departamento`
 
@@ -101,7 +101,7 @@ func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) (*[]model.De
 		return nil, fmt.Errorf("erro ao iterar sobre os departamentos, %w", Errors.ErrAoIterar)
 	}
 
-	return &departamentos, nil
+	return departamentos, nil
 
 }
 
@@ -128,18 +128,18 @@ func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
 	return nil
 }
 
-func (n *NewSqlLogin) UpdateDepartamento(ctx context.Context, id int, departamento string)error{
+func (n *NewSqlLogin) UpdateDepartamento(ctx context.Context, id int, departamento string)(int64,error){
 
 	query:= `update departamento
 			set nome = @departamento
 			where id = @id`
 
-		_, err:= n.DB.ExecContext(ctx, query, sql.Named("departamento", departamento), sql.Named("id", id))
+		linha, err:= n.DB.ExecContext(ctx, query, sql.Named("departamento", departamento), sql.Named("id", id))
 		if err != nil {
 			
-			return fmt.Errorf("erro ao atualizar o nome do departamento, %w", Errors.ErrInternal)
+			return 0, fmt.Errorf("erro ao atualizar o nome do departamento, %w", Errors.ErrInternal)
 		}
 
-	return  nil
+	return linha.RowsAffected()
 			
 }
