@@ -27,6 +27,31 @@ type MockEstoqueRepo struct {
 	mock.Mock
 }
 
+// BuscaDevolucaoPorId implements [trocaepi.DevolucaoInterfaceRepository].
+func (m *MockEstoqueRepo) BuscaDevolucaoPorId(ctx context.Context, id int) ([]model.Devolucao, error) {
+	panic("unimplemented")
+}
+
+// BuscaDevolucaoPorIdCancelada implements [trocaepi.DevolucaoInterfaceRepository].
+func (m *MockEstoqueRepo) BuscaDevolucaoPorIdCancelada(ctx context.Context, id int) ([]model.Devolucao, error) {
+	panic("unimplemented")
+}
+
+// BuscaDevolucaoPorMatricula implements [trocaepi.DevolucaoInterfaceRepository].
+func (m *MockEstoqueRepo) BuscaDevolucaoPorMatricula(ctx context.Context, matricula int) ([]model.Devolucao, error) {
+	panic("unimplemented")
+}
+
+// BuscaDevolucaoPorMatriculaCancelada implements [trocaepi.DevolucaoInterfaceRepository].
+func (m *MockEstoqueRepo) BuscaDevolucaoPorMatriculaCancelada(ctx context.Context, matricula int) ([]model.Devolucao, error) {
+	panic("unimplemented")
+}
+
+// BuscaTodasDevolucoesCancelada implements [trocaepi.DevolucaoInterfaceRepository].
+func (m *MockEstoqueRepo) BuscaTodasDevolucoesCancelada(ctx context.Context) ([]model.Devolucao, error) {
+	panic("unimplemented")
+}
+
 // BuscaDevoluvao implements trocaepi.DevolucaoInterfaceRepository.
 func (m *MockEstoqueRepo) BuscaDevolucao(ctx context.Context, id int) ([]model.Devolucao, error) {
 	panic("unimplemented")
@@ -156,7 +181,7 @@ func TestAddEntrega_ErroNaBaixaDeEstoque(t *testing.T) {
 var entregaColunas = []string{
 
 	"id", "dataEntrega", "id_funcionario", "nome", "id_departamento", "departamento", "id_funcao", "funcao",
-	"id_epi", "nome", "fabricante", "CA", "descricao",  "data_validadeCA",
+	"id_epi", "nome", "fabricante", "CA", "descricao", "data_validadeCA",
 	"id_tipo_protecao", "protecao", "id_tamanho", "tamanho", "quantidade", "assinatura_digital", "valorUnitario",
 }
 
@@ -180,13 +205,13 @@ func TestBuscaEntregaPorId(t *testing.T) {
 	row := sqlmock.NewRows(entregaColunas).AddRow(
 
 		id1, dataEntrega, 3, "davi", 4, "ti", 3, "dev", 1, "luva", "master", "64556", " luvas de borracha",
-		 dataValidadeCa, 2, "maos", 2, "G", 2, "hash", 12.99,
+		dataValidadeCa, 2, "maos", 2, "G", 2, "hash", 12.99,
 	)
 
 	row2 := sqlmock.NewRows(entregaColunas).AddRow(
 
 		id2, dataEntrega, 4, "rada", 4, "ti", 3, "dev", 1, "luva", "master", "64556", " luvas de borracha",
-		 dataValidadeCa, 2, "maos", 2, "G", 2, "hash", 12.99,
+		dataValidadeCa, 2, "maos", 2, "G", 2, "hash", 12.99,
 	)
 
 	t.Run("sucesso ao retorna entrega por id", func(t *testing.T) {

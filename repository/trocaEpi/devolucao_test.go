@@ -60,7 +60,7 @@ func TestBuscaDevoluicaoPorMatricula(t *testing.T) {
 
 		mock.ExpectQuery(regexp.QuoteMeta("select")).WithArgs(sql.Named("matricula", matricula)).WillReturnRows(rows)
 
-		resultado, err := repo.BuscaDevolucao(ctx, matricula)
+		resultado, err := repo.BuscaDevolucaoPorMatricula(ctx, matricula)
 
 		require.NoError(t, err)
 		require.NotNil(t, resultado)
@@ -74,7 +74,7 @@ func TestBuscaDevoluicaoPorMatricula(t *testing.T) {
 
 		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(sql.Named("matricula", matricula)).WillReturnError(sql.ErrConnDone)
 
-		resultado, err := repo.BuscaDevolucao(ctx, matricula)
+		resultado, err := repo.BuscaDevolucaoPorMatricula(ctx, matricula)
 
 		require.Error(t, err)
 		require.Nil(t, resultado)

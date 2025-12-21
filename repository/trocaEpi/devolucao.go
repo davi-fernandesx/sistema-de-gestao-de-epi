@@ -14,9 +14,13 @@ type DevolucaoInterfaceRepository interface {
 	AddTrocaEPI(ctx context.Context, devolucao model.DevolucaoInserir) error
 	AddDevolucaoEpi(ctx context.Context, devolucao model.DevolucaoInserir) error
 	DeleteDevolucao(ctx context.Context, id int) error
-	BuscaDevolucao(ctx context.Context, matricula int) ([]model.Devolucao, error)
+	BuscaDevolucaoPorMatricula(ctx context.Context, matricula int) ([]model.Devolucao, error)
 	BuscaTodasDevolucoes(ctx context.Context) ([]model.Devolucao, error)
 	BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi, iDTamanho int64, quantidade int, idEntrega int64) error
+	BuscaDevolucaoPorId(ctx context.Context, id int)([]model.Devolucao,error)
+	BuscaDevolucaoPorIdCancelada(ctx context.Context, id int)([]model.Devolucao, error)
+	BuscaDevolucaoPorMatriculaCancelada(ctx context.Context, matricula int) ([]model.Devolucao, error)
+	BuscaTodasDevolucoesCancelada(ctx context.Context) ([]model.Devolucao, error)
 }
 
 type DevolucaoRepository struct {
@@ -31,38 +35,36 @@ func NewDevolucaoRepository(db *sql.DB) DevolucaoInterfaceRepository {
 }
 
 const queryBuscaDevolucao = `
-		select 
+select 
 		d.id,
 		d.idFuncionario,
 		f.nome,
 		f.idDepartamento,
-		dd.departamento,
+		dd.nome,
 		f.idFuncao,
-		ff.funcao,
-		d.id_epi, 
+		ff.nome,
+		d.IdEpi, 
 		e.nome, 
 		e.fabricante, 
 		e.CA,
-		d.id_tamanho as id_tamanhoAntigo,
+		d.IdTamanho as id_tamanhoAntigo,
 		t.tamanho as tamanhoAntigo,
 		d.quantidadeAdevolver,
-		d.motivo,
-		d.id_epiNovo as epiNovo, 
+		d.IdMotivo,
+		d.IdEpiNovo as epiNovo, 
 		en.nome as NomeEpiNovo, 
 		en.fabricante as FabricanteEpiNovo, 
 		en.CA as CAEpiNovo,
 		d.quantidadeNova as QuantidadeEpiNovo,
-		d.id_tamanhoNovo as TamanhoEpiNovo,
+		d.IdTamanhoNovo as TamanhoEpiNovo,
 		tn.tamanho as TamanhoNovo,
-		d.assinaturaDigital,
-		d.dataTroca
-
+		d.assinatura_digital,
+		d.data_devolucao
 		from devolucao d
-
 		inner join
-			epi e on d.id_epi = e.id
+			epi e on  d.IdEpi = e.id
 		left join
-			epi en on d.id_epiNovo = en.id
+			epi en on d.IdEpiNovo = en.id
 		inner join
 			funcionario f on d.idFuncionario = f.id	
 		inner join 
@@ -70,9 +72,9 @@ const queryBuscaDevolucao = `
 		inner join 
 			funcao ff on f.idFuncao = ff.id
 		left join
-			tamanho tn on d.id_tamanhoNovo = tn.id
+			tamanho tn on d.IdTamanhoNovo = tn.id
 		inner join
-			tamanho t on d.id_tamanho = t.id
+			tamanho t on d.IdTamanho = t.id
 		where d.cancelada_em is null
 
 `
@@ -293,9 +295,9 @@ func (d *DevolucaoRepository) AddTrocaEPI(ctx context.Context, devolucao model.D
 // executaBusca implements DevolucaoInterfaceRepository.
 
 // BuscaDevoluvao implements DevolucaoInterfaceRepository.
-func (d *DevolucaoRepository) BuscaDevolucao(ctx context.Context, matricula int) ([]model.Devolucao, error) {
+func (d *DevolucaoRepository) BuscaDevolucaoPorMatricula(ctx context.Context, matricula int) ([]model.Devolucao, error) {
 
-	query := queryBuscaDevolucao + " where f.matricula = @matricula order by d.dataTroca DESC"
+	query := queryBuscaDevolucao + " where f.matricula = @matricula and d.cancelada_em is null order by d.dataTroca DESC"
 
 	return d.executaBusca(ctx, query, sql.Named("matricula", matricula))
 }
@@ -303,10 +305,42 @@ func (d *DevolucaoRepository) BuscaDevolucao(ctx context.Context, matricula int)
 // BuscaTodasDevolucoe implements DevolucaoInterfaceRepository.
 func (d *DevolucaoRepository) BuscaTodasDevolucoes(ctx context.Context) ([]model.Devolucao, error) {
 
-	query := queryBuscaDevolucao + " order by d.dataTroca DESC"
+	query := queryBuscaDevolucao + " d.cancelada_em is null order by d.dataTroca DESC"
 
 	return d.executaBusca(ctx, query)
 }
+
+func (d *DevolucaoRepository) BuscaDevolucaoPorId(ctx context.Context, id int)([]model.Devolucao,error) {
+
+	query := queryBuscaDevolucao + " where d.id = @id and d.cancelada_em is null order by d.dataTroca DESC"
+
+	return d.executaBusca(ctx, query, sql.Named("id", id))
+
+}
+
+func (d *DevolucaoRepository) BuscaDevolucaoPorIdCancelada(ctx context.Context, id int)([]model.Devolucao, error){
+
+	query := queryBuscaDevolucao + " where d.id = @id and d.cancelada_em is not null order by d.dataTroca DESC"
+
+	return d.executaBusca(ctx, query, sql.Named("id", id))
+
+}
+
+func (d *DevolucaoRepository) BuscaDevolucaoPorMatriculaCancelada(ctx context.Context, matricula int) ([]model.Devolucao, error) {
+
+	query := queryBuscaDevolucao + " where f.matricula = @matricula and d.cancelada_em is not null order by d.dataTroca DESC"
+
+	return d.executaBusca(ctx, query, sql.Named("matricula", matricula))
+}
+
+func (d *DevolucaoRepository) BuscaTodasDevolucoesCancelada(ctx context.Context) ([]model.Devolucao, error) {
+
+	query := queryBuscaDevolucao + " d.cancelada_em is not null order by d.dataTroca DESC"
+
+	return d.executaBusca(ctx, query)
+}
+
+
 
 //***************************************************************************************************
 
