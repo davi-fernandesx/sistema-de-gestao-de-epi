@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
+
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
@@ -32,32 +32,15 @@ func NewFuncionarioService(repo funcionario.FuncionarioInterface) Funcionario {
 	}
 }
 
+var (
+
+		ErrMatricula = errors.New("matricula ja cadastrada")
+		ErrFuncionarios = errors.New("funcionario não encontrado")
+
+)
 // SalvarFuncinario implements Funcionario.
 func (f *FuncionarioService) SalvarFuncionario(ctx context.Context, funcionario model.FuncionarioINserir) error {
 
-	if strings.TrimSpace(funcionario.Nome) == "" {
-
-		return errors.New("nome não pode ser em branco")
-	}
-
-	if funcionario.ID_departamento == nil {
-
-		return  errors.New("id do departamento é obrigatorio")
-	}
-
-	if funcionario.ID_funcao == nil {
-		return  errors.New("id da funcao é obrigatorio")
-	}
-
-	if *funcionario.ID_departamento <= 0 || *funcionario.ID_funcao <= 0 {
-
-			return errors.New("ids tem que ter numero positivo")
-	}
-
-	err := service.VerificaContext(ctx)
-	if err != nil {
-		return err
-	}
 
 	matriculaInt, err := service.VerificaMatricula(ctx, funcionario.Matricula)
     if err != nil {
@@ -74,13 +57,12 @@ func (f *FuncionarioService) SalvarFuncionario(ctx context.Context, funcionario 
 
 	} else {
 
-		return errors.New("matricula ja cadastrada")
+		return ErrMatricula
 	}
 
-	nomeSemEspacio := service.VerificaEspaço(funcionario.Nome)
 
 	funcSalvar := model.FuncionarioINserir{
-		Nome:            nomeSemEspacio,
+		Nome:            funcionario.Nome,
 		Matricula:       funcionario.Matricula,
 		ID_departamento: funcionario.ID_departamento,
 		ID_funcao:       funcionario.ID_funcao,
@@ -108,6 +90,11 @@ func (f *FuncionarioService) ListarFuncionarioPorMatricula(ctx context.Context, 
 
 		return nil, err
 
+	}
+
+	if funcionario == nil {
+
+		return  nil, ErrFuncionarios
 	}
 
 	funcDto := model.Funcionario_Dto{
