@@ -49,7 +49,7 @@ func VerificaMatricula(ctx context.Context, matricula string)(int, error){
 	}
 	
 
-	if len(matriculaLimpa) == 11 {
+	if len(matriculaLimpa) == 8 {
 		return 0, errors.New("matricula tem que conter ate 7 digitos numericos")
 	}
 
