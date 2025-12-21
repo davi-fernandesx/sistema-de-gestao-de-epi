@@ -2,7 +2,7 @@ package model
 
 type Departamento struct {
 	ID           int    `json:"-"`
-	Departamento string `json:"departamento"`
+	Departamento string `json:"departamento" binding:"required ,min= 20,max=50"`
 }
 
 type DepartamentoDto struct {
