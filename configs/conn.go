@@ -9,8 +9,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlserver"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/microsoft/go-mssqldb"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/microsoft/go-mssqldb"
 )
 
 type Conexao interface {
@@ -39,8 +39,7 @@ func (C *ConexaoDbSqlserver) Conn() (*sql.DB, error) {
 
 }
 
-
-func (Cx *ConexaoDbSqlserverSqlx) Conn() (*sqlx.DB, error ){
+func (Cx *ConexaoDbSqlserverSqlx) Conn() (*sqlx.DB, error) {
 
 	connString := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s", Env.DB_USER, Env.SA_PASSWORD, Env.DB_SERVER, Env.DB_PORT, Env.DATABASE)
 
@@ -76,7 +75,16 @@ func (C *ConexaoDbSqlserver) RunMigrationSqlserver(db *sql.DB) error {
 	dir, _ := os.Getwd()
 	fmt.Println("O programa está rodando na pasta:", dir)
 	fmt.Println("Tentando ler migrações de:", dir+"/database/migrate")
-	m.Up()
+	err = m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("erro ao aplicar migrações: %w", err)
+	}
+
+	if err == migrate.ErrNoChange {
+		log.Println("Nenhuma migração nova para aplicar.")
+	} else {
+		log.Println("Migrações aplicadas com sucesso!")
+	}
 
 	log.Println("Migrações aplicadas no banco de dados!....")
 	return nil
