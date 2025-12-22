@@ -12,10 +12,10 @@ import (
 )
 
 type FuncaoInterface interface {
-	AddFuncao(ctx context.Context, funcao *model.Funcao) error
+	AddFuncao(ctx context.Context, funcao *model.FuncaoInserir) error
 	DeletarFuncao(ctx context.Context, id int) error
 	BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error)
-	UpdateFuncao(ctx context.Context, id int, funcao string) error
+	UpdateFuncao(ctx context.Context, id int, funcao string) (int64, error)
 	BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error)
 }
 
@@ -31,7 +31,7 @@ func NewfuncaoRepository(db *sql.DB) FuncaoInterface {
 }
 
 // AddFuncao implements FuncaoInterface.
-func (s *SqlServerLogin) AddFuncao(ctx context.Context, funcao *model.Funcao) error {
+func (s *SqlServerLogin) AddFuncao(ctx context.Context, funcao *model.FuncaoInserir) error {
 	query := `insert into funcao (nome, IdDepartamento) values (@funcao, @idDepartamento)`
 
 	_, err := s.Db.ExecContext(ctx, query, sql.Named("funcao", funcao.Funcao), sql.Named("idDepartamento", funcao.IdDepartamento))
@@ -133,17 +133,17 @@ func (s *SqlServerLogin) DeletarFuncao(ctx context.Context, id int) error {
 
 }
 
-func (s *SqlServerLogin) UpdateFuncao(ctx context.Context, id int, funcao string) error {
+func (s *SqlServerLogin) UpdateFuncao(ctx context.Context, id int, funcao string) (int64, error) {
 
 	query := `update funcao
 			set nome = @funcao
 			where id = @id`
 
-	_, err := s.Db.ExecContext(ctx, query, sql.Named("funcao", funcao), sql.Named("id", id))
+	linhas, err := s.Db.ExecContext(ctx, query, sql.Named("funcao", funcao), sql.Named("id", id))
 
 	if err != nil {
-		return fmt.Errorf("erro ao atualizar funcao, %w", Errors.ErrInternal)
+		return 0,fmt.Errorf("erro ao atualizar funcao, %w", Errors.ErrInternal)
 	}
 
-	return nil
+	return linhas.RowsAffected()
 }

@@ -21,7 +21,7 @@ func Test_AddFuncao(t *testing.T) {
 	defer db.Close()
 
 	repo := NewfuncaoRepository(db)
-	funcao := model.Funcao{Funcao: "Desenvolvedor"}
+	funcao := model.FuncaoInserir{Funcao: "Desenvolvedor"}
 	query := regexp.QuoteMeta("insert into")
 
 	t.Run("sucesso ao adicionar uma funcao", func(t *testing.T) {
