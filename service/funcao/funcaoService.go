@@ -37,6 +37,7 @@ var (
 	ErrCtx = errors.New("context encerrado ou invalido")
 	ErrId = errors.New("id invalido")
 	ErrRegistroNaoEncontrado = errors.New("função não encontrada")
+	ErrFuncaoMinCaracteres =  errors.New("funcao deve ter ao minimo 2 caracteres")
 )
 // SalvarFuncao implements [Funcao].
 func (f *FuncaoService) SalvarFuncao(ctx context.Context, model *model.FuncaoInserir) error {
@@ -46,7 +47,7 @@ func (f *FuncaoService) SalvarFuncao(ctx context.Context, model *model.FuncaoIns
 
 	if len(model.Funcao) < 2 {
 
-			return  fmt.Errorf("funcao deve ter ao minimo 2 caracteres")
+			return ErrFuncaoMinCaracteres
 	}
 	if err:= f.FuncaoRepo.AddFuncao(ctx, model); err != nil {
 		  
@@ -140,21 +141,21 @@ func (f *FuncaoService) AtualizarFuncao(ctx context.Context, id int, funcao stri
 	
 	if len(funcaoLimpa) < 2 {
 
-		return  fmt.Errorf("funcao tem que ter no minimo 2 caracteres")
+		return  ErrFuncaoMinCaracteres
 	}
 	linha, err:= f.FuncaoRepo.UpdateFuncao(ctx, id, funcaoLimpa)
 	if err != nil {
 
 		if strings.Contains(err.Error(), "2627") || strings.Contains(err.Error(), "2601"){
 
-			return fmt.Errorf("erro, constraint UNIQUE sendo violado, funcao ja existente com esse nome: %s", funcao)
+			return ErrFuncaoCadastrada
 		}
 
 		return fmt.Errorf("erro tecnico ao realizar o update: %w", err) 
 	}
 
 	if linha == 0 {
-		return fmt.Errorf("funcao com id %d, ,não existe", id)
+		return ErrRegistroNaoEncontrado
 	}
 
 	return  nil
@@ -170,9 +171,6 @@ func (f *FuncaoService) DeletarFuncao(ctx context.Context, id int) error {
 
 	err:=f.FuncaoRepo.DeletarFuncao(ctx, id)
 	if err != nil {
-		if strings.Contains(err.Error(), "547"){
-			return  fmt.Errorf("não é possivel excluir, funcao possui dependencia com funcionario")
-		}
 
 		return  fmt.Errorf("erro ao deletar a funcao, %w", err)
 	}

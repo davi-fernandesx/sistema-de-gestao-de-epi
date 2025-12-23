@@ -131,12 +131,8 @@ func (d *DepartamentoServices) DeletarDepartamento(ctx context.Context, id int) 
 	err:= d.DepartamentoRepo.DeletarDepartamento(ctx, id)
 	if err != nil {
 
-		if strings.Contains(err.Error(), "547 "){
 
-			return  fmt.Errorf("não é possivel excluir, departamento possui dependencia com funcionario e funcao")
-		}
-
-		return  fmt.Errorf("erro ao deletar um departamento, %w", err)
+		return  fmt.Errorf("erro ao deletar um departamento, %w, departamento ja pode estar inativo", err)
 	}
 
 	return  nil
@@ -152,17 +148,12 @@ func (d *DepartamentoServices) AtualizarDepartamento(ctx context.Context, id int
 	 linha,errDep:= d.DepartamentoRepo.UpdateDepartamento(ctx, id, departamento)
 	 if errDep != nil {
 
-		if strings.Contains(errDep.Error(), "2627") || strings.Contains(errDep.Error(), "2601"){
-
-			return fmt.Errorf("erro, constraint UNIQUE sendo violado, departamento ja existente com esse nome %s", departamento)
-		}
-
 		return fmt.Errorf("erro tecnico ao realizar o update: %w", errDep)
 	 }
 
 	 if linha == 0 {
 
-		return fmt.Errorf("departamento com id %d, ,não existe", id)
+		return fmt.Errorf("departamento com id %d, ,não encontrado", id)
 	 }
 
 	 return  nil
