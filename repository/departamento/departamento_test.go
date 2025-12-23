@@ -79,11 +79,11 @@ func Test_DepartamentoRepository_delete(t *testing.T) {
 		Departamento: "adm",
 	}
 
-	query := regexp.QuoteMeta("delete from departamento where id = @id")
+	
 
 	t.Run("sucesso ao deletar um departamento", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(departamento.ID).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(departamento.ID).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		err := repo.DeletarDepartamento(ctx, departamento.ID)
 		require.NoError(t, err)
@@ -92,7 +92,7 @@ func Test_DepartamentoRepository_delete(t *testing.T) {
 
 	t.Run("erro ao deletar um departamento", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(departamento.ID).WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(departamento.ID).WillReturnResult(sqlmock.NewResult(0, 0))
 		err := repo.DeletarDepartamento(ctx, departamento.ID)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, Errors.ErrNaoEncontrado), "erro tem que ser do tipo noa encontrado")
@@ -102,7 +102,7 @@ func Test_DepartamentoRepository_delete(t *testing.T) {
 	t.Run("erro ao buscar linhas afetadas", func(t *testing.T) {
 
 
-		mock.ExpectExec(query).WithArgs(departamento.ID).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(departamento.ID).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 
 		err := repo.DeletarDepartamento(ctx, departamento.ID)
 		require.Error(t, err)

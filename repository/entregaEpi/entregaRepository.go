@@ -76,7 +76,7 @@ select
 				tipo_protecao tp on e.IdTipoProtecao = tp.id
 			inner join 
 				tamanho t on i.IdTamanho = t.id
-			where ee.cancelada_em IS NULL 
+			 
 
 `
 
@@ -218,7 +218,7 @@ func (n *NewsqlLogin) Addentrega(ctx context.Context, model model.EntregaParaIns
 // BuscaEntrega implements EntregaInterface.
 func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error) {
 
-	query:= entregaQueryJoin + " where ee.cancelada_em IS NUL and ee.id = @id"
+	query:= entregaQueryJoin + " where ee.cancelada_em IS NULL and ee.id = @id"
 
 	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", id))
 	if err != nil {
@@ -316,7 +316,7 @@ func (n *NewsqlLogin) BuscaEntregaCancelada(ctx context.Context, id int) (*model
 func (n *NewsqlLogin) CancelarEntrega(ctx context.Context, id int) error {
 
 	query := `update entrega
-			set cancelada_em  = GETDATE() 
+			set cancelada_em  = GETDATE(), ativo = 0
 			where id = @id AND cancelada_em IS NULL;`
 
 	result, err := n.Db.ExecContext(ctx, query, sql.Named("id", id))

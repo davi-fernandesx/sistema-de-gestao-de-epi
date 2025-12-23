@@ -173,7 +173,7 @@ func Test_DeletarProtecao(t *testing.T) {
 	
 
 	t.Run("sucesso ao deletar uma protecao", func(t *testing.T) {
-		mock.ExpectExec(regexp.QuoteMeta("delete ")).
+		mock.ExpectExec(regexp.QuoteMeta("update ")).
 			WithArgs(idParaDeletar).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -185,7 +185,7 @@ func Test_DeletarProtecao(t *testing.T) {
 
 	t.Run("erro - protecao nao encontrada para deletar", func(t *testing.T) {
 		idNaoExistente := 99
-		mock.ExpectExec(regexp.QuoteMeta("delete ")).
+		mock.ExpectExec(regexp.QuoteMeta("update ")).
 			WithArgs(idNaoExistente).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
@@ -196,7 +196,7 @@ func Test_DeletarProtecao(t *testing.T) {
 
 	t.Run("erro generico do banco de dados ao deletar", func(t *testing.T) {
 		dbErr := errors.New("erro de execucao")
-		mock.ExpectExec(regexp.QuoteMeta("delete ")).WithArgs(idParaDeletar).WillReturnError(dbErr)
+		mock.ExpectExec(regexp.QuoteMeta("update  ")).WithArgs(idParaDeletar).WillReturnError(dbErr)
 
 		err := repo.DeletarProtecao(ctx, idParaDeletar)
 		require.Error(t, err)
@@ -206,7 +206,7 @@ func Test_DeletarProtecao(t *testing.T) {
 
 	t.Run("erro ao obter linhas afetadas", func(t *testing.T) {
 
-		mock.ExpectExec(regexp.QuoteMeta("delete ")).
+		mock.ExpectExec(regexp.QuoteMeta("update  ")).
 			WithArgs(idParaDeletar).
 			WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 

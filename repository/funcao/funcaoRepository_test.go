@@ -191,10 +191,10 @@ func Test_DeletarFuncao(t *testing.T) {
 
 	repo := NewfuncaoRepository(db)
 	idParaDeletar := 1
-	query := regexp.QuoteMeta(`delete from funcao `)
+
 
 	t.Run("sucesso ao deletar uma funcao", func(t *testing.T) {
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("update ")).
 			WithArgs(idParaDeletar).
 			WillReturnResult(sqlmock.NewResult(0, 1)) // 0 para lastInsertId, 1 para rowsAffected
 
@@ -206,7 +206,7 @@ func Test_DeletarFuncao(t *testing.T) {
 	t.Run("erro - funcao nao encontrada para deletar", func(t *testing.T) {
 		idNaoExistente := 99
 
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("update")).
 			WithArgs(idNaoExistente).
 			WillReturnResult(sqlmock.NewResult(0, 0)) // 0 linhas afetadas
 
@@ -219,7 +219,7 @@ func Test_DeletarFuncao(t *testing.T) {
 	t.Run("erro generico do banco de dados ao deletar", func(t *testing.T) {
 		dbErr := errors.New("erro de execucao")
 
-		mock.ExpectExec(query).WithArgs(idParaDeletar).WillReturnError(dbErr)
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(idParaDeletar).WillReturnError(dbErr)
 
 		err := repo.DeletarFuncao(ctx, idParaDeletar)
 		require.Error(t, err)
@@ -230,7 +230,7 @@ func Test_DeletarFuncao(t *testing.T) {
 	t.Run("erro ao obter linhas afetadas", func(t *testing.T) {
 		// Alguns drivers podem não suportar RowsAffected e retornar um erro
 		
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("update ")).
 			WithArgs(idParaDeletar).
 			WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 

@@ -141,7 +141,7 @@ func (d *DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEp
 
 	select  top 1 id as entrada, valor_unitario ,lote
 	from entrada_epi
-	where IdEpi = 1003 AND IdTamanho = 2 and quantidade >= 1
+	where IdEpi = 1003 AND IdTamanho = 2 and quantidade >= 1 and ativo = 1
 	order by data_entrada asc
 
 		`
@@ -169,7 +169,7 @@ func (d *DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEp
 
 			update entrada_epi 
 				set quantidade = quantidade - @qtd 
-					where id = @idEntrada
+					where id = @idEntrada and ativo = 1
 		`
 
 	_, err = tx.ExecContext(ctx, queryBaixa,
@@ -350,7 +350,7 @@ func (d *DevolucaoRepository) DeleteDevolucao(ctx context.Context, id int) error
 	query := `
 	
 		update devolucao
-		set cancelada_em = GETDATE()
+		set cancelada_em = GETDATE(), ativo = 0
 		where id = @id and cancelada_em is null
 	`
 

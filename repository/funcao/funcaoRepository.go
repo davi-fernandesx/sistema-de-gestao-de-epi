@@ -54,7 +54,7 @@ func (s *SqlServerLogin) BuscarFuncao(ctx context.Context, id int) (*model.Funca
 			from funcao f
 			inner join 
 				departamento d on f.IdDepartamento = d.id
-			where f.id = @id`
+			where f.id = @id and f.ativo = 1`
 
 	var funcao model.Funcao
 
@@ -75,7 +75,8 @@ func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao,
 	query := `select f.id, f.nome, f.IdDepartamento, d.nome as departamento
 			from funcao f
 			inner join 
-				departamento d on f.IdDepartamento = d.id`
+				departamento d on f.IdDepartamento = d.id
+			where f.ativo = 1`
 
 	linhas, err := s.Db.QueryContext(ctx, query)
 	if err != nil {
@@ -109,7 +110,10 @@ func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao,
 // DeletarFuncao implements FuncaoInterface.
 func (s *SqlServerLogin) DeletarFuncao(ctx context.Context, id int) error {
 
-	query := `delete from funcao where id = @id`
+	query := `update funcao
+			set ativo = 0,
+			deletado_em = getdate()
+			where id = @id and ativo = 1`
 
 	result, err := s.Db.ExecContext(ctx, query, sql.Named("id", id))
 
@@ -137,7 +141,7 @@ func (s *SqlServerLogin) UpdateFuncao(ctx context.Context, id int, funcao string
 
 	query := `update funcao
 			set nome = @funcao
-			where id = @id`
+			where id = @id and ativo = 1`
 
 	linhas, err := s.Db.ExecContext(ctx, query, sql.Named("funcao", funcao), sql.Named("id", id))
 

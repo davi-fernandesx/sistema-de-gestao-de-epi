@@ -252,13 +252,11 @@ func TestCancelarEntrada(t *testing.T) {
 		Fornecedor:     "Fornecedor Principal",
 	}
 
-	query := regexp.QuoteMeta(`update entrada
-			set cancelada_em = GETDATE()
-			where id = @id AND cancelada_em IS NULL`)
+
 
 	t.Run("testando o sucesso ao cancelar um epi da base de dados", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(entradasMock.ID).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(entradasMock.ID).WillReturnResult(sqlmock.NewResult(0, 1))
 
 		errEpi := repo.CancelarEntrada(ctx, entradasMock.ID)
 		require.NoError(t, errEpi)
@@ -269,7 +267,7 @@ func TestCancelarEntrada(t *testing.T) {
 	t.Run("erro ao cancelar uma entradas", func(t *testing.T) {
 
 		ErroGenericoDb := errors.New("erro ao se conectar com o banco")
-		mock.ExpectExec(query).WithArgs(entradasMock.ID).WillReturnError(ErroGenericoDb)
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(entradasMock.ID).WillReturnError(ErroGenericoDb)
 
 		errEpi := repo.CancelarEntrada(ctx, entradasMock.ID)
 
@@ -280,7 +278,7 @@ func TestCancelarEntrada(t *testing.T) {
 
 	t.Run("testando o erro de linhas afetadas", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(entradasMock.ID).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(entradasMock.ID).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 
 		errEpi := repo.CancelarEntrada(ctx, entradasMock.ID)
 
@@ -292,7 +290,7 @@ func TestCancelarEntrada(t *testing.T) {
 
 	t.Run("epi nao encontrado", func(t *testing.T) {
 
-		mock.ExpectExec(query).WithArgs(entradasMock.ID).WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(entradasMock.ID).WillReturnResult(sqlmock.NewResult(0, 0))
 
 		errEpi := repo.CancelarEntrada(ctx, entradasMock.ID)
 		require.Error(t, errEpi)

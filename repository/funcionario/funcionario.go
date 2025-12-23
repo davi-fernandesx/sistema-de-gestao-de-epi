@@ -67,7 +67,7 @@ func (c *ConnDB) BuscaFuncionario(ctx context.Context, matricula int) (*model.Fu
 					departamento d on fn.IdDepartamento = d.id
 			inner join 	
 					funcao f on fn.IdFuncao = f.id
-				where fn.matricula = @matricula`
+				where fn.matricula = @matricula and fn.ativo = 1`
 
 	var funcionario model.Funcionario
 	err := c.DB.QueryRowContext(ctx, query, sql.Named("matricula", matricula)).Scan(
@@ -96,7 +96,8 @@ func (c *ConnDB) BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionar
 			fn.IdFuncao, f.nome as funcao
 			from funcionario fn
 			inner join departamento d on fn.IdDepartamento = d.id
-			inner join funcao f on fn.IdFuncao = f.id`
+			inner join funcao f on fn.IdFuncao = f.id
+			where fn.ativo = 1`
 
 	var funcionarios []model.Funcionario
 
@@ -131,7 +132,10 @@ func (c *ConnDB) BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionar
 // DeletarFuncionario implements FuncionarioInterface.
 func (c *ConnDB) DeletarFuncionario(ctx context.Context, matricula int) error {
 
-	query:= `delete from funcionario where matricula = @matricula`
+	query:= `update funcionario
+			set ativo = 0,
+			deletado_em = getdate()
+			where id = @id and ativo = 1`
 
 	  result, err:= c.DB.ExecContext(ctx, query, sql.Named("matricula", matricula))
 	  if err != nil {
@@ -157,7 +161,7 @@ func (c *ConnDB)UpdateFuncionarioNome(ctx context.Context, id int, funcionario s
 
 	query:= `update funcionario
 		     set nome = @funcionario
-			 where id = @id`
+			 where id = @id and ativo = 1`
 
 	_, err:= c.DB.ExecContext(ctx, query, sql.Named("funcionario", funcionario), sql.Named("id", id))
 	if err != nil {
@@ -171,7 +175,7 @@ func (c *ConnDB)UpdateFuncionarioDepartamento(ctx context.Context, id int, idDep
 
 	query:= `update funcionario
 		     set IdDepartamento = @idDepartamento
-			 where id = @id`
+			 where id = @id and ativo = 1`
 
 	_, err:= c.DB.ExecContext(ctx, query, sql.Named("IdDepartamento", idDepartamento), sql.Named("id", id))
 	if err != nil {
@@ -185,7 +189,7 @@ func (c *ConnDB)UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao st
 
 	query:= `update funcionario
 		     set IdFuncao = @idFuncao
-			 where id = @id`
+			 where id = @id and ativo = 1`
 
 	_, err:= c.DB.ExecContext(ctx, query, sql.Named("IdFuncao", idFuncao), sql.Named("id", id))
 	if err != nil {

@@ -50,7 +50,7 @@ func (s *SqlServerLogin) AddTamanhos(ctx context.Context, tamanhos *model.Tamanh
 // BuscarTamanhos implements TamanhsoInterface.
 func (s *SqlServerLogin) BuscarTamanhos(ctx context.Context, id int) (*model.Tamanhos, error) {
 
-	query:= "select id, tamanho from tamanho where id = @id"
+	query:= "select id, tamanho from tamanho where id = @id and ativo =1 "
 
 	var tamanho model.Tamanhos
 
@@ -81,7 +81,7 @@ func (s *SqlServerLogin) BuscarTamanhosPorIdEpi(ctx context.Context, epiId int)(
 		inner join
 			tamanhosEpis te on t.id = te.id_tamanho
 		where
-			te.epiId = @epiId
+			te.epiId = @epiId and te.ativo = 1
 	`
 
 	linhas, err:= s.DB.QueryContext(ctx, query, sql.Named("epiId", epiId))
@@ -118,7 +118,7 @@ func (s *SqlServerLogin) BuscarTamanhosPorIdEpi(ctx context.Context, epiId int)(
 // BuscarTodosTamanhos implements TamanhsoInterface.
 func (s *SqlServerLogin) BuscarTodosTamanhos(ctx context.Context) ([]model.Tamanhos, error) {
 	
-	query:= "select id, tamanho from tamanho"
+	query:= "select id, tamanho from tamanho where ativo = 1"
 
 	linhas, err:= s.DB.QueryContext(ctx, query)
 	if err != nil {
@@ -152,7 +152,9 @@ func (s *SqlServerLogin) BuscarTodosTamanhos(ctx context.Context) ([]model.Taman
 // DeletarTamanhos implements TamanhsoInterface.
 func (s *SqlServerLogin) DeletarTamanhos(ctx context.Context, id int) error {
 	
-	query:= `delete from tamanho where id = @id`
+	query:= `update tamanho
+			set ativo = 0, deletado_em = getdate()
+			where id = @id and ativo = 1`
 
 	result, err:= s.DB.ExecContext(ctx, query, sql.Named("id", id))
 	if err != nil {
@@ -178,7 +180,7 @@ func (s *SqlServerLogin) UpdateIdEpi(ctx context.Context, id int, idAtualizado i
 
 	query:= `update tamanho_epi
 			set id_epi = @idAtualizado
-			where id_epi = @id`
+			where id_epi = @id and ativo = 1`
 
 	_, err:= s.DB.ExecContext(ctx, query, sql.Named("id_epi", idAtualizado), sql.Named("id_epi", id))
 	if err != nil {

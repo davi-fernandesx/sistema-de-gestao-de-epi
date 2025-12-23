@@ -98,7 +98,7 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 			inner join
 				tipo_protecao tp on	e.IdTipoProtecao = tp.id		
 			where
-				e.id = @id
+				e.id = @id and e.ativo = 1
 	`
 
 	var epi model.Epi
@@ -129,7 +129,8 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 			tamanho t
 		inner join
 			tamanhos_epis te on t.id = te.IdTamanho
-		where te.IdEpi= @epiId
+		where te.IdEpi= @epiId and te.ativo = 1
+
 		`
 
 	linhas, err:= n.DB.QueryContext(ctx, queryTamanhos, sql.Named("epiId", epi.ID))
@@ -169,7 +170,8 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 			from
 				epi e
 			inner join
-				tipo_protecao tp on	e.IdTipoProtecao = tp.id`
+				tipo_protecao tp on	e.IdTipoProtecao = tp.id
+			where e.ativo = 1`
 
 	linhas, err := n.DB.QueryContext(ctx, query)
 	if err != nil {
@@ -214,6 +216,7 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 			tamanho t
 		inner join
 			tamanhos_epis te on t.id = te.IdTamanho
+		where ativo = 1
 	 `// query que retorna o id do epi, id do tamanho e o tamanho
 
 	 linhasTamanhos, err:= n.DB.QueryContext(ctx, queryTamanhos)
@@ -260,13 +263,19 @@ func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
 	}
 	defer tx.Rollback()
 
-	queryTamanhoEpi := ` delete from tamanhos_epis where IdEpi = @id`
+	queryTamanhoEpi := ` update tamanhos_epis 
+							set ativo = 0, 
+							deletado_em = getdate()
+							where IdEpi = @id and ativo = 1`
 	_, err = tx.ExecContext(ctx, queryTamanhoEpi, sql.Named("id", id))
 	if err != nil {
 		return err
 	}
 		
-	query:=  `delete from epi where id = @id`
+	query:=  `update epi
+				set ativo = 0,
+				deletado_em = getdate()
+			where id = @id and ativo = 1`
 	result, err := tx.ExecContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
@@ -292,7 +301,7 @@ func (n  *NewSqlLogin) UpdateEpiNome(ctx context.Context,id int, nome string)err
 
 	query:= `update epi
 			set nome = @nome
-			where id = @id`
+			where id = @id and ativo = 1`
 	
 	_, err:=n.DB.ExecContext(ctx, query, sql.Named("nome", nome), sql.Named("id", id))
 	if err != nil {
@@ -307,7 +316,7 @@ func (n  *NewSqlLogin) UpdateEpiFabricante(ctx context.Context,id int, fabricant
 
 	query:= `update epi
 			set fabricante = @fabricante
-			where id = @id`
+			where id = @id and ativo = 1`
 	
 	_, err:=n.DB.ExecContext(ctx, query, sql.Named("fabricante", fabricante), sql.Named("id", id))
 	if err != nil {
@@ -324,7 +333,7 @@ func (n  *NewSqlLogin) UpdateEpiCa(ctx context.Context,id int, ca string)error {
 
 	query:= `update epi
 			set CA = @ca
-			where id = @id`
+			where id = @id and ativo = 1`
 	
 	_, err:=n.DB.ExecContext(ctx, query, sql.Named("ca", ca), sql.Named("id", id))
 	if err != nil {
@@ -339,7 +348,7 @@ func (n  *NewSqlLogin) UpdateEpiDescricao(ctx context.Context,id int, descricao 
 
 	query:= `update epi
 			set descricao = @descricao
-			where id = @id`
+			where id = @id and ativo = 1`
 	
 	_, err:=n.DB.ExecContext(ctx, query, sql.Named("descricao", descricao), sql.Named("id", id))
 	if err != nil {
@@ -356,7 +365,7 @@ func (n  *NewSqlLogin) UpdateEpiDataValidadeCa(ctx context.Context,id int, dataV
 
 	query:= `update epi
 			set validadeCa = @dataValidadeCa
-			where id = @id`
+			where id = @id and ativo = 1`
 	
 	_, err:=n.DB.ExecContext(ctx, query, sql.Named("dataValidade", dataValidadeCa), sql.Named("id", id))
 	if err != nil {

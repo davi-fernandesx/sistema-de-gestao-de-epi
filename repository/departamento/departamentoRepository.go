@@ -52,7 +52,7 @@ func (n *NewSqlLogin) AddDepartamento(ctx context.Context, departamento *model.D
 // BuscarDepartamento implements DepartamentoInterface.
 func (n *NewSqlLogin) BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error) {
 
-	query := `select departamento from departamento where id = @id`
+	query := `select departamento from departamento where id = @id and ativo = 1`
 
 	var departamento model.Departamento
 
@@ -75,7 +75,7 @@ func (n *NewSqlLogin) BuscarDepartamento(ctx context.Context, id int) (*model.De
 // BuscarTodosDepartamentos implements DepartamentoInterface.
 func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error) {
 
-	query := `select id, nome from departamento`
+	query := `select id, nome from departamento where ativo = 1`
 
 	linhas, err := n.DB.QueryContext(ctx, query)
 	if err != nil {
@@ -108,7 +108,10 @@ func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) ([]model.Dep
 // DeletarDepartamento implements DepartamentoInterface.
 func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
 
-	query := `delete from departamento where id = @id`
+	query := `update departamento
+				set ativo = 0,
+					deletado_em = getdate()
+				where id = @id and ativo = 1`
 
 	result, err := n.DB.ExecContext(ctx, query, sql.Named("id", id))
 	if err != nil {
@@ -132,7 +135,7 @@ func (n *NewSqlLogin) UpdateDepartamento(ctx context.Context, id int, departamen
 
 	query:= `update departamento
 			set nome = @departamento
-			where id = @id`
+			where id = @id and ativo = 1`
 
 		linha, err:= n.DB.ExecContext(ctx, query, sql.Named("departamento", departamento), sql.Named("id", id))
 		if err != nil {

@@ -360,7 +360,7 @@ func Test_deletarFuncionario(t *testing.T) {
 
 	t.Run("sucesso ao deletar funcionario", func(t *testing.T) {
 
-		mock.ExpectExec(regexp.QuoteMeta("delete ")).WithArgs().WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs().WillReturnResult(sqlmock.NewResult(0, 1))
 
 		err := repo.DeletarFuncionario(ctx, matricula)
 		require.NoError(t, err)
@@ -370,7 +370,7 @@ func Test_deletarFuncionario(t *testing.T) {
 
 	t.Run("testando o erro de funcionario nao encontrado", func(t *testing.T) {
 
-		mock.ExpectExec(regexp.QuoteMeta("delete ")).WithArgs(matricula).WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectExec(regexp.QuoteMeta("update ")).WithArgs(matricula).WillReturnResult(sqlmock.NewResult(0, 0))
 		err := repo.DeletarFuncionario(ctx, matricula)
 		require.Error(t, err)
 		require.ErrorIs(t, err, Errors.ErrNaoEncontrado)
@@ -379,7 +379,7 @@ func Test_deletarFuncionario(t *testing.T) {
 
 	t.Run("testando erro de verificar linhas", func(t *testing.T) {
 
-		mock.ExpectExec(regexp.QuoteMeta("delete ")).WithArgs(matricula).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
+		mock.ExpectExec(regexp.QuoteMeta("update  ")).WithArgs(matricula).WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 		err := repo.DeletarFuncionario(ctx, matricula)
 		require.Error(t, err)
 		require.ErrorIs(t, err, Errors.ErrLinhasAfetadas)
@@ -388,7 +388,7 @@ func Test_deletarFuncionario(t *testing.T) {
 
 	t.Run("testando o erro ao deletar um funcionario", func(t *testing.T) {
 
-		mock.ExpectExec(regexp.QuoteMeta("delete ")).WithArgs(matricula).WillReturnError(errors.New("erro generico"))
+		mock.ExpectExec(regexp.QuoteMeta("update  ")).WithArgs(matricula).WillReturnError(errors.New("erro generico"))
 		err := repo.DeletarFuncionario(ctx, matricula)
 		require.Error(t, err)
 		require.ErrorIs(t, err, Errors.ErrInternal)

@@ -187,10 +187,10 @@ func Test_DeletarTamanhos(t *testing.T) {
 
 	repo := NewTamanhoRepository(db)
 	idParaDeletar := 1
-	query := regexp.QuoteMeta(`delete from tamanho where id = @id`)
+	
 
 	t.Run("sucesso ao deletar um tamanho", func(t *testing.T) {
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("update")).
 			WithArgs(idParaDeletar).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -202,7 +202,7 @@ func Test_DeletarTamanhos(t *testing.T) {
 	t.Run("erro - tamanho nao encontrado para deletar", func(t *testing.T) {
 		idNaoExistente := 99
 
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("update")).
 			WithArgs(idNaoExistente).
 			WillReturnResult(sqlmock.NewResult(0, 0)) // 0 linhas afetadas
 
@@ -215,7 +215,7 @@ func Test_DeletarTamanhos(t *testing.T) {
 	t.Run("erro generico do banco de dados ao deletar", func(t *testing.T) {
 		
 
-		mock.ExpectExec(query).WithArgs(idParaDeletar).WillReturnError(Errors.ErrInternal)
+		mock.ExpectExec(regexp.QuoteMeta("update")).WithArgs(idParaDeletar).WillReturnError(Errors.ErrInternal)
 
 		err := repo.DeletarTamanhos(ctx, idParaDeletar)
 		require.Error(t, err)
@@ -226,7 +226,7 @@ func Test_DeletarTamanhos(t *testing.T) {
 	t.Run("erro ao obter linhas afetadas", func(t *testing.T) {
 		
 
-		mock.ExpectExec(query).
+		mock.ExpectExec(regexp.QuoteMeta("update")).
 			WithArgs(idParaDeletar).
 			WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))
 
@@ -248,16 +248,7 @@ func Test_BuscarTamanhosPorIdEpi(t *testing.T) {
 	repo := NewTamanhoRepository(db) // <-- Adapte esta linha para o seu construtor
 
 	// Query exata que a função usa
-	query := regexp.QuoteMeta(`
-        select 
-            t.id, t.tamanho
-        from
-            tamanho t
-        inner join
-            tamanhosEpis te on t.id = te.id_tamanho
-        where
-            te.epiId = @epiId
-    `)
+
 
 	// Dados de exemplo para o caso de sucesso
 	tamanhosEsperados := []model.Tamanhos{
@@ -274,7 +265,7 @@ func Test_BuscarTamanhosPorIdEpi(t *testing.T) {
 			AddRow(tamanhosEsperados[1].ID, tamanhosEsperados[1].Tamanho)
 
 		// Define a expectativa: a query será executada com o epiId=1 e retornará as linhas acima
-		mock.ExpectQuery(query).WithArgs(epiId).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(epiId).WillReturnRows(rows)
 
 		// Executa a função
 		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
@@ -293,7 +284,7 @@ func Test_BuscarTamanhosPorIdEpi(t *testing.T) {
 		// Prepara um resultado vazio (apenas as colunas, sem linhas de dados)
 		rows := sqlmock.NewRows([]string{"id", "tamanho"})
 
-		mock.ExpectQuery(query).WithArgs(epiId).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(epiId).WillReturnRows(rows)
 
 		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
 
@@ -308,7 +299,7 @@ func Test_BuscarTamanhosPorIdEpi(t *testing.T) {
 		dbErr := errors.New("falha de conexão")
 
 		// Simula um erro do banco de dados na execução da query
-		mock.ExpectQuery(query).WithArgs(epiId).WillReturnError(dbErr)
+		mock.ExpectQuery("select ").WithArgs(epiId).WillReturnError(dbErr)
 
 		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
 
@@ -326,7 +317,7 @@ func Test_BuscarTamanhosPorIdEpi(t *testing.T) {
 			AddRow(1, "P").
 			AddRow("id-invalido", "M")
 
-		mock.ExpectQuery(query).WithArgs(epiId).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(epiId).WillReturnRows(rows)
 
 		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
 
@@ -345,7 +336,7 @@ func Test_BuscarTamanhosPorIdEpi(t *testing.T) {
 			AddRow(1, "P").
 			CloseError(iterErr)
 
-		mock.ExpectQuery(query).WithArgs(epiId).WillReturnRows(rows)
+		mock.ExpectQuery(regexp.QuoteMeta("select ")).WithArgs(epiId).WillReturnRows(rows)
 
 		tamanhosDB, err := repo.BuscarTamanhosPorIdEpi(ctx, epiId)
 

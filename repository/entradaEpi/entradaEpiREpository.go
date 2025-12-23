@@ -242,8 +242,9 @@ func (n *NewSqlLogin) BuscaEntradasCanceladasPorIdEpi(ctx context.Context, idEpi
 func (n *NewSqlLogin) CancelarEntrada(ctx context.Context, id int) error {
 
 	query := `update entrada
-			set cancelada_em = GETDATE()
-			where id = @id AND cancelada_em IS NULL`
+			set cancelada_em = GETDATE(),
+				ativo = 0
+			where id = @id AND ativo = 1`
 
 	result, err := n.DB.ExecContext(ctx, query, sql.Named("id", id))
 

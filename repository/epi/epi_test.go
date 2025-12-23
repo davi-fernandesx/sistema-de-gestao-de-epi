@@ -229,12 +229,12 @@ func (s *EpiRepositorySuite) TestDeletarEpi_Success() {
 	s.mock.ExpectBegin()
 
 	// Espera o delete na tabela de associação
-	s.mock.ExpectExec(regexp.QuoteMeta("delete ")).
+	s.mock.ExpectExec(regexp.QuoteMeta("update ")).
 		WithArgs(epiID).
 		WillReturnResult(sqlmock.NewResult(0, 2)) // Simula que 2 associações foram deletadas
 
 	// Espera o delete na tabela principal
-	s.mock.ExpectExec(regexp.QuoteMeta("delete ")).
+	s.mock.ExpectExec(regexp.QuoteMeta("update ")).
 		WithArgs(epiID).
 		WillReturnResult(sqlmock.NewResult(0, 1)) // Simula que 1 EPI foi deletado
 
@@ -250,11 +250,11 @@ func (s *EpiRepositorySuite) TestDeletarEpi_NotFound() {
 	epiID := 99
 
 	s.mock.ExpectBegin()
-	s.mock.ExpectExec(regexp.QuoteMeta("delete ")).
+	s.mock.ExpectExec(regexp.QuoteMeta("update ")).
 		WithArgs(epiID).
 		WillReturnResult(sqlmock.NewResult(0, 0)) // Nenhuma associação encontrada
 
-	s.mock.ExpectExec(regexp.QuoteMeta("delete")).
+	s.mock.ExpectExec(regexp.QuoteMeta("update ")).
 		WithArgs(epiID).
 		WillReturnResult(sqlmock.NewResult(0, 0)) // Nenhum EPI encontrado
 

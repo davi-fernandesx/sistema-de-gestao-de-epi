@@ -44,7 +44,7 @@ func (s *SqlServerLogin) AddProtecao(ctx context.Context, protecao *model.TipoPr
 // BuscarProtecao implements TipoProtecaoInterface.
 func (s *SqlServerLogin) BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error) {
 	
-	query:= `select id, nome from tipo_protecao where id = @id`
+	query:= `select id, nome from tipo_protecao where id = @id and ativo = 1`
 
 	var protecao model.TipoProtecao
 
@@ -64,7 +64,7 @@ func (s *SqlServerLogin) BuscarProtecao(ctx context.Context, id int) (*model.Tip
 // BuscarTodasProtecao implements TipoProtecaoInterface.
 func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error) {
 	
-	query:= `select id, nome from tipo_protecao`
+	query:= `select id, nome from tipo_protecao where ativo = 1 `
 
 	linhas, err:= s.DB.QueryContext(ctx, query)
 	if err != nil {
@@ -97,7 +97,9 @@ func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoP
 // DeletarProtecao implements TipoProtecaoInterface.
 func (s *SqlServerLogin) DeletarProtecao(ctx context.Context, id int) error {
 	
-	query:= `delete from tipo_protecao where id = 1`
+	query:= `update tipo_protecao
+			set ativo = 0, deletado_em = getdate()
+			where id = @id and ativo = 1`
 
 	result, err:= s.DB.ExecContext(ctx, query, sql.Named("id", id))
 	
