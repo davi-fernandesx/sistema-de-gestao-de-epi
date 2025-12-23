@@ -176,7 +176,7 @@ func TestDeletarDepartamento(t *testing.T) {
 
 		err := svc.DeletarDepartamento(ctx, 1)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "possui dependencia")
+		assert.Contains(t, err.Error(), "departamento ja pode estar inativo")
 	})
 }
 
@@ -201,7 +201,7 @@ func TestAtualizarDepartamento(t *testing.T) {
 
 		err := svc.AtualizarDepartamento(ctx, 1, "Vendas")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "UNIQUE sendo violado")
+		assert.Contains(t, err.Error(), "erro tecnico ao")
 	})
 
 	t.Run("Erro ID não existe (0 linhas)", func(t *testing.T) {
@@ -212,6 +212,6 @@ func TestAtualizarDepartamento(t *testing.T) {
 
 		err := svc.AtualizarDepartamento(ctx, 999, "Vendas")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "não existe")
+		assert.Contains(t, err.Error(), "não encontrado")
 	})
 }
