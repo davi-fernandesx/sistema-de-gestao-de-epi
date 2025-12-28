@@ -3,7 +3,7 @@ package model
 type FuncaoInserir struct {
 	ID     int`json:"-"`
 	Funcao string`json:"funcao"  binding:"required,min=2,max=50"`
-	IdDepartamento int `json:"id_departamento" binding:"required, min=1"`
+	IdDepartamento int `json:"id_departamento" binding:"required,min=1"`
 }
 
 type Funcao struct {

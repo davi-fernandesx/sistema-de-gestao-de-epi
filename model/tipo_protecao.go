@@ -2,7 +2,7 @@ package model
 
 type TipoProtecao struct {
 	ID   int      `json:"-"`
-	Nome Protecao `json:"nome"`
+	Nome Protecao `json:"nome" binding:"required, min=6, max=50"`
 }
 
 type TipoProtecaoDto struct {

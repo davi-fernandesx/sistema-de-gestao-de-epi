@@ -2,21 +2,22 @@ package model
 
 import (
 	"time"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 )
 
 
 //modelo para ser usado ao inserir/atualizar no banco de dados
 
 type EpiInserir struct {
-	Nome           string`json:"nome"`
-	Fabricante     string`json:"fabricante"`
-	CA             string`json:"ca"`
-	Descricao      string`json:"descricao"`
-	DataValidadeCa time.Time`json:"data_validade_ca"`
-	Idtamanho      []int`json:"id_tamanho"`
-	IDprotecao     int`json:"id_protecao"`
-	AlertaMinimo   int`json:"alerta_minimo"`
-}
+	Nome           string`json:"nome" binding:"required"`
+	Fabricante     string`json:"fabricante" binding:"required,max=50"`
+	CA             string`json:"ca" binding:"required,numeric,min=1,max=6"`
+	Descricao      string`json:"descricao" binding:"lte=250"`
+	DataValidadeCa configs.DataBr `json:"data_validade_ca" binding:"required,gt"`
+	Idtamanho      []int`json:"id_tamanho" binding:"required,min=1"`
+	IDprotecao     int`json:"id_protecao" binding:"required,numeric"`
+	AlertaMinimo   int`json:"alerta_minimo" binding:"required,gte=0"`
+}   
 // model banco de dados (com campos trazidos do inner join)
 type Epi struct {
 	ID             int
@@ -41,8 +42,6 @@ type EpiDto struct {
 	CA             string          `json:"ca"`
 	Tamanho        []TamanhoDto    `json:"tamanhos"`
 	Descricao      string          `json:"descricao"`
-	DataFabricacao time.Time       `json:"data_fabricante"`
-	DataValidade   time.Time       `json:"data_validade"`
 	DataValidadeCa time.Time       `json:"data_validadeCa"`
 	Protecao       TipoProtecaoDto `json:"protecao"`
 }
