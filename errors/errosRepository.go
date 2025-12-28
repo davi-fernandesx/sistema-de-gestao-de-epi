@@ -18,5 +18,6 @@ var (
     ErrNaoEncontrado = errors.New(" não encontrado")
 	ErrInternal      = errors.New("erro interno do repositório")
 	ErrEstoqueInsuficiente = errors.New("estoque do epi zerado")
+	ErrRegistroDuplicado = errors.New("item repetido, ja está no banco de dados")
 
 )
