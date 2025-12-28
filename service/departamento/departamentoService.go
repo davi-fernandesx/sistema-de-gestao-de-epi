@@ -37,6 +37,8 @@ var (
 	ErrCtx = errors.New("context encerrado ou invalido")
 	ErrId = errors.New("id invalido")
 	ErrDep = errors.New("departamento não encontrado")
+	ErrVinculo = errors.New("erro ao checar vinculos com funcoes")
+	ErrFuncaoComVinculo = errors.New("nao foi possivel apagar departamento, departamento com vinculo a função(õe)s")
 )
 
 // SalvarDepartamento implements [Departamento].
@@ -128,7 +130,18 @@ func (d *DepartamentoServices) DeletarDepartamento(ctx context.Context, id int) 
 		return  ErrId
 	}
 
-	err:= d.DepartamentoRepo.DeletarDepartamento(ctx, id)
+	vinculo, err:= d.DepartamentoRepo.PossuiFuncoesVinculadas(ctx, id)
+	if err != nil{
+
+		return  ErrVinculo
+	}
+
+	if vinculo {
+
+		return  ErrFuncaoComVinculo
+	}
+
+	err = d.DepartamentoRepo.DeletarDepartamento(ctx, id)
 	if err != nil {
 
 

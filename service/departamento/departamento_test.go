@@ -11,27 +11,24 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-
-
 type MockRepo struct {
-
 	mock.Mock
 }
 
-func (m *MockRepo) AddDepartamento(ctx context.Context, departamento *model.Departamento) error{
+func (m *MockRepo) AddDepartamento(ctx context.Context, departamento *model.Departamento) error {
 
-	args:= m.Called(ctx,departamento)
+	args := m.Called(ctx, departamento)
 
 	return args.Error(0)
 }
-func (m *MockRepo) DeletarDepartamento(ctx context.Context, id int) error{
-	args:= m.Called(ctx, id)
+func (m *MockRepo) DeletarDepartamento(ctx context.Context, id int) error {
+	args := m.Called(ctx, id)
 
-	return  args.Error(0)
+	return args.Error(0)
 }
-func (m *MockRepo) BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error){
+func (m *MockRepo) BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error) {
 
-	args:= m.Called(ctx, id)
+	args := m.Called(ctx, id)
 	var d *model.Departamento
 
 	if args.Get(0) != nil {
@@ -41,9 +38,9 @@ func (m *MockRepo) BuscarDepartamento(ctx context.Context, id int) (*model.Depar
 
 	return d, args.Error(1)
 }
-func (m *MockRepo) BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error){
+func (m *MockRepo) BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error) {
 
-	args:= m.Called(ctx)
+	args := m.Called(ctx)
 	var d []model.Departamento
 
 	if args.Get(0) != nil {
@@ -53,11 +50,18 @@ func (m *MockRepo) BuscarTodosDepartamentos(ctx context.Context) ([]model.Depart
 
 	return d, args.Error(1)
 }
-func (m *MockRepo) UpdateDepartamento(ctx context.Context, id int, departamento string)(int64,error){
+func (m *MockRepo) UpdateDepartamento(ctx context.Context, id int, departamento string) (int64, error) {
 
-	args:= m.Called(ctx, id, departamento)
+	args := m.Called(ctx, id, departamento)
 
-	return args.Get(0).(int64) , args.Error(1)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockRepo) PossuiFuncoesVinculadas(ctx context.Context, id int) (bool, error) {
+
+	args := m.Called(ctx, id)
+
+	return args.Bool(0), args.Error(1)
 }
 
 // --- TESTES DO SERVICE ---
@@ -162,6 +166,7 @@ func TestDeletarDepartamento(t *testing.T) {
 		m := new(MockRepo)
 		svc := &DepartamentoServices{DepartamentoRepo: m}
 
+		m.On("PossuiFuncoesVinculadas", ctx, 1).Return(false, nil)
 		m.On("DeletarDepartamento", ctx, 1).Return(nil)
 
 		err := svc.DeletarDepartamento(ctx, 1)
@@ -172,11 +177,28 @@ func TestDeletarDepartamento(t *testing.T) {
 		m := new(MockRepo)
 		svc := &DepartamentoServices{DepartamentoRepo: m}
 
+		
+		m.On("PossuiFuncoesVinculadas", ctx, 1).Return(false, nil)
 		m.On("DeletarDepartamento", ctx, 1).Return(errors.New("error 547 check constraint"))
 
 		err := svc.DeletarDepartamento(ctx, 1)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "departamento ja pode estar inativo")
+	})
+
+	t.Run("erro - departamento possui vinculo", func(t *testing.T) {
+
+		m:= new(MockRepo)
+
+		svc:= &DepartamentoServices{DepartamentoRepo: m}
+
+		m.On("PossuiFuncoesVinculadas", ctx, 1).Return(true, nil)
+		m.On("DeletarDepartamento", ctx, 1).Return(ErrFuncaoComVinculo)
+
+		err := svc.DeletarDepartamento(ctx, 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "departamento com vinculo ")
+
 	})
 }
 
