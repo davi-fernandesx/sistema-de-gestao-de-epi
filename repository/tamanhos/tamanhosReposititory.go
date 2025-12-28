@@ -3,12 +3,11 @@ package tamanhos
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	mssql "github.com/microsoft/go-mssqldb"
 )
 
 type TamanhsoInterface interface {
@@ -18,6 +17,7 @@ type TamanhsoInterface interface {
 	BuscarTodosTamanhos(ctx context.Context) ([]model.Tamanhos, error)
 	BuscarTamanhosPorIdEpi(ctx context.Context, epiId int)([]model.Tamanhos, error)
 }
+
 
 type SqlServerLogin struct {
 	DB *sql.DB
@@ -37,9 +37,9 @@ func (s *SqlServerLogin) AddTamanhos(ctx context.Context, tamanhos *model.Tamanh
 	_, err:= s.DB.ExecContext(ctx, query,sql.Named("tamanho", tamanhos.Tamanho))
 
 	if err != nil {
-		var ErrSql *mssql.Error
-		if errors.As(err, &ErrSql) && ErrSql.Number == 2627{
-			return  fmt.Errorf("tamanho %s ja existente!, %w",tamanhos.Tamanho, Errors.ErrSalvar)
+		if helper.IsUniqueViolation(err){
+
+			return fmt.Errorf("tamanho %s ja existe no sistema, %w", tamanhos.Tamanho, Errors.ErrSalvar)
 		}
 		return fmt.Errorf("erro interno ao salvar tamanho. %w", Errors.ErrSalvar)
 	}

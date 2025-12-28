@@ -3,13 +3,13 @@ package funcao
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	mssql "github.com/microsoft/go-mssqldb"
 )
+
 
 type FuncaoInterface interface {
 	AddFuncao(ctx context.Context, funcao *model.FuncaoInserir) error
@@ -17,6 +17,7 @@ type FuncaoInterface interface {
 	BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error)
 	UpdateFuncao(ctx context.Context, id int, funcao string) (int64, error)
 	BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error)
+	PossuiFuncionariosVinculados(ctx context.Context, id int) (bool, error)
 }
 
 type SqlServerLogin struct {
@@ -36,14 +37,18 @@ func (s *SqlServerLogin) AddFuncao(ctx context.Context, funcao *model.FuncaoInse
 
 	_, err := s.Db.ExecContext(ctx, query, sql.Named("funcao", funcao.Funcao), sql.Named("idDepartamento", funcao.IdDepartamento))
 	if err != nil {
-		var ErrSql *mssql.Error
-		if errors.As(err, &ErrSql) && ErrSql.Number == 2627 {
-			return fmt.Errorf("função %s ja existe no sistema!, %w", funcao.Funcao, Errors.ErrSalvar)
+			if helper.IsForeignKeyViolation(err){
+
+				return fmt.Errorf("departamento não existente no banco de dados, %w", Errors.ErrDadoIncompativel)
+			}
+
+			if helper.IsUniqueViolation(err){
+
+				return fmt.Errorf("funcao %s ja existe no sistema, %w", funcao.Funcao, Errors.ErrSalvar)
+			}
+
+			return fmt.Errorf("erro interno ao salvar: %w", Errors.ErrInternal)
 		}
-
-		return fmt.Errorf("erro interno ao salvar funcao!, %w", Errors.ErrInternal)
-	}
-
 	return nil
 }
 
@@ -61,10 +66,10 @@ func (s *SqlServerLogin) BuscarFuncao(ctx context.Context, id int) (*model.Funca
 	err := s.Db.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(&funcao.ID, &funcao.Funcao, &funcao.IdDepartamento, &funcao.NomeDepartamento)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("funcao com o id %d não encotrada!, %w", id, Errors.ErrNaoEncontrado)
+			return nil, fmt.Errorf("funcao com o id %d não encontrada!, %w", id, Errors.ErrNaoEncontrado)
 		}
 
-		return nil, fmt.Errorf("%w",Errors.ErrFalhaAoEscanearDados)
+		return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
 	}
 
 	return &funcao, nil
@@ -107,13 +112,21 @@ func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao,
 
 }
 
+func (s *SqlServerLogin) PossuiFuncionariosVinculados(ctx context.Context, id int) (bool, error) {
+	var total int
+	query := `SELECT COUNT(1) FROM funcionario WHERE IdFuncao = @id AND ativo = 1`
+
+	err := s.Db.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(&total)
+	return total > 0, err
+}
+
 // DeletarFuncao implements FuncaoInterface.
 func (s *SqlServerLogin) DeletarFuncao(ctx context.Context, id int) error {
 
 	query := `update funcao
-			set ativo = 0,
-			deletado_em = getdate()
-			where id = @id and ativo = 1`
+				set ativo = 0,
+				deletado_em = getdate()
+				where id = @id and ativo = 1`
 
 	result, err := s.Db.ExecContext(ctx, query, sql.Named("id", id))
 
@@ -146,8 +159,14 @@ func (s *SqlServerLogin) UpdateFuncao(ctx context.Context, id int, funcao string
 	linhas, err := s.Db.ExecContext(ctx, query, sql.Named("funcao", funcao), sql.Named("id", id))
 
 	if err != nil {
-		return 0,fmt.Errorf("erro ao atualizar funcao, %w", Errors.ErrInternal)
+
+		if helper.IsUniqueViolation(err){
+			return 0,fmt.Errorf("funcao %s ja existe no sistema, %w", funcao, Errors.ErrSalvar)
+
+		}
+			return 0, fmt.Errorf("erro ao atualizar funcao, %w", Errors.ErrInternal)
 	}
 
+	
 	return linhas.RowsAffected()
 }

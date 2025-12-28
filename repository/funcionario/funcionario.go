@@ -3,13 +3,14 @@ package funcionario
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	mssql "github.com/microsoft/go-mssqldb"
 )
+
+// interface sql error (para pegar o codigo do erro)
 
 type FuncionarioInterface interface {
 	AddFuncionario(ctx context.Context, funcionario *model.FuncionarioINserir) error
@@ -44,11 +45,12 @@ func (c *ConnDB) AddFuncionario(ctx context.Context, funcionario *model.Funciona
 		sql.Named("id_funcao", funcionario.ID_funcao),
 	)
 	if err != nil {
+		if helper.IsForeignKeyViolation(err){
+			return fmt.Errorf("id departamento ou id funcao não existente no banco de dados, %w", Errors.ErrDadoIncompativel)
+		}
 
-		var Errsql *mssql.Error
-		if errors.As(err, &Errsql) && Errsql.Number == 2627 {
-
-			return fmt.Errorf("funcionario: %s, ja existe no sistema, %w", funcionario.Nome, Errors.ErrSalvar)
+		if helper.IsUniqueViolation(err){
+			return fmt.Errorf("matricula %s ja existe no sistema, %w", funcionario.Matricula, Errors.ErrSalvar)
 
 		}
 		return fmt.Errorf("erro interno ao salvar funcionario, %w", Errors.ErrInternal)

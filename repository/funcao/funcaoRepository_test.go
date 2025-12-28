@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +26,7 @@ func Test_AddFuncao(t *testing.T) {
 
 	t.Run("sucesso ao adicionar uma funcao", func(t *testing.T) {
 		mock.ExpectExec(query).
-			WithArgs(funcao.Funcao , funcao.IdDepartamento).
+			WithArgs(funcao.Funcao, funcao.IdDepartamento).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		err := repo.AddFuncao(ctx, &funcao)
@@ -36,11 +36,11 @@ func Test_AddFuncao(t *testing.T) {
 
 	t.Run("erro - funcao ja existente", func(t *testing.T) {
 		// Simula o erro específico do MS SQL Server para violação de chave única
-		mssqlErr := &mssql.Error{Number: 2627, Message: "Violation of UNIQUE KEY constraint"}
 
+		errMock := fmt.Errorf("mssql: number 2627, message: duplicate key")
 		mock.ExpectExec(query).
 			WithArgs(funcao.Funcao, funcao.IdDepartamento).
-			WillReturnError(mssqlErr)
+			WillReturnError(errMock)
 
 		err := repo.AddFuncao(ctx, &funcao)
 		require.Error(t, err)
@@ -69,7 +69,7 @@ func Test_BuscarFuncao(t *testing.T) {
 	defer db.Close()
 
 	repo := NewfuncaoRepository(db)
-	funcao := model.Funcao{ID: 1, Funcao: "Analista de QA",IdDepartamento: 1, NomeDepartamento: "rh"}
+	funcao := model.Funcao{ID: 1, Funcao: "Analista de QA", IdDepartamento: 1, NomeDepartamento: "rh"}
 	query := regexp.QuoteMeta(`select `)
 
 	t.Run("sucesso ao buscar uma funcao", func(t *testing.T) {
@@ -138,7 +138,6 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-
 	t.Run("erro ao executar a query de busca", func(t *testing.T) {
 		dbErr := errors.New("falha na consulta")
 
@@ -165,11 +164,11 @@ func Test_BuscarTodasFuncao(t *testing.T) {
 		require.Nil(t, funcoesDB)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
-	
+
 	t.Run("erro apos a iteracao (linhas.Err)", func(t *testing.T) {
 		iterErr := errors.New("erro durante a iteracao")
-		
-		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento","nomeDepartamento"}).
+
+		rows := sqlmock.NewRows([]string{"id", "funcao", "idDepartamento", "nomeDepartamento"}).
 			AddRow(funcoesEsperadas[0].ID, funcoesEsperadas[0].Funcao, funcoesEsperadas[1].IdDepartamento, funcoesEsperadas[1].NomeDepartamento).
 			CloseError(iterErr) // Simula um erro ao fechar as linhas
 
@@ -191,7 +190,6 @@ func Test_DeletarFuncao(t *testing.T) {
 
 	repo := NewfuncaoRepository(db)
 	idParaDeletar := 1
-
 
 	t.Run("sucesso ao deletar uma funcao", func(t *testing.T) {
 		mock.ExpectExec(regexp.QuoteMeta("update ")).
@@ -229,7 +227,7 @@ func Test_DeletarFuncao(t *testing.T) {
 
 	t.Run("erro ao obter linhas afetadas", func(t *testing.T) {
 		// Alguns drivers podem não suportar RowsAffected e retornar um erro
-		
+
 		mock.ExpectExec(regexp.QuoteMeta("update ")).
 			WithArgs(idParaDeletar).
 			WillReturnResult(sqlmock.NewErrorResult(Errors.ErrLinhasAfetadas))

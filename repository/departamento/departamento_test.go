@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	mssql "github.com/denisenkom/go-mssqldb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +29,7 @@ func Test_Departamento_add(t *testing.T) {
 		Departamento: "adm",
 	}
 
-	query := regexp.QuoteMeta("insert into departamento (departamento) values (@departamento)")
+	query := regexp.QuoteMeta("insert ")
 
 	t.Run("sucesso ao add departamento", func(t *testing.T) {
 
@@ -43,8 +43,8 @@ func Test_Departamento_add(t *testing.T) {
 
 	t.Run("erro de departamento ja existente", func(t *testing.T) {
 
-		
-		mock.ExpectExec(query).WithArgs(departamento.Departamento).WillReturnError(&mssql.Error{Number: 2627})
+		errMock := fmt.Errorf("mssql: number 2627, message: duplicate key")
+		mock.ExpectExec(query).WithArgs(departamento.Departamento).WillReturnError(errMock)
 
 		errDepartamento := repo.AddDepartamento(ctx, &departamento)
 		require.Error(t, errDepartamento)

@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	mssql "github.com/microsoft/go-mssqldb"
 
 	"github.com/stretchr/testify/require"
 )
@@ -65,11 +65,11 @@ func Test_addFuncinario(t *testing.T) {
 
 	t.Run("testando o erro ao adicionar um funcionario que ja existe no sistema", func(t *testing.T) {
 
-		mssqlErr := &mssql.Error{Number: 2627}
+		errMock := fmt.Errorf("mssql: number 2627, message: duplicate key")
 
 		mock.ExpectExec(regexp.QuoteMeta("insert into")).
 			WithArgs(func1.Nome,func1.Matricula, func1.ID_departamento,func1.ID_funcao).
-			WillReturnError(mssqlErr)
+			WillReturnError(errMock)
 
 		err := repo.AddFuncionario(ctx, &func1)
 		require.Error(t, err)

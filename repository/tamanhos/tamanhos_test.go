@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,11 +35,11 @@ func Test_AddTamanhos(t *testing.T) {
 	})
 
 	t.Run("erro - tamanho ja existente", func(t *testing.T) {
-		mssqlErr := &mssql.Error{Number: 2627}
-
+		
+		errMock := fmt.Errorf("mssql: number 2627, message: duplicate key")
 		mock.ExpectExec(query).
 			WithArgs(tamanho.Tamanho).
-			WillReturnError(mssqlErr)
+			WillReturnError(errMock)
 
 		err := repo.AddTamanhos(ctx, &tamanho)
 		require.Error(t, err)

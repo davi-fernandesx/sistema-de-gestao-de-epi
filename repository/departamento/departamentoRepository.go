@@ -3,13 +3,11 @@ package departamento
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	mssql "github.com/denisenkom/go-mssqldb"
-
 )
 
 type DepartamentoInterface interface {
@@ -18,6 +16,7 @@ type DepartamentoInterface interface {
 	BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error)
 	BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error)
 	UpdateDepartamento(ctx context.Context, id int, departamento string)(int64,error)
+	PossuiFuncoesVinculadas(ctx context.Context, id int) (bool, error)
 }
 
 type NewSqlLogin struct {
@@ -38,14 +37,12 @@ func (n *NewSqlLogin) AddDepartamento(ctx context.Context, departamento *model.D
 
 	_, err := n.DB.ExecContext(ctx, query, sql.Named("departamento", departamento.Departamento))
 	if err != nil {
-		var ErrSql *mssql.Error
-		if errors.As(err, &ErrSql) && ErrSql.Number == 2627 {
-			return fmt.Errorf("departamento %s ja existente!, %w", departamento.Departamento, Errors.ErrSalvar)
 
+		if helper.IsUniqueViolation(err){
+			return fmt.Errorf("departamento %s ja existe no sistema, %w", departamento.Departamento ,Errors.ErrSalvar)
 		}
 		return fmt.Errorf(" Erro interno ao salvar departamento, %w", Errors.ErrInternal)
 	}
-
 	return nil
 }
 
@@ -105,6 +102,13 @@ func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) ([]model.Dep
 
 }
 
+func (s *NewSqlLogin) PossuiFuncoesVinculadas(ctx context.Context, id int) (bool, error) {
+    var total int
+    query := `SELECT COUNT(1) FROM funcao WHERE IdDepartamento = @id AND ativo = 1`
+    
+    err := s.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(&total)
+    return total > 0, err
+}
 // DeletarDepartamento implements DepartamentoInterface.
 func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
 

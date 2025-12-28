@@ -4,8 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 )
 
@@ -18,8 +22,9 @@ type EpiInterface interface {
 	UpdateEpiCa(ctx context.Context,id int, ca string)error
 	UpdateEpiFabricante(ctx context.Context,id int, fabricante string)error
 	UpdateEpiDescricao(ctx context.Context,id int, descricao string)error
-	UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa string)error
+	UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa time.Time)error
 }
+// interface sql error (para pegar o codigo do erro)
 
 type NewSqlLogin struct {
 	DB *sql.DB
@@ -43,7 +48,7 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 	query := `insert into epi (nome, fabricante, CA, descricao, validade_CA, IdTipoProtecao, alerta_minimo) 
 			OUTPUT INSERTED.id 
 			values 
-			(@nome', @fabricante, @CA, '@descricao',validade_CA, @id_tipo_protecao, @alerta_minimo`// quwry para
+			(@nome, @fabricante, @CA, @descricao,@validade_CA, @id_tipo_protecao, @alerta_minimo)`// quwry para
 			//salvar um epi e retornar seu id
 
 		
@@ -53,12 +58,21 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 		sql.Named("fabricante", epi.Fabricante),
 		sql.Named("CA", epi.CA),
 		sql.Named("descricao", epi.Descricao),
-		sql.Named("validade_CA", epi.DataValidadeCa),
+		sql.Named("validade_CA", epi.DataValidadeCa.Time()),
 		sql.Named("id_tipo_protecao", epi.IDprotecao),
 		sql.Named("alerta_minimo", epi.AlertaMinimo)).Scan(&EpiId)//escaneado o id
 
 	if err != nil {
-		return fmt.Errorf(" Erro interno ao salvar Epi: %w",  Errors.ErrInternal)
+		if helper.IsUniqueViolation(err){
+
+			return fmt.Errorf("CA %s ja existe no sistema, %w",epi.CA, Errors.ErrSalvar)
+		}
+
+		if helper.IsForeignKeyViolation(err){
+
+			return fmt.Errorf("id protecao não existente no banco de dados, %w", Errors.ErrDadoIncompativel)
+		}
+		return fmt.Errorf(" Erro interno ao salvar Epi: %w",  err)
 	}
 
 	stmt, err:= tx.PrepareContext(ctx, "insert into tamanhos_epis(IdEpi, IdTamanho) values (@id_epi, @id_tamanho)") 
@@ -73,13 +87,16 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 		//executando a query preparada, adicionando na tabela de associação os id do epi e o id dos tamanhos
 		if err != nil {
 
-			return fmt.Errorf("erro ao inserir na tabela tamanhos_epis para o tamanho ID %d: %w", idTamanho, err)
+				if helper.IsForeignKeyViolation(err){
+
+					return fmt.Errorf("id tamanho nao existe no banco de dados, %w", Errors.ErrDadoIncompativel)
+				}
+				return fmt.Errorf("erro ao inserir na tabela tamanhos_epis para o tamanho ID %d: %w", idTamanho, err)
 		}
 	}
-
 	err = tx.Commit()
 	if err != nil {
-		 return fmt.Errorf("erro ao commitar transação: %w", Errors.ErrInternal)
+		 return fmt.Errorf("erro ao commitar transação: %w", err)
 	}
 
 
@@ -136,7 +153,7 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 	linhas, err:= n.DB.QueryContext(ctx, queryTamanhos, sql.Named("epiId", epi.ID))
 	if err != nil {
         // Retorna o EPI encontrado, mas avisa sobre o erro nos tamanhos, ou pode retornar o erro direto
-        return nil, fmt.Errorf("erro ao buscar tamanhos para o epi %d: %w", epi.ID, Errors.ErrNaoEncontrado)
+        return nil, fmt.Errorf("falha ao buscar tamanhos %w ", Errors.ErrFalhaAoEscanearDados)
 	}
 	defer linhas.Close()
 
@@ -155,6 +172,10 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 		tamanhos = append(tamanhos, tamanho)
 	}
 
+	if len(tamanhos) == 0 {
+
+		return nil, fmt.Errorf("tamanhos nao encontrados, %w", Errors.ErrNaoEncontrado)
+	}
 	epi.Tamanhos = tamanhos
 	
 
@@ -179,7 +200,8 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 	}
 	defer linhas.Close()
 
-	 EpisMap:= make(map[int]*model.Epi) //usando map ao inves de um slic por motivos de performace
+	 EpisMap:= make(map[int]*model.Epi)
+	 var ids []string //usando map ao inves de um slic por motivos de performace
 
 	 for linhas.Next(){
 
@@ -200,6 +222,7 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 		}
 
 		EpisMap[epi.ID] = &epi
+		ids = append(ids, strconv.Itoa(epi.ID))
 	 }
 
 	 if len(EpisMap) == 0 {
@@ -209,15 +232,14 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 
 	 //segunda query
 
-	 queryTamanhos:= ` 
+	 queryTamanhos:= fmt.Sprintf(` 
 		select 
-			t.id, t.tamanho
+			te.IdEpi ,t.id, t.tamanho
 		from
 			tamanho t
 		inner join
 			tamanhos_epis te on t.id = te.IdTamanho
-		where ativo = 1
-	 `// query que retorna o id do epi, id do tamanho e o tamanho
+		where te.EpiId IN (%s) and ativo = 1`, strings.Join(ids, ","))// query que retorna o id do epi, id do tamanho e o tamanho
 
 	 linhasTamanhos, err:= n.DB.QueryContext(ctx, queryTamanhos)
 	 if err != nil{
@@ -269,7 +291,7 @@ func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
 							where IdEpi = @id and ativo = 1`
 	_, err = tx.ExecContext(ctx, queryTamanhoEpi, sql.Named("id", id))
 	if err != nil {
-		return err
+		return  fmt.Errorf(" erro ao apagar tamanhos dos epis, %w",Errors.ErrAoapagar)
 	}
 		
 	query:=  `update epi
@@ -279,7 +301,7 @@ func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
 	result, err := tx.ExecContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
-		return  err
+		return  fmt.Errorf("erro ao apagar epi, %w", Errors.ErrAoapagar)
 	}
 
 	linhas, err:= result.RowsAffected()
@@ -328,7 +350,6 @@ func (n  *NewSqlLogin) UpdateEpiFabricante(ctx context.Context,id int, fabricant
 }
 
 
-
 func (n  *NewSqlLogin) UpdateEpiCa(ctx context.Context,id int, ca string)error {
 
 	query:= `update epi
@@ -337,8 +358,13 @@ func (n  *NewSqlLogin) UpdateEpiCa(ctx context.Context,id int, ca string)error {
 	
 	_, err:=n.DB.ExecContext(ctx, query, sql.Named("ca", ca), sql.Named("id", id))
 	if err != nil {
+		if helper.IsUniqueViolation(err){
+
+			return fmt.Errorf("CA ja existente no sistema, %w", Errors.ErrSalvar)
+		}
 
 		return  fmt.Errorf("erro ao atualizar ca do epi, %w",Errors.ErrInternal)
+	
 	}
 
 	return nil
@@ -359,9 +385,7 @@ func (n  *NewSqlLogin) UpdateEpiDescricao(ctx context.Context,id int, descricao 
 	return nil
 }
 
-
-
-func (n  *NewSqlLogin) UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa string)error {
+func (n  *NewSqlLogin) UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa time.Time)error {
 
 	query:= `update epi
 			set validadeCa = @dataValidadeCa
