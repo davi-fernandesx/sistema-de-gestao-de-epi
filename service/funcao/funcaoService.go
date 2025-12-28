@@ -2,12 +2,12 @@ package funcao
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
 	"fmt"
 	"strings"
 
+	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/funcao"
 )
@@ -38,6 +38,8 @@ var (
 	ErrId = errors.New("id invalido")
 	ErrRegistroNaoEncontrado = errors.New("função não encontrada")
 	ErrFuncaoMinCaracteres =  errors.New("funcao deve ter ao minimo 2 caracteres")
+	ErrVinculo = errors.New("erro ao checar vinculos com funcionario")
+	ErrFuncaoComVinculo = errors.New("nao foi possivel apagar funcao, funcao com vinculo a funcionario")
 )
 // SalvarFuncao implements [Funcao].
 func (f *FuncaoService) SalvarFuncao(ctx context.Context, model *model.FuncaoInserir) error {
@@ -51,8 +53,13 @@ func (f *FuncaoService) SalvarFuncao(ctx context.Context, model *model.FuncaoIns
 	}
 	if err:= f.FuncaoRepo.AddFuncao(ctx, model); err != nil {
 		  
-		if strings.Contains(err.Error(), "2627"){
+		if errors.Is(err, Errors.ErrSalvar){
 			return  ErrFuncaoCadastrada
+		}
+
+		if errors.Is(err, Errors.ErrDadoIncompativel){
+
+			return  fmt.Errorf("id departamento invalido, não existe no sistema %w", ErrId)
 		}
 
 		return  fmt.Errorf("erro ao salvar funcao: %w", err)
@@ -72,7 +79,7 @@ func (f *FuncaoService) ListarFuncao(ctx context.Context, id int) (model.FuncaoD
 	funcao, err:= f.FuncaoRepo.BuscarFuncao(ctx, id)
 	if err != nil {
 
-		if errors.Is(err, sql.ErrNoRows){
+		if errors.Is(err, Errors.ErrNaoEncontrado){
 
 			return  model.FuncaoDto{}, err
 		}
@@ -105,7 +112,7 @@ func (f *FuncaoService) ListasTodasFuncao(ctx context.Context) ([]model.FuncaoDt
 		return  nil, err
 	}
 
-	if funcs == nil {
+	if len(funcs) == 0 {
 
 		return []model.FuncaoDto{}, nil
 	}
@@ -146,9 +153,8 @@ func (f *FuncaoService) AtualizarFuncao(ctx context.Context, id int, funcao stri
 	linha, err:= f.FuncaoRepo.UpdateFuncao(ctx, id, funcaoLimpa)
 	if err != nil {
 
-		if strings.Contains(err.Error(), "2627") || strings.Contains(err.Error(), "2601"){
-
-			return ErrFuncaoCadastrada
+		if errors.Is(err, Errors.ErrSalvar){
+			return  ErrFuncaoCadastrada
 		}
 
 		return fmt.Errorf("erro tecnico ao realizar o update: %w", err) 
@@ -169,7 +175,18 @@ func (f *FuncaoService) DeletarFuncao(ctx context.Context, id int) error {
 		return  ErrId
 	}
 
-	err:=f.FuncaoRepo.DeletarFuncao(ctx, id)
+	vinculo, err:= f.FuncaoRepo.PossuiFuncionariosVinculados(ctx, id)
+	if err != nil {
+
+		return ErrVinculo
+	}
+
+	if vinculo {
+
+		return  ErrFuncaoComVinculo
+	}
+
+	err = f.FuncaoRepo.DeletarFuncao(ctx, id)
 	if err != nil {
 
 		return  fmt.Errorf("erro ao deletar a funcao, %w", err)

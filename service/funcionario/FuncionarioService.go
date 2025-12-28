@@ -178,7 +178,7 @@ func (f *FuncionarioService) DeletarFuncionario(ctx context.Context, matricula s
 	err = f.FuncionarioRepo.DeletarFuncionario(ctx, matriculaInt)
 	if err != nil {
 
-			return fmt.Errorf("erro ao deletar funcoinario, %w, funcionario ja pode estar inativo", err)
+			return fmt.Errorf("erro ao deletar funcionario, %w, funcionario ja pode estar inativo", err)
 	}
 
 	return nil

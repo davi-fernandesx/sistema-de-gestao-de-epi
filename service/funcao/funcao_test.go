@@ -57,6 +57,12 @@ func (m *MockRepo) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error
 	return d, args.Error(1)
 }
 
+func (m *MockRepo) PossuiFuncionariosVinculados(ctx context.Context, id int) (bool, error) {
+
+	args := m.Called(ctx, id)
+	return args.Bool(0), args.Error(1)
+}
+
 func Mock() (*MockRepo, *FuncaoService) {
 
 	mock := new(MockRepo)
@@ -265,14 +271,14 @@ func TestDeletarFuncao(t *testing.T) {
 		{ID: 2, Funcao: "rh", IdDepartamento: 2, NomeDepartamento: "adm"},
 	}
 
-
 	t.Run("sucesso ao deletar funcao", func(t *testing.T) {
 
-		mock, serv:= Mock()
+		mock, serv := Mock()
 
+		mock.On("PossuiFuncionariosVinculados", ctx, 1).Return(false, nil)
 		mock.On("DeletarFuncao", ctx, funcs[0].ID).Return(nil)
 
-		err:= serv.DeletarFuncao(ctx, funcs[0].ID)
+		err := serv.DeletarFuncao(ctx, funcs[0].ID)
 		assert.NoError(t, err)
 		assert.Nil(t, err)
 
@@ -281,12 +287,12 @@ func TestDeletarFuncao(t *testing.T) {
 
 	t.Run("id nao encontrado para o delete", func(t *testing.T) {
 
+		mock, serv := Mock()
 
-		mock, serv:= Mock()
-
+		mock.On("PossuiFuncionariosVinculados", ctx, 11).Return(false, nil)
 		mock.On("DeletarFuncao", ctx, 11).Return(Errors.ErrNaoEncontrado)
 
-		err:= serv.DeletarFuncao(ctx, 11)
+		err := serv.DeletarFuncao(ctx, 11)
 		assert.Error(t, err)
 		assert.NotNil(t, err)
 
