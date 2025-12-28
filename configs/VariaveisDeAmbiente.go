@@ -24,11 +24,10 @@ var Env = NewVariaveisAmbiente()
 
 func NewVariaveisAmbiente() *VariaveisDeAmbiente {
 
-	err:= godotenv.Load("configs/.env")
+	err:= godotenv.Load("configs/.env", "../configs/.env", "../../configs/.env")
 	if err != nil {
 
-		log.Println("erro ao carregar arquivo .env, %w", err)
-		log.Fatal()
+		log.Println("Aviso: arquivo .env não encontrado. Continuando com variáveis de sistema...")
 	}
 
 
