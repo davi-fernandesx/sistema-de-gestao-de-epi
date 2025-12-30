@@ -25,7 +25,7 @@ type Epi struct {
 	Fabricante     string
 	CA             string
 	Descricao      string
-	DataValidadeCa time.Time
+	DataValidadeCa configs.DataBr
 	AlertaMinimo   int
 	IDprotecao     int
 	NomeProtecao   string
