@@ -72,7 +72,7 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 
 			return fmt.Errorf("id protecao não existente no banco de dados, %w", Errors.ErrDadoIncompativel)
 		}
-		return fmt.Errorf(" Erro interno ao salvar Epi: %w",  err)
+		return fmt.Errorf(" Erro interno ao salvar Epi: %w",  Errors.ErrConexaoDb)
 	}
 
 	stmt, err:= tx.PrepareContext(ctx, "insert into tamanhos_epis(IdEpi, IdTamanho) values (@id_epi, @id_tamanho)") 
