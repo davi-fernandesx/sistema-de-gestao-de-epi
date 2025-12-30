@@ -81,13 +81,9 @@ func (f *FuncaoService) ListarFuncao(ctx context.Context, id int) (model.FuncaoD
 
 		if errors.Is(err, Errors.ErrNaoEncontrado){
 
-			return  model.FuncaoDto{}, err
+			return  model.FuncaoDto{}, ErrRegistroNaoEncontrado
 		}
 
-		return model.FuncaoDto{}, ErrRegistroNaoEncontrado
-	}
-
-	if funcao == nil {
 		return model.FuncaoDto{}, ErrRegistroNaoEncontrado
 	}
 

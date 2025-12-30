@@ -9,6 +9,7 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type MockRepo struct {
@@ -88,10 +89,8 @@ func TestSalvarFuncao(t *testing.T) {
 
 	t.Run("Erro ao tentar adicionar uma funcao com menos de 2 caracteres", func(t *testing.T) {
 
-		Func := &model.FuncaoInserir{ID: 1, Funcao: "de", IdDepartamento: 1}
+		Func := &model.FuncaoInserir{ID: 1, Funcao: "d", IdDepartamento: 1}
 		mock, serv := Mock()
-
-		mock.On("AddFuncao", ctx, Func).Return(ErrFuncaoMinCaracteres)
 
 		err := serv.SalvarFuncao(ctx, Func)
 		assert.Error(t, err)
@@ -105,11 +104,11 @@ func TestSalvarFuncao(t *testing.T) {
 
 		mock, serv := Mock()
 
-		mock.On("AddFuncao", ctx, Func).Return(ErrFuncaoCadastrada)
+		mock.On("AddFuncao", ctx, Func).Return(Errors.ErrDadoIncompativel)
 
 		err := serv.SalvarFuncao(ctx, Func)
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, ErrFuncaoCadastrada))
+		assert.True(t, errors.Is(err, ErrId))
 		mock.AssertExpectations(t)
 	})
 
@@ -118,7 +117,7 @@ func TestSalvarFuncao(t *testing.T) {
 
 		mock, serv := Mock()
 
-		mock.On("AddFuncao", ctx, Func).Return(errors.New("erro generico db"))
+		mock.On("AddFuncao", ctx, Func).Return(Errors.ErrInternal)
 
 		err := serv.SalvarFuncao(ctx, Func)
 		assert.Error(t, err)
@@ -154,7 +153,7 @@ func TestBuscaFuncao(t *testing.T) {
 	t.Run("funcao nao encontrada", func(t *testing.T) {
 		mock, serv := Mock()
 
-		mock.On("BuscarFuncao", ctx, 5).Return(nil, ErrRegistroNaoEncontrado)
+		mock.On("BuscarFuncao", ctx, 5).Return(nil, Errors.ErrNaoEncontrado)
 
 		_, err := serv.ListarFuncao(ctx, 5)
 		assert.Error(t, err)
@@ -162,6 +161,21 @@ func TestBuscaFuncao(t *testing.T) {
 		assert.True(t, errors.Is(err, ErrRegistroNaoEncontrado))
 		mock.AssertExpectations(t)
 	})
+
+	t.Run("erro do banco de dados", func(t *testing.T) {
+
+		mock, serv := Mock()
+
+		mock.On("BuscarFuncao", ctx, 1).Return(nil, Errors.ErrFalhaAoEscanearDados)
+
+		test, err := serv.ListarFuncao(ctx, 1)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, ErrRegistroNaoEncontrado))
+		require.Empty(t, test)
+		mock.AssertExpectations(t)
+	})
+
+
 
 }
 
@@ -208,7 +222,7 @@ func TestBuscaTodasFuncao(t *testing.T) {
 	})
 }
 
-func TestBuscaUpdate(t *testing.T) {
+func TestFuncaoUpdate(t *testing.T) {
 
 	ctx := context.Background()
 	funcs := []model.Funcao{
@@ -236,7 +250,7 @@ func TestBuscaUpdate(t *testing.T) {
 
 		mock, serv := Mock()
 
-		mock.On("UpdateFuncao", ctx, funcs[0].ID, funcs[0].Funcao).Return(int64(0), ErrFuncaoCadastrada)
+		mock.On("UpdateFuncao", ctx, funcs[0].ID, funcs[0].Funcao).Return(int64(0), Errors.ErrSalvar)
 
 		err := serv.AtualizarFuncao(ctx, funcs[0].ID, funcs[0].Funcao)
 
