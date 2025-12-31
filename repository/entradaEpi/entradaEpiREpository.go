@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 )
 
@@ -118,6 +119,11 @@ func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.Entra
 	)
 
 	if err != nil {
+
+		if helper.IsForeignKeyViolation(err){
+
+			return fmt.Errorf("epi ou tamanho não existe no sistema, verifique os dados, %w", Errors.ErrDadoIncompativel)
+		}
 		return fmt.Errorf("erro interno ao salvar entrada, %w", Errors.ErrSalvar)
 	}
 

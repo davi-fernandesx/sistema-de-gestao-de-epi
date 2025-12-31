@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 	"github.com/shopspring/decimal"
@@ -37,11 +38,11 @@ func Test_EntradaEpi(t *testing.T) {
 
 	entradaInserir := model.EntradaEpiInserir{
 		ID_epi:         1,
-		Data_entrada:   time.Now(),
+		Data_entrada:   *configs.NewDataBrPtr(time.Now()),
 		Id_tamanho:     2,
 		Quantidade:     10,
-		DataFabricacao: time.Now(),
-		DataValidade:   time.Now(),
+		DataFabricacao: *configs.NewDataBrPtr(time.Now()),
+		DataValidade:   *configs.NewDataBrPtr(time.Now()),
 		Lote:           "xyz",
 		Fornecedor:     "teste1",
 		ValorUnitario:  decimal.NewFromFloat(12.77),
