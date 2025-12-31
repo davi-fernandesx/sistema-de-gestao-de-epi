@@ -13,7 +13,7 @@ type EpiInserir struct {
 	Fabricante     string`json:"fabricante" binding:"required,max=50"`
 	CA             string`json:"ca" binding:"required,numeric,min=1,max=6"`
 	Descricao      string`json:"descricao" binding:"lte=250"`
-	DataValidadeCa configs.DataBr `json:"data_validade_ca" binding:"required,gt"`
+	DataValidadeCa configs.DataBr `json:"data_validade_ca" binding:"required"`
 	Idtamanho      []int`json:"id_tamanho" binding:"required,min=1"`
 	IDprotecao     int`json:"id_protecao" binding:"required,numeric"`
 	AlertaMinimo   int`json:"alerta_minimo" binding:"required,gte=0"`
