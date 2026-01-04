@@ -3,27 +3,28 @@ package entrada
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	entradaepi "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/entradaEpi"
 )
 
-type entrada interface {
-	SalvarEntrada(ctx context.Context, model *model.EntradaEpiInserir) error
-	ListarEntrada(ctx context.Context, id int) (model.EntradaEpiDto, error)
-	ListasTodasEntradas(ctx context.Context) ([]model.EntradaEpiDto, error)
-	DeletarEntradas(ctx context.Context, id int) error
+//go:generate mockery --name=EntradaRepository --output=mocks --outpkg=mocks
+type EntradaRepository interface {
+	AddEntradaEpi(ctx context.Context, model *model.EntradaEpiInserir) error
+	BuscarEntrada(ctx context.Context, id int) (model.EntradaEpi, error)
+	BuscarTodasEntradas(ctx context.Context) ([]model.EntradaEpi, error)
+	CancelarEntrada(ctx context.Context, id int) error
 }
 
 type EntradaService struct {
-	EntradaRepo entradaepi.EntradaEpi
+	EntradaRepo EntradaRepository
 }
 
-func NewEntradaService(repo entradaepi.EntradaEpi) entrada {
+func NewEntradaService(repo EntradaRepository) *EntradaService {
 
 	return &EntradaService{
 
@@ -38,6 +39,7 @@ var (
 	ErrFalhaNoBancoDeDados = errors.New("falha no banco de dados")
 	ErrId                  = errors.New("id invalido")
 	ErrNaoEncontrado       = errors.New("entrada não encontrada")
+	ErrDataIgual           = errors.New("data de fabricacao e validade não podem ser iguais")
 )
 
 // SalvarEntrada implements [entrada].
@@ -53,8 +55,12 @@ func (e *EntradaService) SalvarEntrada(ctx context.Context, model *model.Entrada
 		return errDataMenor
 	}
 
-	if !model.DataValidade.Time().After(model.DataFabricacao.Time()) {
+	if model.DataValidade.Time().Equal(model.DataFabricacao.Time()) {
 
+		return ErrDataIgual
+	}
+
+	if model.DataValidade.Time().Before(model.DataFabricacao.Time()) {
 		return errDataMenorValidade
 	}
 
@@ -87,56 +93,117 @@ func (e *EntradaService) ListarEntrada(ctx context.Context, id int) (model.Entra
 		log.Printf("erro ao buscar entrada: %v", err)
 		if errors.Is(err, Errors.ErrBuscarTodos) {
 
-			return model.EntradaEpiDto{},ErrNaoEncontrado
+			return model.EntradaEpiDto{}, nil
 		}
 
-		if errors.Is(err, Errors.ErrFalhaAoEscanearDados){
-
-			return model.EntradaEpiDto{}, ErrFalhaNoBancoDeDados
-		}
-
-		if errors.Is(err, Errors.ErrAoIterar){
-
-			return  model.EntradaEpiDto{}, ErrFalhaNoBancoDeDados
-		}
-
-		return model.EntradaEpiDto{},err
+		log.Printf("erro crítico ao buscar entrada ID %d: %v", id, err)
+		return model.EntradaEpiDto{}, ErrFalhaNoBancoDeDados
 	}
 
 	return model.EntradaEpiDto{
 		ID: entrada.ID,
 		Epi: model.EpiDto{
-			Id: entrada.ID_epi,
-			Nome: entrada.Nome,
+			Id:         entrada.ID_epi,
+			Nome:       entrada.Nome,
 			Fabricante: entrada.Fabricante,
-			CA: entrada.CA,
-			Tamanho:[]model.TamanhoDto{
+			CA:         entrada.CA,
+			Tamanho: []model.TamanhoDto{
 				{
-					ID: entrada.Id_Tamanho,
+					ID:      entrada.Id_Tamanho,
 					Tamanho: entrada.TamanhoDescricao,
 				},
 			},
-			Descricao: entrada.Descricao,
+			Descricao:      entrada.Descricao,
 			DataValidadeCa: entrada.DataValidadeCa,
 			Protecao: model.TipoProtecaoDto{
-				ID: entrada.IDprotecao,
+				ID:   entrada.IDprotecao,
 				Nome: model.Protecao(entrada.NomeProtecao),
-			},			
+			},
 		},
-		Data_entrada: entrada.Data_entrada,
-		Quantidade: entrada.Quantidade,
-		Lote: entrada.Lote,
-		Fornecedor: entrada.Fornecedor,
+		Data_entrada:  entrada.Data_entrada,
+		Quantidade:    entrada.Quantidade,
+		Lote:          entrada.Lote,
+		Fornecedor:    entrada.Fornecedor,
 		ValorUnitario: entrada.ValorUnitario,
 	}, nil
 }
 
 // ListasTodasEntradas implements [entrada].
 func (e *EntradaService) ListasTodasEntradas(ctx context.Context) ([]model.EntradaEpiDto, error) {
-	panic("unimplemented")
+
+	entradas, err := e.EntradaRepo.BuscarTodasEntradas(ctx)
+	if err != nil {
+
+		if err != nil {
+
+			if errors.Is(err, Errors.ErrBuscarTodos) {
+
+			return []model.EntradaEpiDto{}, nil
+			}
+
+			return []model.EntradaEpiDto{}, fmt.Errorf("falha interna: %w", err)
+		}
+	}
+
+
+
+	dto := make([]model.EntradaEpiDto, 0, len(entradas))
+
+	for _, entrada := range entradas {
+
+		e := model.EntradaEpiDto{
+			ID: entrada.ID,
+			Epi: model.EpiDto{
+				Id:         entrada.ID_epi,
+				Nome:       entrada.Nome,
+				Fabricante: entrada.Fabricante,
+				CA:         entrada.CA,
+				Tamanho: []model.TamanhoDto{
+					{
+						ID:      entrada.Id_Tamanho,
+						Tamanho: entrada.TamanhoDescricao,
+					},
+				},
+				Descricao:      entrada.Descricao,
+				DataValidadeCa: entrada.DataValidadeCa,
+				Protecao: model.TipoProtecaoDto{
+					ID:   entrada.IDprotecao,
+					Nome: model.Protecao(entrada.NomeProtecao)},
+			},
+			Data_entrada:  entrada.Data_entrada,
+			Quantidade:    entrada.Quantidade,
+			Lote:          entrada.Lote,
+			Fornecedor:    entrada.Fornecedor,
+			ValorUnitario: entrada.ValorUnitario,
+		}
+
+		dto = append(dto, e)
+	}
+
+	return dto, nil
 }
 
 // DeletarEntradas implements [entrada].
 func (e *EntradaService) DeletarEntradas(ctx context.Context, id int) error {
-	panic("unimplemented")
+
+	if id <= 0 {
+
+		return ErrId
+	}
+
+	err := e.EntradaRepo.CancelarEntrada(ctx, id)
+	if err != nil {
+
+		if errors.Is(err, Errors.ErrNaoEncontrado) {
+
+			return ErrId
+		}
+
+		log.Printf("erro crítico ao buscar entrada ID %d: %v", id, err)
+		return ErrFalhaNoBancoDeDados
+
+	}
+
+	return nil
+
 }
