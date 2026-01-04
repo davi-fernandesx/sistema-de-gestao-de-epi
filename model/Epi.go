@@ -1,7 +1,7 @@
 package model
 
 import (
-	"time"
+	
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 )
 
@@ -42,6 +42,6 @@ type EpiDto struct {
 	CA             string          `json:"ca"`
 	Tamanho        []TamanhoDto    `json:"tamanhos"`
 	Descricao      string          `json:"descricao"`
-	DataValidadeCa time.Time       `json:"data_validadeCa"`
+	DataValidadeCa configs.DataBr       `json:"data_validadeCa"`
 	Protecao       TipoProtecaoDto `json:"protecao"`
 }

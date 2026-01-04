@@ -2,24 +2,26 @@ package model
 
 import (
 	"database/sql"
-	"github.com/shopspring/decimal"
 	"time"
+
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
+	"github.com/shopspring/decimal"
 )
 
 type ItemParaInserir struct {
-	ID_epi         int             `json:"id_epi"`
-	ID_tamanho     int             `json:"id_tamanho"`
-	Quantidade     int             `json:"quantidade"`
+	ID_epi         int             `json:"id_epi" binding:"requered,numeric"`
+	ID_tamanho     int             `json:"id_tamanho" binding:"required,numeric"`
+	Quantidade     int             `json:"quantidade" binding:"required,numeric,gt=0"`
 	IdEntrada      int             `json:"-"`
 	IdEntrega      int             `json:"-"`
-	Valor_unitario decimal.Decimal `json:"valor_unitario"`
+	Valor_unitario decimal.Decimal `json:"valor_unitario" binding:"required,gt=0"`
 }
 
 type EntregaParaInserir struct {
-	ID_funcionario     int               `json:"id_funcionario"`
-	Data_entrega       time.Time         `json:"data_entrega"`
-	Assinatura_Digital string            `json:"assinatura_digital"`
-	Itens              []ItemParaInserir `json:"itens"`
+	ID_funcionario     int               `json:"id_funcionario" binding:"requered,numeric"`
+	Data_entrega       configs.DataBr    `json:"data_entrega" binding:"requered"`
+	Assinatura_Digital string            `json:"assinatura_digital" binding:"requered"`
+	Itens              []ItemParaInserir `json:"itens" binding:"requered,min=1,dive"`
 	Id_troca           int               `json:"-"`
 }
 

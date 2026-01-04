@@ -1,7 +1,6 @@
 package model
 
 import (
-	"time"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 	"github.com/shopspring/decimal"
@@ -11,7 +10,7 @@ type EntradaEpiInserir struct {
 	ID_epi         int             `json:"id_epi" binding:"required,numeric"`
 	Id_tamanho     int             `json:"id_tamanho" binding:"required,numeric"`
 	Data_entrada   configs.DataBr  `json:"data_entrada" binding:"required"`
-	Quantidade     int             `json:"quantidade" binding:"required,numeric,gte=0"`
+	Quantidade     int             `json:"quantidade" binding:"required,numeric,gt=0"`
 	DataFabricacao configs.DataBr  `json:"data_fabricacao" binding:"required"`
 	DataValidade   configs.DataBr  `json:"data_validade" binding:"required,gtfield=DataFabricacao"`
 	Lote           string          `json:"lote" binding:"required,numeric,max=6"`
@@ -26,15 +25,15 @@ type EntradaEpi struct {
 	Fabricante       string
 	CA               string
 	Descricao        string
-	DataFabricacao   time.Time
-	DataValidade     time.Time
-	DataValidadeCa   time.Time
+	DataFabricacao   configs.DataBr
+	DataValidade     configs.DataBr
+	DataValidadeCa   configs.DataBr
 	IDprotecao       int
 	NomeProtecao     string
 	Id_Tamanho       int
 	TamanhoDescricao string
 	Quantidade       int
-	Data_entrada     time.Time
+	Data_entrada     configs.DataBr
 	Lote             string
 	Fornecedor       string
 	ValorUnitario    decimal.Decimal
@@ -43,7 +42,7 @@ type EntradaEpi struct {
 type EntradaEpiDto struct {
 	ID            int             `json:"id"`
 	Epi           EpiDto          `json:"epi"`
-	Data_entrada  time.Time       `json:"data_entrada"`
+	Data_entrada  configs.DataBr       `json:"data_entrada"`
 	Quantidade    int             `json:"quantidade"`
 	Lote          string          `json:"lote"`
 	Fornecedor    string          `json:"fornecedor"`
