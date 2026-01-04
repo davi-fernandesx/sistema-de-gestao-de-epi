@@ -35,6 +35,10 @@ func (C *ConexaoDbSqlserver) Conn() (*sql.DB, error) {
 		return nil, fmt.Errorf("erro ao verificar se a conexao ainda está ativa: %v", err)
 	}
 
+	stats := db.Stats()
+	log.Printf("Conexões em uso: %d\n", stats.InUse)
+	log.Printf("Conexões ociosas: %d\n", stats.Idle)
+
 	return db, nil
 
 }
