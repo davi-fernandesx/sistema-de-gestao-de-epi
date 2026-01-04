@@ -8,23 +8,23 @@ import (
 	"strings"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/departamento"
 )
 
-type Departamento interface {
-	SalvarDepartamento(ctx context.Context, model *model.Departamento) error
-	ListarDepartamento(ctx context.Context, id int) (model.DepartamentoDto, error)
-	ListarTodosDepartamentos(ctx context.Context) ([]model.DepartamentoDto, error)
+type DepartamentoRepo interface {
+	AddDepartamento(ctx context.Context, departamento *model.Departamento) error
 	DeletarDepartamento(ctx context.Context, id int) error
-	AtualizarDepartamento(ctx context.Context, id int, departamento string) error
+	BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error)
+	BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error)
+	UpdateDepartamento(ctx context.Context, id int, departamento string)(int64,error)
+	PossuiFuncoesVinculadas(ctx context.Context, id int) (bool, error)
 }
 
 type DepartamentoServices struct {
-	DepartamentoRepo departamento.DepartamentoInterface
+	DepartamentoRepo DepartamentoRepo
 }
 
 
-func NewDepartamentoService(repo departamento.DepartamentoInterface) Departamento {
+func NewDepartamentoService(repo DepartamentoRepo) *DepartamentoServices {
 
 	return &DepartamentoServices{
 		DepartamentoRepo: repo,
