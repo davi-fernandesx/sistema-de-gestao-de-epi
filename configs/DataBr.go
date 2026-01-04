@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"strings"
 	"time"
@@ -43,3 +44,16 @@ func (d *DataBr) IsZero() bool {
     return time.Time(*d).IsZero()
 }
 
+
+func (d DataBr) Value() (driver.Value, error) {
+    // Retorna a data nativa do Go (time.Time) para o banco entender
+    // Caso seu DataBr guarde a data em um campo interno, use d.SeuCampoDeData
+    // Se DataBr for apenas um alias (type DataBr time.Time), faça: return time.Time(d), nil
+    
+    // Verifique se a data está zerada, se necessário retornar NULL
+    if d.IsZero() {
+        return nil, nil
+    }
+
+	return time.Time(d), nil
+}
