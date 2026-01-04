@@ -11,28 +11,21 @@ import (
 )
 
 
-type FuncaoInterface interface {
-	AddFuncao(ctx context.Context, funcao *model.FuncaoInserir) error
-	DeletarFuncao(ctx context.Context, id int) error
-	BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error)
-	UpdateFuncao(ctx context.Context, id int, funcao string) (int64, error)
-	BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error)
-	PossuiFuncionariosVinculados(ctx context.Context, id int) (bool, error)
-}
 
-type SqlServerLogin struct {
+
+type FuncaoRepository struct {
 	Db *sql.DB
 }
 
-func NewfuncaoRepository(db *sql.DB) FuncaoInterface {
+func NewfuncaoRepository(db *sql.DB) *FuncaoRepository {
 
-	return &SqlServerLogin{
+	return &FuncaoRepository{
 		Db: db,
 	}
 }
 
 // AddFuncao implements FuncaoInterface.
-func (s *SqlServerLogin) AddFuncao(ctx context.Context, funcao *model.FuncaoInserir) error {
+func (s *FuncaoRepository) AddFuncao(ctx context.Context, funcao *model.FuncaoInserir) error {
 	query := `insert into funcao (nome, IdDepartamento) values (@funcao, @idDepartamento)`
 
 	_, err := s.Db.ExecContext(ctx, query, sql.Named("funcao", funcao.Funcao), sql.Named("idDepartamento", funcao.IdDepartamento))
@@ -53,7 +46,7 @@ func (s *SqlServerLogin) AddFuncao(ctx context.Context, funcao *model.FuncaoInse
 }
 
 // BuscarFuncao implements FuncaoInterface.
-func (s *SqlServerLogin) BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error) {
+func (s *FuncaoRepository) BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error) {
 
 	query := `select f.id, f.nome, f.IdDepartamento, d.nome as departamento
 			from funcao f
@@ -76,7 +69,7 @@ func (s *SqlServerLogin) BuscarFuncao(ctx context.Context, id int) (*model.Funca
 }
 
 // BuscarTodosCargos implements FuncaoInterface.
-func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error) {
+func (s *FuncaoRepository) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error) {
 	query := `select f.id, f.nome, f.IdDepartamento, d.nome as departamento
 			from funcao f
 			inner join 
@@ -112,7 +105,7 @@ func (s *SqlServerLogin) BuscarTodasFuncao(ctx context.Context) ([]model.Funcao,
 
 }
 
-func (s *SqlServerLogin) PossuiFuncionariosVinculados(ctx context.Context, id int) (bool, error) {
+func (s *FuncaoRepository) PossuiFuncionariosVinculados(ctx context.Context, id int) (bool, error) {
 	var total int
 	query := `SELECT COUNT(1) FROM funcionario WHERE IdFuncao = @id AND ativo = 1`
 
@@ -121,7 +114,7 @@ func (s *SqlServerLogin) PossuiFuncionariosVinculados(ctx context.Context, id in
 }
 
 // DeletarFuncao implements FuncaoInterface.
-func (s *SqlServerLogin) DeletarFuncao(ctx context.Context, id int) error {
+func (s *FuncaoRepository) DeletarFuncao(ctx context.Context, id int) error {
 
 	query := `update funcao
 				set ativo = 0,
@@ -150,7 +143,7 @@ func (s *SqlServerLogin) DeletarFuncao(ctx context.Context, id int) error {
 
 }
 
-func (s *SqlServerLogin) UpdateFuncao(ctx context.Context, id int, funcao string) (int64, error) {
+func (s *FuncaoRepository) UpdateFuncao(ctx context.Context, id int, funcao string) (int64, error) {
 
 	query := `update funcao
 			set nome = @funcao

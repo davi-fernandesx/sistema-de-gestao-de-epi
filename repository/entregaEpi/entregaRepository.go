@@ -11,27 +11,15 @@ import (
 	trocaepi "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/trocaEpi"
 )
 
-type EntregaInterface interface {
-	Addentrega(ctx context.Context, model model.EntregaParaInserir) error
-	BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error)
-	BuscaEntregaPorIdFuncionario(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error)
-	BuscaEntregaPorIdFuncionarioCanceladas(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error)
-	BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaDto, error)
-	BuscaTodasEntregasCanceladas(ctx context.Context) ([]*model.EntregaDto, error)
-	BuscaEntregaCancelada(ctx context.Context, id int) (*model.EntregaDto, error)
-	
 
-	CancelarEntrega(ctx context.Context, id int) error
-}
-
-type NewsqlLogin struct {
+type EntregaRepository struct {
 	Db           *sql.DB
 	BaixaEstoque trocaepi.DevolucaoInterfaceRepository
 }
 
-func NewEntregaRepository(db *sql.DB, RepoDevolucao trocaepi.DevolucaoInterfaceRepository) EntregaInterface {
+func NewEntregaRepository(db *sql.DB, RepoDevolucao trocaepi.DevolucaoInterfaceRepository) *EntregaRepository {
 
-	return &NewsqlLogin{
+	return &EntregaRepository{
 		Db:           db,
 		BaixaEstoque: RepoDevolucao,
 	}
@@ -80,7 +68,7 @@ select
 
 `
 
-func ( n *NewsqlLogin) buscaEntregas(ctx context.Context, query string, args ...any)([]*model.EntregaDto, error){
+func ( n *EntregaRepository) buscaEntregas(ctx context.Context, query string, args ...any)([]*model.EntregaDto, error){
 linhas, err := n.Db.QueryContext(ctx, query, args...)
 	if err != nil {
 
@@ -174,7 +162,7 @@ linhas, err := n.Db.QueryContext(ctx, query, args...)
 
 }
 // Addentrega implements EntregaInterface.
-func (n *NewsqlLogin) Addentrega(ctx context.Context, model model.EntregaParaInserir) error {
+func (n *EntregaRepository) Addentrega(ctx context.Context, model model.EntregaParaInserir) error {
 
 	tx, err := n.Db.BeginTx(ctx, nil)
 	if err != nil {
@@ -216,7 +204,7 @@ func (n *NewsqlLogin) Addentrega(ctx context.Context, model model.EntregaParaIns
 }
 
 // BuscaEntrega implements EntregaInterface.
-func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error) {
+func (n *EntregaRepository) BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error) {
 
 	query:= entregaQueryJoin + " where ee.cancelada_em IS NULL and ee.id = @id"
 
@@ -234,7 +222,7 @@ func (n *NewsqlLogin) BuscaEntrega(ctx context.Context, id int) (*model.EntregaD
 	
 }
 
-func (n *NewsqlLogin) BuscaEntregaPorIdFuncionario(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error){
+func (n *EntregaRepository) BuscaEntregaPorIdFuncionario(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error){
 
 	query:= entregaQueryJoin + " where ee.cancelada_em IS NULL and ee.IdFuncionario = @id"
 
@@ -252,7 +240,7 @@ func (n *NewsqlLogin) BuscaEntregaPorIdFuncionario(ctx context.Context, idFuncio
 
 }
 
-func (n *NewsqlLogin) BuscaEntregaPorIdFuncionarioCanceladas(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error){
+func (n *EntregaRepository) BuscaEntregaPorIdFuncionarioCanceladas(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error){
 
 	query:= entregaQueryJoin + " where ee.cancelada_em IS NOT NULL and ee.IdFuncionario = @id"
 
@@ -270,14 +258,14 @@ func (n *NewsqlLogin) BuscaEntregaPorIdFuncionarioCanceladas(ctx context.Context
 
 }
 // BuscaTodasEntregas implements EntregaInterface.
-func (n *NewsqlLogin) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaDto, error) {
+func (n *EntregaRepository) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaDto, error) {
 
 	return n.buscaEntregas(ctx, entregaQueryJoin)
 
 	
 }
 
-func (n *NewsqlLogin) BuscaTodasEntregasCanceladas(ctx context.Context) ([]*model.EntregaDto, error){
+func (n *EntregaRepository) BuscaTodasEntregasCanceladas(ctx context.Context) ([]*model.EntregaDto, error){
 
 	query:= entregaQueryJoin + " where ee.cancelada_em IS not NULL"
 
@@ -294,7 +282,7 @@ func (n *NewsqlLogin) BuscaTodasEntregasCanceladas(ctx context.Context) ([]*mode
 	return  entrega, nil
 }
 
-func (n *NewsqlLogin) BuscaEntregaCancelada(ctx context.Context, id int) (*model.EntregaDto, error){
+func (n *EntregaRepository) BuscaEntregaCancelada(ctx context.Context, id int) (*model.EntregaDto, error){
 
 	query:= entregaQueryJoin + " where ee.cancelada_em IS not NULL and ee.id = @id"
 
@@ -313,7 +301,7 @@ func (n *NewsqlLogin) BuscaEntregaCancelada(ctx context.Context, id int) (*model
 }
 
 // DeletarEntregas implements EntregaInterface.
-func (n *NewsqlLogin) CancelarEntrega(ctx context.Context, id int) error {
+func (n *EntregaRepository) CancelarEntrega(ctx context.Context, id int) error {
 
 	query := `update entrega
 			set cancelada_em  = GETDATE(), ativo = 0

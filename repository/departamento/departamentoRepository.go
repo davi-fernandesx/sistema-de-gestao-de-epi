@@ -19,19 +19,19 @@ type DepartamentoInterface interface {
 	PossuiFuncoesVinculadas(ctx context.Context, id int) (bool, error)
 }
 
-type NewSqlLogin struct {
+type DepartamentoRepository struct {
 	DB *sql.DB
 }
 
-func NewDepartamentoRepository(db *sql.DB) DepartamentoInterface {
+func NewDepartamentoRepository(db *sql.DB) *DepartamentoRepository {
 
-	return &NewSqlLogin{
+	return &DepartamentoRepository{
 		DB: db,
 	}
 }
 
 // AddDepartamento implements DepartamentoInterface.
-func (n *NewSqlLogin) AddDepartamento(ctx context.Context, departamento *model.Departamento) error {
+func (n *DepartamentoRepository) AddDepartamento(ctx context.Context, departamento *model.Departamento) error {
 
 	query := `insert into departamento (departamento) values (@departamento)`
 
@@ -47,7 +47,7 @@ func (n *NewSqlLogin) AddDepartamento(ctx context.Context, departamento *model.D
 }
 
 // BuscarDepartamento implements DepartamentoInterface.
-func (n *NewSqlLogin) BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error) {
+func (n *DepartamentoRepository) BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error) {
 
 	query := `select departamento from departamento where id = @id and ativo = 1`
 
@@ -70,7 +70,7 @@ func (n *NewSqlLogin) BuscarDepartamento(ctx context.Context, id int) (*model.De
 }
 
 // BuscarTodosDepartamentos implements DepartamentoInterface.
-func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error) {
+func (n *DepartamentoRepository) BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error) {
 
 	query := `select id, nome from departamento where ativo = 1`
 
@@ -102,7 +102,7 @@ func (n *NewSqlLogin) BuscarTodosDepartamentos(ctx context.Context) ([]model.Dep
 
 }
 
-func (s *NewSqlLogin) PossuiFuncoesVinculadas(ctx context.Context, id int) (bool, error) {
+func (s *DepartamentoRepository) PossuiFuncoesVinculadas(ctx context.Context, id int) (bool, error) {
     var total int
     query := `SELECT COUNT(1) FROM funcao WHERE IdDepartamento = @id AND ativo = 1`
     
@@ -110,7 +110,7 @@ func (s *NewSqlLogin) PossuiFuncoesVinculadas(ctx context.Context, id int) (bool
     return total > 0, err
 }
 // DeletarDepartamento implements DepartamentoInterface.
-func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
+func (n *DepartamentoRepository) DeletarDepartamento(ctx context.Context, id int) error {
 
 	query := `update departamento
 				set ativo = 0,
@@ -135,7 +135,7 @@ func (n *NewSqlLogin) DeletarDepartamento(ctx context.Context, id int) error {
 	return nil
 }
 
-func (n *NewSqlLogin) UpdateDepartamento(ctx context.Context, id int, departamento string)(int64,error){
+func (n *DepartamentoRepository) UpdateDepartamento(ctx context.Context, id int, departamento string)(int64,error){
 
 	query:= `update departamento
 			set nome = @departamento

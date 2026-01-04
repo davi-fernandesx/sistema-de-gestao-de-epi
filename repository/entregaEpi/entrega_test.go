@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	// Ajuste os imports conforme o nome do seu módulo
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 	// Importe onde está a interface DevolucaoInterfaceRepository
@@ -94,7 +95,7 @@ func TestAddEntrega_Sucesso(t *testing.T) {
 	// Dados de Entrada
 	entregaInput := model.EntregaParaInserir{
 		ID_funcionario:     1,
-		Data_entrega:       time.Now(),
+		Data_entrega:       *configs.NewDataBrPtr(time.Now()),
 		Assinatura_Digital: "hash_assinatura",
 		Itens: []model.ItemParaInserir{
 			{ID_epi: 10, ID_tamanho: 2, Quantidade: 5},

@@ -28,7 +28,7 @@ type EpiRepositorySuite struct {
 	suite.Suite
 	mock sqlmock.Sqlmock
 	db   *sql.DB
-	repo EpiInterface
+	repo *EpiRepository
 }
 
 func (s *EpiRepositorySuite) SetupTest() {

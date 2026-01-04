@@ -9,26 +9,21 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 )
 
-type TipoProtecaoInterface interface {
-	AddProtecao(ctx context.Context, protecao *model.TipoProtecao) error
-	DeletarProtecao(ctx context.Context, ind int) error
-	BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error)
-	BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error)
-}
 
-type SqlServerLogin struct {
+
+type TipoProtecaoRepository struct {
 	DB *sql.DB
 }
 
-func NewTipoProtecaoRepository(db *sql.DB) TipoProtecaoInterface {
+func NewTipoProtecaoRepository(db *sql.DB) *TipoProtecaoRepository {
 
-	return &SqlServerLogin{
+	return &TipoProtecaoRepository{
 		DB: db,
 	}
 }
 
 // AddProtecao implements TipoProtecaoInterface.
-func (s *SqlServerLogin) AddProtecao(ctx context.Context, protecao *model.TipoProtecao) error {
+func (s *TipoProtecaoRepository) AddProtecao(ctx context.Context, protecao *model.TipoProtecao) error {
 	
 	query:= `insert into tipo_protecao(nome) values (@protecao)`
 
@@ -42,7 +37,7 @@ func (s *SqlServerLogin) AddProtecao(ctx context.Context, protecao *model.TipoPr
 }
 
 // BuscarProtecao implements TipoProtecaoInterface.
-func (s *SqlServerLogin) BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error) {
+func (s *TipoProtecaoRepository) BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error) {
 	
 	query:= `select id, nome from tipo_protecao where id = @id and ativo = 1`
 
@@ -62,7 +57,7 @@ func (s *SqlServerLogin) BuscarProtecao(ctx context.Context, id int) (*model.Tip
 }
 
 // BuscarTodasProtecao implements TipoProtecaoInterface.
-func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error) {
+func (s *TipoProtecaoRepository) BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error) {
 	
 	query:= `select id, nome from tipo_protecao where ativo = 1 `
 
@@ -95,7 +90,7 @@ func (s *SqlServerLogin) BuscarTodasProtecao(ctx context.Context) ([]model.TipoP
 }
 
 // DeletarProtecao implements TipoProtecaoInterface.
-func (s *SqlServerLogin) DeletarProtecao(ctx context.Context, id int) error {
+func (s *TipoProtecaoRepository) DeletarProtecao(ctx context.Context, id int) error {
 	
 	query:= `update tipo_protecao
 			set ativo = 0, deletado_em = getdate()

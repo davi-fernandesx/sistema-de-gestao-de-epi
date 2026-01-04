@@ -13,32 +13,22 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 )
 
-type EpiInterface interface {
-	AddEpi(ctx context.Context, epi *model.EpiInserir) error
-	DeletarEpi(ctx context.Context, id int) error
-	BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
-	BuscarTodosEpi(ctx context.Context) ([]model.Epi, error)
-	UpdateEpiNome(ctx context.Context,id int, nome string)error
-	UpdateEpiCa(ctx context.Context,id int, ca string)error
-	UpdateEpiFabricante(ctx context.Context,id int, fabricante string)error
-	UpdateEpiDescricao(ctx context.Context,id int, descricao string)error
-	UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa time.Time)error
-}
+
 // interface sql error (para pegar o codigo do erro)
 
-type NewSqlLogin struct {
+type EpiRepository struct {
 	DB *sql.DB
 }
 
-func NewEpiRepository(db *sql.DB) EpiInterface {
+func NewEpiRepository(db *sql.DB) *EpiRepository {
 
-	return &NewSqlLogin{
+	return &EpiRepository{
 		DB: db,
 	}
 }
 
 // AddEpi implements EpiInterface.
-func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
+func (n *EpiRepository) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 
 	tx, err := n.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -58,7 +48,7 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 		sql.Named("fabricante", epi.Fabricante),
 		sql.Named("CA", epi.CA),
 		sql.Named("descricao", epi.Descricao),
-		sql.Named("validade_CA", epi.DataValidadeCa.Time()),
+		sql.Named("validade_CA", epi.DataValidadeCa),
 		sql.Named("id_tipo_protecao", epi.IDprotecao),
 		sql.Named("alerta_minimo", epi.AlertaMinimo)).Scan(&EpiId)//escaneado o id
 
@@ -104,7 +94,7 @@ func (n *NewSqlLogin) AddEpi(ctx context.Context, epi *model.EpiInserir) error {
 }
 
 // BuscarEpi implements EpiInterface.
-func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error) {
+func (n *EpiRepository) BuscarEpi(ctx context.Context, id int) (*model.Epi, error) {
 
 	query := `
 		select
@@ -183,7 +173,7 @@ func (n *NewSqlLogin) BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
 }
 
 // BuscarTodosEpi implements EpiInterface.
-func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
+func (n *EpiRepository) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 
 	query := `
 		select e.id, e.nome, e.fabricante,e.CA, e.descricao,
@@ -275,7 +265,7 @@ func (n *NewSqlLogin) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error) {
 }
 
 // DeletarEpi implements EpiInterface.
-func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
+func (n *EpiRepository) DeletarEpi(ctx context.Context, id int) error {
 
 
 	tx, err:= n.DB.BeginTx(ctx, nil)
@@ -319,7 +309,7 @@ func (n *NewSqlLogin) DeletarEpi(ctx context.Context, id int) error {
 	return  tx.Commit()
 }
 
-func (n  *NewSqlLogin) UpdateEpiNome(ctx context.Context,id int, nome string)error {
+func (n  *EpiRepository) UpdateEpiNome(ctx context.Context,id int, nome string)error {
 
 	query:= `update epi
 			set nome = @nome
@@ -334,7 +324,7 @@ func (n  *NewSqlLogin) UpdateEpiNome(ctx context.Context,id int, nome string)err
 	return nil
 }
 
-func (n  *NewSqlLogin) UpdateEpiFabricante(ctx context.Context,id int, fabricante string)error {
+func (n  *EpiRepository) UpdateEpiFabricante(ctx context.Context,id int, fabricante string)error {
 
 	query:= `update epi
 			set fabricante = @fabricante
@@ -350,7 +340,7 @@ func (n  *NewSqlLogin) UpdateEpiFabricante(ctx context.Context,id int, fabricant
 }
 
 
-func (n  *NewSqlLogin) UpdateEpiCa(ctx context.Context,id int, ca string)error {
+func (n  *EpiRepository) UpdateEpiCa(ctx context.Context,id int, ca string)error {
 
 	query:= `update epi
 			set CA = @ca
@@ -370,7 +360,7 @@ func (n  *NewSqlLogin) UpdateEpiCa(ctx context.Context,id int, ca string)error {
 	return nil
 }
 
-func (n  *NewSqlLogin) UpdateEpiDescricao(ctx context.Context,id int, descricao string)error {
+func (n  *EpiRepository) UpdateEpiDescricao(ctx context.Context,id int, descricao string)error {
 
 	query:= `update epi
 			set descricao = @descricao
@@ -385,7 +375,7 @@ func (n  *NewSqlLogin) UpdateEpiDescricao(ctx context.Context,id int, descricao 
 	return nil
 }
 
-func (n  *NewSqlLogin) UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa time.Time)error {
+func (n  *EpiRepository) UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa time.Time)error {
 
 	query:= `update epi
 			set validadeCa = @dataValidadeCa

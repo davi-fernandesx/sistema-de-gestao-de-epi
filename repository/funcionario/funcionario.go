@@ -12,29 +12,20 @@ import (
 
 // interface sql error (para pegar o codigo do erro)
 
-type FuncionarioInterface interface {
-	AddFuncionario(ctx context.Context, funcionario *model.FuncionarioINserir) error
-	BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error)
-	BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionario, error)
-	DeletarFuncionario(ctx context.Context, matricula int) error
-	UpdateFuncionarioNome(ctx context.Context, id int, funcionario string)error
-	UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao string)error
-	UpdateFuncionarioDepartamento(ctx context.Context, id int, idDepartamento string)error
-}
 
-type ConnDB struct {
+type FuncionarioRepository struct {
 	DB *sql.DB
 }
 
-func NewFuncionarioRepository(db *sql.DB) FuncionarioInterface {
+func NewFuncionarioRepository(db *sql.DB) *FuncionarioRepository {
 
-	return &ConnDB{
+	return &FuncionarioRepository{
 		DB: db,
 	}
 }
 
 // AddFuncionario implements FuncionarioInterface.
-func (c *ConnDB) AddFuncionario(ctx context.Context, funcionario *model.FuncionarioINserir) error {
+func (c *FuncionarioRepository) AddFuncionario(ctx context.Context, funcionario *model.FuncionarioINserir) error {
 
 	query := `insert into funcionario(nome, matricula, IdDepartamento, IdFuncao) values( @nome, @matricula, @id_departamento, @id_funcao)`
 
@@ -60,7 +51,7 @@ func (c *ConnDB) AddFuncionario(ctx context.Context, funcionario *model.Funciona
 }
 
 // BuscaFuncionario implements FuncionarioInterface.
-func (c *ConnDB) BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error) {
+func (c *FuncionarioRepository) BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error) {
 
 	query := `select fn.id, fn.nome,fn.matricula, fn.IdDepartamento, d.nome as departamento, 
 			fn.IdFuncao, f.nome as funcao
@@ -92,7 +83,7 @@ func (c *ConnDB) BuscaFuncionario(ctx context.Context, matricula int) (*model.Fu
 }
 
 // BuscarTodosFuncionarios implements FuncionarioInterface.
-func (c *ConnDB) BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionario, error) {
+func (c *FuncionarioRepository) BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionario, error) {
 
 	query := `select fn.id, fn.nome,fn.matricula, fn.IdDepartamento, d.nome as departamento, 
 			fn.IdFuncao, f.nome as funcao
@@ -132,7 +123,7 @@ func (c *ConnDB) BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionar
 }
 
 // DeletarFuncionario implements FuncionarioInterface.
-func (c *ConnDB) DeletarFuncionario(ctx context.Context, matricula int) error {
+func (c *FuncionarioRepository) DeletarFuncionario(ctx context.Context, matricula int) error {
 
 	query:= `update funcionario
 			set ativo = 0,
@@ -159,7 +150,7 @@ func (c *ConnDB) DeletarFuncionario(ctx context.Context, matricula int) error {
 	return  nil
 }
 
-func (c *ConnDB)UpdateFuncionarioNome(ctx context.Context, id int, funcionario string)error{
+func (c *FuncionarioRepository)UpdateFuncionarioNome(ctx context.Context, id int, funcionario string)error{
 
 	query:= `update funcionario
 		     set nome = @funcionario
@@ -173,7 +164,7 @@ func (c *ConnDB)UpdateFuncionarioNome(ctx context.Context, id int, funcionario s
 	return  nil
 }
 
-func (c *ConnDB)UpdateFuncionarioDepartamento(ctx context.Context, id int, idDepartamento string)error{
+func (c *FuncionarioRepository)UpdateFuncionarioDepartamento(ctx context.Context, id int, idDepartamento string)error{
 
 	query:= `update funcionario
 		     set IdDepartamento = @idDepartamento
@@ -187,7 +178,7 @@ func (c *ConnDB)UpdateFuncionarioDepartamento(ctx context.Context, id int, idDep
 	return  nil
 }
 
-func (c *ConnDB)UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao string)error{
+func (c *FuncionarioRepository)UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao string)error{
 
 	query:= `update funcionario
 		     set IdFuncao = @idFuncao

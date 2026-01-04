@@ -10,24 +10,13 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 )
 
-type EntradaEpi interface {
-	AddEntradaEpi(ctx context.Context, EntradaEpi *model.EntradaEpiInserir) error
-	CancelarEntrada(ctx context.Context, id int) error
-	BuscarEntrada(ctx context.Context, id int) (model.EntradaEpi, error)
-	BuscarTodasEntradas(ctx context.Context) ([]model.EntradaEpi, error)
-	BuscarEntradaPorIdEPI(ctx context.Context, idEpi int)([]model.EntradaEpi, error)
-	BuscaTodasEntradasCanceladas(ctx context.Context) ([]model.EntradaEpi, error)
-	BuscaEntradasCanceladas(ctx context.Context, id int) (model.EntradaEpi, error)
-	BuscaEntradasCanceladasPorIdEpi(ctx context.Context, idEpi int) ([]model.EntradaEpi, error)
-}
-
-type NewSqlLogin struct {
+type EntradaRepositorySQL struct {
 	DB *sql.DB
 }
 
-func NewEntradaRepository(db *sql.DB) EntradaEpi {
+func NewEntradaRepository(db *sql.DB) *EntradaRepositorySQL {
 
-	return &NewSqlLogin{
+	return &EntradaRepositorySQL{
 		DB: db,
 	}
 }
@@ -48,7 +37,7 @@ inner join
 	tamanho t on ee.IdTamanho = t.id
 		`
 
-func (n *NewSqlLogin) buscaEntradas(ctx context.Context, query string, args ...any)([]model.EntradaEpi, error){
+func (n *EntradaRepositorySQL) buscaEntradas(ctx context.Context, query string, args ...any)([]model.EntradaEpi, error){
 
 	linhas, err := n.DB.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -99,7 +88,7 @@ func (n *NewSqlLogin) buscaEntradas(ctx context.Context, query string, args ...a
 
 }
 // AddEntradaEpi implements EntradaEpi.
-func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.EntradaEpiInserir) error {
+func (n *EntradaRepositorySQL) AddEntradaEpi(ctx context.Context, EntradaEpi *model.EntradaEpiInserir) error {
 
 	query := `
 		insert into entrada_epi(IdEpi,IdTamanho, data_entrada, quantidade,data_fabricacao, data_validade, lote, fornecedor, valor_unitario)
@@ -124,13 +113,13 @@ func (n *NewSqlLogin) AddEntradaEpi(ctx context.Context, EntradaEpi *model.Entra
 
 			return fmt.Errorf("epi ou tamanho não existe no sistema, verifique os dados, %w", Errors.ErrDadoIncompativel)
 		}
-		return fmt.Errorf("erro interno ao salvar entrada, %w", Errors.ErrSalvar)
+		return fmt.Errorf("erro interno ao salvar entrada, %w", err)
 	}
 
 	return nil
 }
 
-func (n *NewSqlLogin) BuscarEntradaPorIdEPI(ctx context.Context, idEpi int)([]model.EntradaEpi, error){
+func (n *EntradaRepositorySQL) BuscarEntradaPorIdEPI(ctx context.Context, idEpi int)([]model.EntradaEpi, error){
 	query:= entradaQueryJoin + " where ee.cancelada_em is null AND ee.IdEp = @id"
 
 	entrada, err:= n.buscaEntradas(ctx, query, sql.Named("id", idEpi))
@@ -149,7 +138,7 @@ func (n *NewSqlLogin) BuscarEntradaPorIdEPI(ctx context.Context, idEpi int)([]mo
 
 }
 // BuscarEntrada implements EntradaEpi.
-func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (model.EntradaEpi, error) {
+func (n *EntradaRepositorySQL) BuscarEntrada(ctx context.Context, id int) (model.EntradaEpi, error) {
 
 	query:= entradaQueryJoin + " where ee.cancelada_em is null AND ee.id = @id"
 
@@ -169,7 +158,7 @@ func (n *NewSqlLogin) BuscarEntrada(ctx context.Context, id int) (model.EntradaE
 }
 
 // BuscarTodasEntradas implements EntradaEpi.
-func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaEpi, error) {
+func (n *EntradaRepositorySQL) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaEpi, error) {
 
 
 	query:= entradaQueryJoin + " where ee.cancelada_em is null"
@@ -188,7 +177,7 @@ func (n *NewSqlLogin) BuscarTodasEntradas(ctx context.Context) ([]model.EntradaE
 	return  entrada, nil
 }
 
-func (n *NewSqlLogin) BuscaTodasEntradasCanceladas(ctx context.Context) ([]model.EntradaEpi, error){
+func (n *EntradaRepositorySQL) BuscaTodasEntradasCanceladas(ctx context.Context) ([]model.EntradaEpi, error){
 
 	query:= entradaQueryJoin + " where ee.cancelada_em is not null"
 
@@ -207,7 +196,7 @@ func (n *NewSqlLogin) BuscaTodasEntradasCanceladas(ctx context.Context) ([]model
 
 }
 
-func (n *NewSqlLogin) BuscaEntradasCanceladas(ctx context.Context, id int) (model.EntradaEpi, error){
+func (n *EntradaRepositorySQL) BuscaEntradasCanceladas(ctx context.Context, id int) (model.EntradaEpi, error){
 	
 	query:= entradaQueryJoin + " where ee.cancelada_em is not null AND ee.id = @id"
 
@@ -226,7 +215,7 @@ func (n *NewSqlLogin) BuscaEntradasCanceladas(ctx context.Context, id int) (mode
 
 }
 
-func (n *NewSqlLogin) BuscaEntradasCanceladasPorIdEpi(ctx context.Context, idEpi int) ([]model.EntradaEpi, error){
+func (n *EntradaRepositorySQL) BuscaEntradasCanceladasPorIdEpi(ctx context.Context, idEpi int) ([]model.EntradaEpi, error){
 
 	query:= entradaQueryJoin + " where ee.cancelada_em is not null AND ee.IdEp = @id"
 
@@ -245,7 +234,7 @@ func (n *NewSqlLogin) BuscaEntradasCanceladasPorIdEpi(ctx context.Context, idEpi
 
 }
 // DeletarEntrada implements EntradaEpi.
-func (n *NewSqlLogin) CancelarEntrada(ctx context.Context, id int) error {
+func (n *EntradaRepositorySQL) CancelarEntrada(ctx context.Context, id int) error {
 
 	query := `update entrada
 			set cancelada_em = GETDATE(),
