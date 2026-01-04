@@ -215,7 +215,7 @@ func TestBuscaTodasFuncao(t *testing.T) {
 		test, err := serv.ListasTodasFuncao(ctx)
 
 		assert.Error(t, err)
-		assert.Nil(t, test)
+		assert.Empty(t, test)
 
 		mock.AssertExpectations(t)
 

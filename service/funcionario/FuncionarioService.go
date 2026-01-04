@@ -9,23 +9,25 @@ import (
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/funcionario"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/service"
-	//"github.com/davi-fernandesx/sistema-de-gestao-de-epi/service"
 )
 
-type Funcionario interface {
-	SalvarFuncionario(ctx context.Context, funcionario model.FuncionarioINserir) error
-	ListarFuncionarioPorMatricula(ctx context.Context, matricula string) (*model.Funcionario_Dto, error)
-	ListaTodosFuncionarios(ctx context.Context) ([]*model.Funcionario_Dto, error)
-	DeletarFuncionario(ctx context.Context, matricula string) error
+type FuncionarioInterface interface {
+	AddFuncionario(ctx context.Context, funcionario *model.FuncionarioINserir) error
+	BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error)
+	BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionario, error)
+	DeletarFuncionario(ctx context.Context, matricula int) error
+	UpdateFuncionarioNome(ctx context.Context, id int, funcionario string)error
+	UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao string)error
+	UpdateFuncionarioDepartamento(ctx context.Context, id int, idDepartamento string)error
 }
+
 
 type FuncionarioService struct {
-	FuncionarioRepo funcionario.FuncionarioInterface
+	FuncionarioRepo FuncionarioInterface
 }
 
-func NewFuncionarioService(repo funcionario.FuncionarioInterface) Funcionario {
+func NewFuncionarioService(repo FuncionarioInterface) *FuncionarioService {
 
 	return &FuncionarioService{
 		FuncionarioRepo: repo,
@@ -142,6 +144,7 @@ func (f *FuncionarioService) ListaTodosFuncionarios(ctx context.Context) ([]*mod
 		return []*model.Funcionario_Dto{}, fmt.Errorf("erro inesperado ao buscar funcionarios, %w", err)
 	}
 
+
 	funcionariosDto := make([]*model.Funcionario_Dto, 0, len(funcionarios))
 
 	for _, funcionario := range funcionarios {
@@ -162,6 +165,11 @@ func (f *FuncionarioService) ListaTodosFuncionarios(ctx context.Context) ([]*mod
 
 		funcionariosDto = append(funcionariosDto, &funcDto)
 
+	}
+
+	if funcionariosDto == nil {
+
+		return []*model.Funcionario_Dto{}, nil
 	}
 
 	return funcionariosDto, nil

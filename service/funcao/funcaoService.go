@@ -9,22 +9,22 @@ import (
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/funcao"
 )
 
-type Funcao interface {
-	SalvarFuncao(ctx context.Context, model *model.FuncaoInserir) error
-	ListarFuncao(ctx context.Context, id int) (model.FuncaoDto, error)
-	ListasTodasFuncao(ctx context.Context) ([]model.FuncaoDto, error)
+type FuncaoInterface interface {
+	AddFuncao(ctx context.Context, funcao *model.FuncaoInserir) error
 	DeletarFuncao(ctx context.Context, id int) error
-	AtualizarFuncao(ctx context.Context, id int, funcao string) error
+	BuscarFuncao(ctx context.Context, id int) (*model.Funcao, error)
+	UpdateFuncao(ctx context.Context, id int, funcao string) (int64, error)
+	BuscarTodasFuncao(ctx context.Context) ([]model.Funcao, error)
+	PossuiFuncionariosVinculados(ctx context.Context, id int) (bool, error)
 }
 
 type FuncaoService struct {
-	FuncaoRepo funcao.FuncaoInterface
+	FuncaoRepo FuncaoInterface
 }
 
-func NewFuncaoService(repo funcao.FuncaoInterface) Funcao {
+func NewFuncaoService(repo FuncaoInterface) *FuncaoService {
 
 	return &FuncaoService{
 		FuncaoRepo: repo,
@@ -105,13 +105,14 @@ func (f *FuncaoService) ListasTodasFuncao(ctx context.Context) ([]model.FuncaoDt
 	funcs, err:= f.FuncaoRepo.BuscarTodasFuncao(ctx)
 	if err != nil {
 
-		return  nil, err
+		if errors.Is(err, Errors.ErrBuscarTodos){
+
+			return []model.FuncaoDto{}, nil
+		}
+		return  []model.FuncaoDto{}, err
 	}
 
-	if len(funcs) == 0 {
 
-		return []model.FuncaoDto{}, nil
-	}
 
 	dto:= make([]model.FuncaoDto, 0 ,len(funcs))
 	for _, funcao:= range funcs {

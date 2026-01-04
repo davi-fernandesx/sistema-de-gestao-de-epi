@@ -4,21 +4,18 @@ import (
 	"context"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/tipo_protecao"
 )
 
-type TipoProtecao interface {
-	SalvarProtecao(ctx context.Context, model *model.TipoProtecao) error
-	ListarProtecao(ctx context.Context, id int) (model.TipoProtecaoDto, error)
-	ListarTodosProteca(ctx context.Context) ([]model.TipoProtecaoDto, error)
-	DeletarProtecao(ctx context.Context, id int) error
-	AtualizarProtecao(ctx context.Context, id int, NovoTipoProtecao string) error
+type TipoProtecaoInterface interface {
+	AddProtecao(ctx context.Context, protecao *model.TipoProtecao) error
+	DeletarProtecao(ctx context.Context, ind int) error
+	BuscarProtecao(ctx context.Context, id int) (*model.TipoProtecao, error)
+	BuscarTodasProtecao(ctx context.Context) ([]model.TipoProtecao, error)
 }
-
 type TipoProtecaoServices struct {
-	ProtecaoRepo tipoprotecao.TipoProtecaoInterface
+	ProtecaoRepo TipoProtecaoInterface
 }
-func NewProtecaoServices(repo tipoprotecao.TipoProtecaoInterface) TipoProtecao {
+func NewProtecaoServices(repo TipoProtecaoInterface) *TipoProtecaoServices {
 
 	return &TipoProtecaoServices{
 		ProtecaoRepo: repo,

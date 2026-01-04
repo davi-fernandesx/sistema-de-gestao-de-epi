@@ -239,8 +239,10 @@ func TestListarTodosEpis(t *testing.T) {
 		mock.On("BuscarTodosEpi", ctx).Return(nil, Errors.ErrBuscarTodos)
 
 		test, err := serv.ListasTodosEpis(ctx)
-		require.Error(t, err)
-		require.Nil(t, test)
+		require.Nil(t, err)
+		require.Empty(t, test)
+
+		mock.AssertExpectations(t)
 	})
 
 	t.Run("epis vazios", func(t *testing.T) {
@@ -253,7 +255,7 @@ func TestListarTodosEpis(t *testing.T) {
 
 		test, err := serv.ListasTodosEpis(ctx)
 		require.NoError(t, err)
-		require.Nil(t, test)
+		require.Empty(t, test)
 
 	})
 }
@@ -284,7 +286,7 @@ func TestListasEpi(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, epis[0].ID, test.Id)
-		require.Equal(t, epis[0].DataValidadeCa.Time(), test.DataValidadeCa)
+		require.Equal(t, epis[0].DataValidadeCa.Time(), test.DataValidadeCa.Time())
 
 		mock.AssertExpectations(t)
 

@@ -11,25 +11,25 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/epi"
 )
 
-type Epi interface {
-	SalvarEpi(ctx context.Context, model *model.EpiInserir) error
-	ListarEpi(ctx context.Context, id int) (model.EpiDto, error)
-	ListasTodosEpis(ctx context.Context) ([]model.EpiDto, error)
+type EpiInterface interface {
+	AddEpi(ctx context.Context, epi *model.EpiInserir) error
 	DeletarEpi(ctx context.Context, id int) error
-	AtualizarEpiNome(ctx context.Context, id int, nomeNovo string) error
-	AtualizarEpiCa(ctx context.Context, id int, CAnovo string) error
-	AtualizarEpiFabricante(ctx context.Context, id int, FabricanteNovo string) error
-	AtualizaDescricao(ctx context.Context, id int, DescricaoNova string) error
+	BuscarEpi(ctx context.Context, id int) (*model.Epi, error)
+	BuscarTodosEpi(ctx context.Context) ([]model.Epi, error)
+	UpdateEpiNome(ctx context.Context,id int, nome string)error
+	UpdateEpiCa(ctx context.Context,id int, ca string)error
+	UpdateEpiFabricante(ctx context.Context,id int, fabricante string)error
+	UpdateEpiDescricao(ctx context.Context,id int, descricao string)error
+	UpdateEpiDataValidadeCa(ctx context.Context,id int, dataValidadeCa time.Time)error
 }
 
 type EpiService struct {
-	EpiRepo epi.EpiInterface
+	EpiRepo EpiInterface
 }
 
-func NewEpiServices(repo epi.EpiInterface) Epi {
+func NewEpiServices(repo EpiInterface) *EpiService {
 
 	return &EpiService{
 
@@ -89,13 +89,13 @@ func (e *EpiService) ListasTodosEpis(ctx context.Context) ([]model.EpiDto, error
 	epis, err := e.EpiRepo.BuscarTodosEpi(ctx)
 	if err != nil {
 
-		return nil, ErrFalhaNoBancoDeDados
+		if errors.Is(err, Errors.ErrBuscarTodos){
+
+			return []model.EpiDto{}, nil
+		}
+		return []model.EpiDto{}, ErrFalhaNoBancoDeDados
 	}
 
-	if len(epis) == 0 {
-
-		return nil, nil
-	}
 
 	dto := make([]model.EpiDto, 0, len(epis))
 
@@ -118,7 +118,7 @@ func (e *EpiService) ListasTodosEpis(ctx context.Context) ([]model.EpiDto, error
 			CA:             epi.CA,
 			Tamanho:        tamanhosDtos,
 			Descricao:      epi.Descricao,
-			DataValidadeCa: epi.DataValidadeCa.Time(),
+			DataValidadeCa: *configs.NewDataBrPtr(epi.DataValidadeCa.Time()),
 			Protecao: model.TipoProtecaoDto{
 				ID:   epi.IDprotecao,
 				Nome: model.Protecao(epi.NomeProtecao),
@@ -161,7 +161,7 @@ func (e *EpiService) ListarEpi(ctx context.Context, id int) (model.EpiDto, error
 		CA:             epi.CA,
 		Tamanho:        make([]model.TamanhoDto, 0, len(epi.Tamanhos)),
 		Descricao:      epi.Descricao,
-		DataValidadeCa: epi.DataValidadeCa.Time(),
+		DataValidadeCa: *configs.NewDataBrPtr(epi.DataValidadeCa.Time()),
 		Protecao: model.TipoProtecaoDto{
 			ID:   epi.IDprotecao,
 			Nome: model.Protecao(epi.NomeProtecao),
