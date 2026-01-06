@@ -4,13 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
 	trocaepi "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/trocaEpi"
 )
-
 
 type EntregaRepository struct {
 	Db           *sql.DB
@@ -26,7 +25,7 @@ func NewEntregaRepository(db *sql.DB, RepoDevolucao trocaepi.DevolucaoInterfaceR
 
 }
 
-const  entregaQueryJoin = `
+const entregaQueryJoin = `
 select
 		    ee.id,
 			ee.data_Entrega,
@@ -68,8 +67,8 @@ select
 
 `
 
-func ( n *EntregaRepository) buscaEntregas(ctx context.Context, query string, args ...any)([]*model.EntregaDto, error){
-linhas, err := n.Db.QueryContext(ctx, query, args...)
+func (n *EntregaRepository) buscaEntregas(ctx context.Context, query string, args ...any) ([]*model.EntregaDto, error) {
+	linhas, err := n.Db.QueryContext(ctx, query, args...)
 	if err != nil {
 
 		return nil, fmt.Errorf("falha ao buscas as entregas, %w", Errors.ErrBuscarTodos)
@@ -81,7 +80,7 @@ linhas, err := n.Db.QueryContext(ctx, query, args...)
 	for linhas.Next() {
 		var item model.ItemEntregueDto
 		var entregaID int
-		var dataEntrega time.Time
+		var dataEntrega configs.DataBr
 		var assinatura string
 		var funcID int
 		var funcNome string
@@ -124,15 +123,15 @@ linhas, err := n.Db.QueryContext(ctx, query, args...)
 
 				Id: entregaID,
 				Funcionario: model.Funcionario_Dto{
-					ID:   funcID,
-					Nome: funcNome,
-					Departamento: model.DepartamentoDto{
-						ID:           depID,
-						Departamento: depNome,
-					},
+					ID:           funcID,
+					Nome:         funcNome,
 					Funcao: model.FuncaoDto{
 						ID:     funcaoID,
 						Funcao: funcaoNome,
+						Departamento: model.DepartamentoDto{
+							ID:           depID,
+							Departamento: depNome,
+						},
 					},
 				},
 				Data_entrega:       dataEntrega,
@@ -155,12 +154,10 @@ linhas, err := n.Db.QueryContext(ctx, query, args...)
 		EntregaSlice = append(EntregaSlice, entrega)
 	}
 
-
-
 	return EntregaSlice, nil
 
-
 }
+
 // Addentrega implements EntregaInterface.
 func (n *EntregaRepository) Addentrega(ctx context.Context, model model.EntregaParaInserir) error {
 
@@ -206,97 +203,97 @@ func (n *EntregaRepository) Addentrega(ctx context.Context, model model.EntregaP
 // BuscaEntrega implements EntregaInterface.
 func (n *EntregaRepository) BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error) {
 
-	query:= entregaQueryJoin + " where ee.cancelada_em IS NULL and ee.id = @id"
+	query := entregaQueryJoin + " where ee.cancelada_em IS NULL and ee.id = @id"
 
-	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", id))
+	entrega, err := n.buscaEntregas(ctx, query, sql.Named("id", id))
 	if err != nil {
 		return nil, err
 	}
 
 	if len(entrega) == 0 {
 
-		return  nil,nil
+		return nil, nil
 	}
 
-	return  entrega[0], nil
-	
+	return entrega[0], nil
+
 }
 
-func (n *EntregaRepository) BuscaEntregaPorIdFuncionario(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error){
+func (n *EntregaRepository) BuscaEntregaPorIdFuncionario(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error) {
 
-	query:= entregaQueryJoin + " where ee.cancelada_em IS NULL and ee.IdFuncionario = @id"
+	query := entregaQueryJoin + " where ee.cancelada_em IS NULL and ee.IdFuncionario = @id"
 
-	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", idFuncionario))
+	entrega, err := n.buscaEntregas(ctx, query, sql.Named("id", idFuncionario))
 	if err != nil {
 		return nil, err
 	}
 
 	if len(entrega) == 0 {
 
-		return  nil,nil
+		return nil, nil
 	}
 
-	return  entrega, nil
+	return entrega, nil
 
 }
 
-func (n *EntregaRepository) BuscaEntregaPorIdFuncionarioCanceladas(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error){
+func (n *EntregaRepository) BuscaEntregaPorIdFuncionarioCanceladas(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error) {
 
-	query:= entregaQueryJoin + " where ee.cancelada_em IS NOT NULL and ee.IdFuncionario = @id"
+	query := entregaQueryJoin + " where ee.cancelada_em IS NOT NULL and ee.IdFuncionario = @id"
 
-	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", idFuncionario))
+	entrega, err := n.buscaEntregas(ctx, query, sql.Named("id", idFuncionario))
 	if err != nil {
 		return nil, err
 	}
 
 	if len(entrega) == 0 {
 
-		return  nil,nil
+		return nil, nil
 	}
 
-	return  entrega, nil
+	return entrega, nil
 
 }
+
 // BuscaTodasEntregas implements EntregaInterface.
 func (n *EntregaRepository) BuscaTodasEntregas(ctx context.Context) ([]*model.EntregaDto, error) {
 
 	return n.buscaEntregas(ctx, entregaQueryJoin)
 
-	
 }
 
-func (n *EntregaRepository) BuscaTodasEntregasCanceladas(ctx context.Context) ([]*model.EntregaDto, error){
+func (n *EntregaRepository) BuscaTodasEntregasCanceladas(ctx context.Context) ([]*model.EntregaDto, error) {
 
-	query:= entregaQueryJoin + " where ee.cancelada_em IS not NULL"
+	query := entregaQueryJoin + " where ee.cancelada_em IS not NULL"
 
-	entrega, err:= n.buscaEntregas(ctx, query)
+	entrega, err := n.buscaEntregas(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(entrega) == 0 {
 
-		return  nil,nil
+		return nil, nil
 	}
 
-	return  entrega, nil
+	return entrega, nil
 }
 
-func (n *EntregaRepository) BuscaEntregaCancelada(ctx context.Context, id int) (*model.EntregaDto, error){
+func (n *EntregaRepository) BuscaEntregaCancelada(ctx context.Context, id int) (*model.EntregaDto, error) {
 
-	query:= entregaQueryJoin + " where ee.cancelada_em IS not NULL and ee.id = @id"
+	query := entregaQueryJoin + " where ee.cancelada_em IS not NULL and ee.id = @id"
 
-	entrega, err:= n.buscaEntregas(ctx, query, sql.Named("id", id))
+	entrega, err := n.buscaEntregas(ctx, query, sql.Named("id", id))
 	if err != nil {
 		return nil, err
 	}
 
 	if len(entrega) == 0 {
 
-		return  nil,nil
+		return nil, nil
 	}
 
-	return  entrega[0], nil
+	return entrega[0], nil
 
 }
 
@@ -316,8 +313,8 @@ func (n *EntregaRepository) CancelarEntrega(ctx context.Context, id int) error {
 	linha, err := result.RowsAffected()
 	if err != nil {
 
-			return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
-		
+		return fmt.Errorf("erro ao verificar linha afetadas, %w", Errors.ErrLinhasAfetadas)
+
 	}
 
 	if linha == 0 {
