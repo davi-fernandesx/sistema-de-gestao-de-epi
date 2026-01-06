@@ -21,6 +21,5 @@ type Funcionario_Dto struct {
 	ID           int             `json:"id"`
 	Nome         string          `json:"nome"`
 	Matricula    int             `json:"matricula"`
-	Departamento DepartamentoDto `json:"departamento"`
 	Funcao       FuncaoDto       `json:"funcao"`
 }
