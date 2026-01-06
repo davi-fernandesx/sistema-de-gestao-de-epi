@@ -141,7 +141,7 @@ func (d *DevolucaoRepository) BaixaEstoque(ctx context.Context, tx *sql.Tx, idEp
 
 	select  top 1 id as entrada, valor_unitario ,lote
 	from entrada_epi
-	where IdEpi = 1003 AND IdTamanho = 2 and quantidade >= 1 and ativo = 1
+	where quantidade >= 1 and ativo = 1
 	order by data_entrada asc
 
 		`
