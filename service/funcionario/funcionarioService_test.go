@@ -132,7 +132,7 @@ func TestListarFuncionarioPorMatricula(t *testing.T) {
 		
 		assert.NoError(t, err)
 		assert.Equal(t, "Alan", res.Nome)
-		assert.Equal(t, "TI", res.Departamento.Departamento)
+		assert.Equal(t, "TI", res.Funcao.Departamento.Departamento)
 	})
 
 	t.Run("Funcionario nao encontrado no banco", func(t *testing.T) {
