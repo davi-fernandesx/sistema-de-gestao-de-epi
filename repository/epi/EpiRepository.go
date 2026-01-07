@@ -229,7 +229,7 @@ func (n *EpiRepository) BuscarTodosEpi(ctx context.Context) ([]model.Epi, error)
 			tamanho t
 		inner join
 			tamanhos_epis te on t.id = te.IdTamanho
-		where te.EpiId IN (%s) and ativo = 1`, strings.Join(ids, ","))// query que retorna o id do epi, id do tamanho e o tamanho
+		where te.IdEpi IN (%s) and te.ativo = 1`, strings.Join(ids, ","))// query que retorna o id do epi, id do tamanho e o tamanho
 
 	 linhasTamanhos, err:= n.DB.QueryContext(ctx, queryTamanhos)
 	 if err != nil{
