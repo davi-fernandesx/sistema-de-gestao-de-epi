@@ -23,4 +23,4 @@ jobs:
 
       - name: Rodando os testes Unitarios
 
-        run: go test -v ./...    
+        run: go test -v ./... -p 1 
