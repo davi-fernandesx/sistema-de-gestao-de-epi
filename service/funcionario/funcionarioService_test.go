@@ -22,7 +22,7 @@ func (m *MockFuncionarioRepo) AddFuncionario(ctx context.Context, Funcionario *m
 	return args.Error(0)
 }
 
-func (m *MockFuncionarioRepo) BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error) {
+func (m *MockFuncionarioRepo) BuscaFuncionario(ctx context.Context, matricula string) (*model.Funcionario, error) {
 
 	args := m.Called(ctx, matricula) //passando os argumentos
 
@@ -47,7 +47,7 @@ func (m *MockFuncionarioRepo) BuscarTodosFuncionarios(ctx context.Context) ([]mo
 	return funcs, args.Error(1)
 }
 
-func (m *MockFuncionarioRepo) DeletarFuncionario(ctx context.Context, matricula int) error {
+func (m *MockFuncionarioRepo) DeletarFuncionario(ctx context.Context, matricula string) error {
 	args := m.Called(ctx, matricula)
 
 	return args.Error(0)
@@ -87,7 +87,7 @@ func TestSalvarFuncionario(t *testing.T) {
 		input := model.FuncionarioINserir{Matricula: "123", Nome: "Jose"}
 		
 		// Simula que a busca encontrou um funcionário (Matrícula já existe)
-		m.On("BuscaFuncionario", ctx, 123).Return(&model.Funcionario{Id: 1}, nil)
+		m.On("BuscaFuncionario", ctx, "123").Return(&model.Funcionario{Id: 1}, nil)
 
 		err := svc.SalvarFuncionario(ctx, input)
 		
@@ -102,7 +102,7 @@ func TestSalvarFuncionario(t *testing.T) {
 		input := model.FuncionarioINserir{Matricula: "124", Nome: "Maria"}
 		
 		// 1. Busca não encontra ninguém (sql.ErrNoRows)
-		m.On("BuscaFuncionario", ctx, 124).Return(nil, sql.ErrNoRows)
+		m.On("BuscaFuncionario", ctx, "124").Return(nil, sql.ErrNoRows)
 		// 2. Chama o Add
 		m.On("AddFuncionario", ctx, mock.AnythingOfType("*model.FuncionarioINserir")).Return(nil)
 
@@ -121,12 +121,12 @@ func TestListarFuncionarioPorMatricula(t *testing.T) {
 		svc := &FuncionarioService{FuncionarioRepo: m}
 		
 		funcFake := &model.Funcionario{
-			Id: 1, Nome: "Alan", Matricula: 500, 
+			Id: 1, Nome: "Alan", Matricula: "500", 
 			ID_departamento: 1, Departamento: "TI",
 			ID_funcao: 1, Funcao: "Dev",
 		}
 
-		m.On("BuscaFuncionario", ctx, 500).Return(funcFake, nil)
+		m.On("BuscaFuncionario", ctx, "500").Return(funcFake, nil)
 
 		res, err := svc.ListarFuncionarioPorMatricula(ctx, "500")
 		
@@ -139,7 +139,7 @@ func TestListarFuncionarioPorMatricula(t *testing.T) {
 		m := new(MockFuncionarioRepo)
 		svc := &FuncionarioService{FuncionarioRepo: m}
 
-		m.On("BuscaFuncionario", ctx, 999).Return(nil, sql.ErrNoRows)
+		m.On("BuscaFuncionario", ctx, "999").Return(nil, sql.ErrNoRows)
 
 		res, err := svc.ListarFuncionarioPorMatricula(ctx, "999")
 		
@@ -157,8 +157,8 @@ func TestListaTodosFuncionarios(t *testing.T) {
 		svc := &FuncionarioService{FuncionarioRepo: m}
 		
 		lista := []model.Funcionario{
-			{Id: 1, Nome: "Func 1", Matricula: 10},
-			{Id: 2, Nome: "Func 2", Matricula: 20},
+			{Id: 1, Nome: "Func 1", Matricula: "10"},
+			{Id: 2, Nome: "Func 2", Matricula: "20"},
 		}
 
 		m.On("BuscarTodosFuncionarios", ctx).Return(lista, nil)
@@ -191,7 +191,7 @@ func TestDeletarFuncionario(t *testing.T) {
 		m := new(MockFuncionarioRepo)
 		svc := &FuncionarioService{FuncionarioRepo: m}
 
-		m.On("DeletarFuncionario", ctx, 100).Return(nil)
+		m.On("DeletarFuncionario", ctx, "100").Return(nil)
 
 		err := svc.DeletarFuncionario(ctx, "100")
 		assert.NoError(t, err)

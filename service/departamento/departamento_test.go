@@ -26,26 +26,26 @@ func (m *MockRepo) DeletarDepartamento(ctx context.Context, id int) error {
 
 	return args.Error(0)
 }
-func (m *MockRepo) BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error) {
+func (m *MockRepo) BuscarDepartamento(ctx context.Context, id int) (*model.DepartamentoDto, error) {
 
 	args := m.Called(ctx, id)
-	var d *model.Departamento
+	var d *model.DepartamentoDto
 
 	if args.Get(0) != nil {
 
-		d = args.Get(0).(*model.Departamento)
+		d = args.Get(0).(*model.DepartamentoDto)
 	}
 
 	return d, args.Error(1)
 }
-func (m *MockRepo) BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error) {
+func (m *MockRepo) BuscarTodosDepartamentos(ctx context.Context) ([]model.DepartamentoDto, error) {
 
 	args := m.Called(ctx)
-	var d []model.Departamento
+	var d []model.DepartamentoDto
 
 	if args.Get(0) != nil {
 
-		d = args.Get(0).([]model.Departamento)
+		d = args.Get(0).([]model.DepartamentoDto)
 	}
 
 	return d, args.Error(1)
@@ -99,7 +99,7 @@ func TestListarDepartamento(t *testing.T) {
 	t.Run("Sucesso ao listar", func(t *testing.T) {
 		m := new(MockRepo)
 		svc := &DepartamentoServices{DepartamentoRepo: m}
-		depFake := &model.Departamento{ID: 1, Departamento: "RH"}
+		depFake := &model.DepartamentoDto{ID: 1, Departamento: "RH"}
 
 		m.On("BuscarDepartamento", ctx, 1).Return(depFake, nil)
 
@@ -133,9 +133,9 @@ func TestListarTodosDepartamentos(t *testing.T) {
 	t.Run("Sucesso ao listar todos", func(t *testing.T) {
 		m := new(MockRepo)
 		svc := &DepartamentoServices{DepartamentoRepo: m}
-		listaFake := []model.Departamento{
-			{ID: 1, Departamento: "TI"},
-			{ID: 2, Departamento: "Financeiro"},
+		listaFake := []model.DepartamentoDto{
+			{Departamento: "TI"},
+			{Departamento: "Financeiro"},
 		}
 
 		m.On("BuscarTodosDepartamentos", ctx).Return(listaFake, nil)

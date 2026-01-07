@@ -13,8 +13,8 @@ import (
 type DepartamentoRepo interface {
 	AddDepartamento(ctx context.Context, departamento *model.Departamento) error
 	DeletarDepartamento(ctx context.Context, id int) error
-	BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error)
-	BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error)
+	BuscarDepartamento(ctx context.Context, id int) (*model.DepartamentoDto, error)
+	BuscarTodosDepartamentos(ctx context.Context) ([]model.DepartamentoDto, error)
 	UpdateDepartamento(ctx context.Context, id int, departamento string)(int64,error)
 	PossuiFuncoesVinculadas(ctx context.Context, id int) (bool, error)
 }

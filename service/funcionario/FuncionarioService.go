@@ -13,9 +13,9 @@ import (
 
 type FuncionarioInterface interface {
 	AddFuncionario(ctx context.Context, funcionario *model.FuncionarioINserir) error
-	BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error)
+	BuscaFuncionario(ctx context.Context, matricula string) (*model.Funcionario, error)
 	BuscarTodosFuncionarios(ctx context.Context) ([]model.Funcionario, error)
-	DeletarFuncionario(ctx context.Context, matricula int) error
+	DeletarFuncionario(ctx context.Context, matricula string) error
 	UpdateFuncionarioNome(ctx context.Context, id int, funcionario string) error
 	UpdateFuncionarioFuncao(ctx context.Context, id int, idFuncao string) error
 	UpdateFuncionarioDepartamento(ctx context.Context, id int, idDepartamento string) error

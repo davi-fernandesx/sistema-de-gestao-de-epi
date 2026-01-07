@@ -75,7 +75,7 @@ func Mock() (*MockRepo, *FuncaoService) {
 func TestSalvarFuncao(t *testing.T) {
 
 	ctx := context.Background()
-	Func := &model.FuncaoInserir{ID: 1, Funcao: "dev", IdDepartamento: 1}
+	Func := &model.FuncaoInserir{ Funcao: "dev", IdDepartamento: 1}
 
 	t.Run("sucesso ao salvar", func(t *testing.T) {
 
@@ -89,7 +89,7 @@ func TestSalvarFuncao(t *testing.T) {
 
 	t.Run("Erro ao tentar adicionar uma funcao com menos de 2 caracteres", func(t *testing.T) {
 
-		Func := &model.FuncaoInserir{ID: 1, Funcao: "d", IdDepartamento: 1}
+		Func := &model.FuncaoInserir{ Funcao: "d", IdDepartamento: 1}
 		mock, serv := Mock()
 
 		err := serv.SalvarFuncao(ctx, Func)
@@ -100,7 +100,7 @@ func TestSalvarFuncao(t *testing.T) {
 	})
 
 	t.Run("erro ao tentar adicionar uma funcao que ja existe", func(t *testing.T) {
-		Func := &model.FuncaoInserir{ID: 1, Funcao: "dev", IdDepartamento: 1}
+		Func := &model.FuncaoInserir{ Funcao: "dev", IdDepartamento: 1}
 
 		mock, serv := Mock()
 
@@ -113,7 +113,7 @@ func TestSalvarFuncao(t *testing.T) {
 	})
 
 	t.Run("erro do banco de dados", func(t *testing.T) {
-		Func := &model.FuncaoInserir{ID: 1, Funcao: "dev", IdDepartamento: 1}
+		Func := &model.FuncaoInserir{ Funcao: "dev", IdDepartamento: 1}
 
 		mock, serv := Mock()
 

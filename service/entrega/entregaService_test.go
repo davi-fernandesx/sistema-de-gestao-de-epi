@@ -112,7 +112,7 @@ func TestListarEntrega(t *testing.T) {
 		Funcionario: model.Funcionario_Dto{
 			ID:        1,
 			Nome:      "rada",
-			Matricula: 5443,
+			Matricula: "5443",
 			Funcao: model.FuncaoDto{
 				ID:     1,
 				Funcao: "analista",
@@ -242,7 +242,7 @@ func TestBuscarTodasEntregas(t *testing.T) {
 			Funcionario: model.Funcionario_Dto{
 				ID:        1,
 				Nome:      "rada",
-				Matricula: 5443,
+				Matricula: "5443",
 				Funcao: model.FuncaoDto{
 					ID:     1,
 					Funcao: "analista",
@@ -284,7 +284,7 @@ func TestBuscarTodasEntregas(t *testing.T) {
 			Funcionario: model.Funcionario_Dto{
 				ID:        31,
 				Nome:      "davi",
-				Matricula: 5333,
+				Matricula: "5333",
 				Funcao: model.FuncaoDto{
 					ID:     2,
 					Funcao: "analista rh",
