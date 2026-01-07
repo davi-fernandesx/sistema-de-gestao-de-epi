@@ -10,7 +10,7 @@ type FuncionarioINserir struct {
 type Funcionario struct {
 	Id              int
 	Nome            string
-	Matricula       int
+	Matricula       string
 	ID_departamento int
 	Departamento    string
 	ID_funcao       int
@@ -20,6 +20,6 @@ type Funcionario struct {
 type Funcionario_Dto struct {
 	ID           int             `json:"id"`
 	Nome         string          `json:"nome"`
-	Matricula    int             `json:"matricula"`
+	Matricula    string             `json:"matricula"`
 	Funcao       FuncaoDto       `json:"funcao"`
 }
