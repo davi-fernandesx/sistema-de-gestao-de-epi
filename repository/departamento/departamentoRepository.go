@@ -33,7 +33,7 @@ func NewDepartamentoRepository(db *sql.DB) *DepartamentoRepository {
 // AddDepartamento implements DepartamentoInterface.
 func (n *DepartamentoRepository) AddDepartamento(ctx context.Context, departamento *model.Departamento) error {
 
-	query := `insert into departamento (departamento) values (@departamento)`
+	query := `insert into departamento (nome) values (@departamento)`
 
 	_, err := n.DB.ExecContext(ctx, query, sql.Named("departamento", departamento.Departamento))
 	if err != nil {
@@ -47,11 +47,11 @@ func (n *DepartamentoRepository) AddDepartamento(ctx context.Context, departamen
 }
 
 // BuscarDepartamento implements DepartamentoInterface.
-func (n *DepartamentoRepository) BuscarDepartamento(ctx context.Context, id int) (*model.Departamento, error) {
+func (n *DepartamentoRepository) BuscarDepartamento(ctx context.Context, id int) (*model.DepartamentoDto, error) {
 
-	query := `select departamento from departamento where id = @id and ativo = 1`
+	query := `select id,  nome from departamento where id = @id and ativo = 1`
 
-	var departamento model.Departamento
+	var departamento model.DepartamentoDto
 
 	err := n.DB.QueryRowContext(ctx, query, sql.Named("id", id)).Scan(
 		&departamento.ID,
@@ -70,7 +70,7 @@ func (n *DepartamentoRepository) BuscarDepartamento(ctx context.Context, id int)
 }
 
 // BuscarTodosDepartamentos implements DepartamentoInterface.
-func (n *DepartamentoRepository) BuscarTodosDepartamentos(ctx context.Context) ([]model.Departamento, error) {
+func (n *DepartamentoRepository) BuscarTodosDepartamentos(ctx context.Context) ([]model.DepartamentoDto, error) {
 
 	query := `select id, nome from departamento where ativo = 1`
 
@@ -81,10 +81,10 @@ func (n *DepartamentoRepository) BuscarTodosDepartamentos(ctx context.Context) (
 
 	defer linhas.Close()
 
-	var departamentos []model.Departamento
+	var departamentos []model.DepartamentoDto
 
 	for linhas.Next() {
-		var departamento model.Departamento
+		var departamento model.DepartamentoDto
 
 		if err := linhas.Scan(&departamento.ID, &departamento.Departamento); err != nil {
 			return nil,  fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
