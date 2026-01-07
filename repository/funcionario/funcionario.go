@@ -51,7 +51,7 @@ func (c *FuncionarioRepository) AddFuncionario(ctx context.Context, funcionario 
 }
 
 // BuscaFuncionario implements FuncionarioInterface.
-func (c *FuncionarioRepository) BuscaFuncionario(ctx context.Context, matricula int) (*model.Funcionario, error) {
+func (c *FuncionarioRepository) BuscaFuncionario(ctx context.Context, matricula string) (*model.Funcionario, error) {
 
 	query := `select fn.id, fn.nome,fn.matricula, fn.IdDepartamento, d.nome as departamento, 
 			fn.IdFuncao, f.nome as funcao
@@ -74,9 +74,9 @@ func (c *FuncionarioRepository) BuscaFuncionario(ctx context.Context, matricula 
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("funcionario com a matricula %d não encontrado: %w", funcionario.Matricula, Errors.ErrNaoEncontrado)
+			return nil, fmt.Errorf("funcionario com a matricula %s não encontrado: %w", funcionario.Matricula, Errors.ErrNaoEncontrado)
 		}
-		return nil, fmt.Errorf("%w", Errors.ErrFalhaAoEscanearDados)
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	return &funcionario, nil
@@ -123,14 +123,14 @@ func (c *FuncionarioRepository) BuscarTodosFuncionarios(ctx context.Context) ([]
 }
 
 // DeletarFuncionario implements FuncionarioInterface.
-func (c *FuncionarioRepository) DeletarFuncionario(ctx context.Context, matricula int) error {
+func (c *FuncionarioRepository) DeletarFuncionario(ctx context.Context, id int) error {
 
 	query:= `update funcionario
 			set ativo = 0,
 			deletado_em = getdate()
 			where id = @id and ativo = 1`
 
-	  result, err:= c.DB.ExecContext(ctx, query, sql.Named("matricula", matricula))
+	  result, err:= c.DB.ExecContext(ctx, query, sql.Named("id", id))
 	  if err != nil {
 		return  fmt.Errorf("%w", Errors.ErrInternal)
 	  }
@@ -144,7 +144,7 @@ func (c *FuncionarioRepository) DeletarFuncionario(ctx context.Context, matricul
 
 	if linhas == 0 {
 
-		return fmt.Errorf("funcionario com a matricula %d nao  encontrado, %w ", matricula, Errors.ErrNaoEncontrado)
+		return fmt.Errorf("funcionario com o id %d nao  encontrado, %w ", id, Errors.ErrNaoEncontrado)
 	}
 
 	return  nil
