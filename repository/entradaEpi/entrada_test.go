@@ -95,8 +95,61 @@ func TestEntrada(t *testing.T) {
 			ValorUnitario:  decimal.NewFromFloat(88.99),
 		}
 
-		err:= repo.AddEntradaEpi(ctx, &entradaFake)
+		err := repo.AddEntradaEpi(ctx, &entradaFake)
 		require.Error(t, err)
 		require.True(t, errors.Is(err, Errors.ErrDadoIncompativel))
+	})
+
+	t.Run("sucesso ao buscar uma entrada", func(t *testing.T) {
+
+		entrada, err := repo.BuscarEntrada(ctx, 1)
+		require.NoError(t, err)
+		require.NotNil(t, entrada)
+		require.NotEmpty(t, entrada)
+		require.Equal(t, entrada.ID, 1)
+
+	})
+
+	t.Run("entrada nao encontrada", func(t *testing.T) {
+
+		entrada, err := repo.BuscarEntrada(ctx, 99)
+		require.Error(t, err)
+		require.Empty(t, entrada)
+		fmt.Println(err)
+		require.True(t, errors.Is(err, Errors.ErrBuscarTodos))
+	})
+
+	t.Run("sucesso ao buscar todos as entradas", func(t *testing.T) {
+
+		_ = repo.AddEntradaEpi(ctx, &entradas[1])
+		_ = repo.AddEntradaEpi(ctx, &entradas[2])
+
+		entradasTest, err := repo.BuscarTodasEntradas(ctx)
+		require.NoError(t, err)
+
+		esperados := []string{entradasTest[0].Lote, entradasTest[1].Lote, entradasTest[2].Lote}
+
+		var encontrados []string
+
+		for _, e := range entradasTest {
+
+			encontrados = append(encontrados, e.Lote)
+		}
+
+		require.ElementsMatch(t, esperados, encontrados)
+	})
+
+	t.Run("sucesso ao fazer um softdelete", func(t *testing.T) {
+
+		err := repo.CancelarEntrada(ctx, 1)
+		fmt.Println(err)
+		require.NoError(t, err)
+	})
+
+	t.Run("id nao encontrado para fazer o softdelete", func(t *testing.T) {
+
+		err := repo.CancelarEntrada(ctx, 111)
+		require.Error(t, err)
+		require.True(t, errors.Is(err, Errors.ErrNaoEncontrado))
 	})
 }
