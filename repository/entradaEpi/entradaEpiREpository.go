@@ -41,7 +41,7 @@ func (n *EntradaRepositorySQL) buscaEntradas(ctx context.Context, query string, 
 
 	linhas, err := n.DB.QueryContext(ctx, query, args...)
 	if err != nil {
-		return []model.EntradaEpi{}, fmt.Errorf("erro ao procurar todas as entradas, %w", Errors.ErrBuscarTodos)
+		return []model.EntradaEpi{}, fmt.Errorf("erro ao procurar todas as entradas, %w", Errors.ErrInternal)
 	}
 
 	defer linhas.Close()
@@ -150,7 +150,7 @@ func (n *EntradaRepositorySQL) BuscarEntrada(ctx context.Context, id int) (model
 
 	if len(entrada) == 0 {
 
-		return  model.EntradaEpi{}, nil
+		return  model.EntradaEpi{}, Errors.ErrBuscarTodos
 	}
 
 	return  entrada[0], nil
@@ -236,7 +236,7 @@ func (n *EntradaRepositorySQL) BuscaEntradasCanceladasPorIdEpi(ctx context.Conte
 // DeletarEntrada implements EntradaEpi.
 func (n *EntradaRepositorySQL) CancelarEntrada(ctx context.Context, id int) error {
 
-	query := `update entrada
+	query := `update entrada_epi
 			set cancelada_em = GETDATE(),
 				ativo = 0
 			where id = @id AND ativo = 1`
@@ -244,7 +244,7 @@ func (n *EntradaRepositorySQL) CancelarEntrada(ctx context.Context, id int) erro
 	result, err := n.DB.ExecContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
-		return fmt.Errorf("erro interno ao cancelar uma entrada %w", Errors.ErrInternal)
+		return fmt.Errorf("erro interno ao cancelar uma entrada %w", err)
 	}
 
 	linhas, err := result.RowsAffected()
