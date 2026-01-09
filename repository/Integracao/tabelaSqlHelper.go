@@ -79,6 +79,16 @@ func criarTabelasDoUsuario(t *testing.T, db *sql.DB) {
 		foreign key (IdTamanho) references tamanho(id)
 	);
 
+		CREATE TABLE entrega_epi(
+		id int primary key identity(1,1),
+		IdFuncionario int not null,
+		data_entrega date not null,
+		assinatura varbinary(MAX) not null, -- MUDADO: De varbinary para varbinary(MAX)
+		IdTroca int null,
+		cancelada_em datetime null, -- Vírgula adicionada aqui
+		foreign key (IdFuncionario) references funcionario(id)
+	);
+
 		-- TABELA: funcionario
 		ALTER TABLE funcionario ADD ativo BIT NOT NULL DEFAULT 1 WITH VALUES;
 		ALTER TABLE funcionario ADD deletado_em DATETIME NULL;
@@ -109,6 +119,10 @@ func criarTabelasDoUsuario(t *testing.T, db *sql.DB) {
 
 		-- TABELA: entrada_epi
 		ALTER TABLE entrada_epi ADD ativo BIT NOT NULL DEFAULT 1 WITH VALUES;
+
+		-- TABELA: entrega_epi
+		ALTER TABLE entrega_epi ADD ativo BIT NOT NULL DEFAULT 1 WITH VALUES;
+
 	`
 	// Executa o CREATE TABLE
 	_, err := db.Exec(schema)

@@ -6,11 +6,23 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
+	"github.com/shopspring/decimal"
 )
 
 func randomString(prefix string) string {
 	return fmt.Sprintf("%s_%d", prefix, time.Now().UnixNano())
 }
+
+func randomInt() *rand.Rand{
+
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+
+	return r
+}
+
 
 func CreateDepartamento(t *testing.T, db *sql.DB) int {
 	var id int
@@ -61,6 +73,32 @@ func CreateTamanho(t *testing.T, db *sql.DB) int {
 
 }
 
+func CreateFuncionario(t *testing.T, db *sql.DB,IdDepartamento,IdFuncao int) int {
+
+
+	var id int
+	query:= `insert into funcionario(nome, matricula, IdDepartamento, IdFuncao) values( @p1, @p2, @p3, @p4)`
+
+	r:= randomInt()
+
+	nome:= randomString("rada")
+	matricula:=fmt.Sprintf("%d", r.Intn(9999999))
+
+	err:= db.QueryRow(query,
+		nome,
+		matricula,
+		IdDepartamento,
+		IdFuncao,
+	).Scan(&id)
+
+	if err != nil {
+		t.Fatalf("Helper CreateFuncionario falhou: %v", err)
+	}
+
+	return id
+
+}
+
 func CreateEpi(t *testing.T, db *sql.DB, idTipoProtecao int) int {
 	var id int
 
@@ -71,8 +109,8 @@ func CreateEpi(t *testing.T, db *sql.DB, idTipoProtecao int) int {
 		VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7)
 	`
 	// 1. Gera seed baseada no tempo para garantir aleatoriedade a cada execução
-	src := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(src)
+
+	r:= randomInt()
 	// Gerando dados aleatórios para garantir unicidade
 	nome := randomString("Luva")
 	fabricante := randomString("Fabr")
@@ -94,6 +132,37 @@ func CreateEpi(t *testing.T, db *sql.DB, idTipoProtecao int) int {
 
 	if err != nil {
 		t.Fatalf("Helper CreateEpi falhou: %v", err)
+	}
+
+	return id
+}
+
+func CreateEntradaEpi(t  *testing.T, db *sql.DB,IdFuncionario, idEpi, IdTipoProtecao, IdTamanho int) int {
+
+	var id int
+
+	query:= `insert into entrada_epi(IdEpi,IdTamanho, data_entrada, quantidade,data_fabricacao,
+			 data_validade, lote, fornecedor, valor_unitario)
+				values (@id_epi,@id_tamanho, @data_entrada, @quantidade ,
+						@dataFabricacao, @dataValidade, @lote, @fornecedor,@valorUnitario )`
+
+	
+	lote:= randomString("lote")
+	fabricante := randomString("fabr")
+	err:= db.QueryRow(query,
+		idEpi,
+		IdTamanho,
+		configs.NewDataBrPtr(time.Now()),
+		11,
+		configs.NewDataBrPtr(time.Now().AddDate(-1,0,0)),
+		configs.NewDataBrPtr(time.Now().AddDate(1,0,0)),
+		lote,
+		fabricante,
+		decimal.NewFromFloat(23.99),
+	).Scan(&id)
+	 
+	if err != nil {
+		t.Fatalf("Helper CreateEntradaEpi falhou: %v", err)
 	}
 
 	return id
