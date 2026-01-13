@@ -56,6 +56,7 @@ CREATE TABLE entrada_epi(
     IdTamanho int not null,
     data_entrada date not null,
     quantidade int not null,
+    quantidadeAtual int not null,
     data_fabricacao date not null,
     data_validade date not null,
     lote varchar(50) not null,
@@ -70,7 +71,7 @@ CREATE TABLE entrega_epi(
     id int primary key identity(1,1),
     IdFuncionario int not null,
     data_entrega date not null,
-    assinatura varbinary(MAX) not null, -- MUDADO: De varbinary para varbinary(MAX)
+    assinatura varchar(MAX) not null, -- MUDADO: De varbinary para varbinary(MAX)
     IdTroca int null,
     cancelada_em datetime null, -- Vírgula adicionada aqui
     foreign key (IdFuncionario) references funcionario(id)
