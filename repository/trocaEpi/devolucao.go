@@ -10,24 +10,13 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type DevolucaoInterfaceRepository interface {
-	AddTrocaEPI(ctx context.Context, devolucao model.DevolucaoInserir) error
-	AddDevolucaoEpi(ctx context.Context, devolucao model.DevolucaoInserir) error
-	DeleteDevolucao(ctx context.Context, id int) error
-	BuscaDevolucaoPorMatricula(ctx context.Context, matricula int) ([]model.Devolucao, error)
-	BuscaTodasDevolucoes(ctx context.Context) ([]model.Devolucao, error)
-	BaixaEstoque(ctx context.Context, tx *sql.Tx, idEpi, iDTamanho int64, quantidade int, idEntrega int64) error
-	BuscaDevolucaoPorId(ctx context.Context, id int)([]model.Devolucao,error)
-	BuscaDevolucaoPorIdCancelada(ctx context.Context, id int)([]model.Devolucao, error)
-	BuscaDevolucaoPorMatriculaCancelada(ctx context.Context, matricula int) ([]model.Devolucao, error)
-	BuscaTodasDevolucoesCancelada(ctx context.Context) ([]model.Devolucao, error)
-}
+
 
 type DevolucaoRepository struct {
 	db *sql.DB
 }
 
-func NewDevolucaoRepository(db *sql.DB) DevolucaoInterfaceRepository {
+func NewDevolucaoRepository(db *sql.DB) *DevolucaoRepository {
 
 	return &DevolucaoRepository{
 		db: db,

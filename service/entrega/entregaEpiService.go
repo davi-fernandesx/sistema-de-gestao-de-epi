@@ -2,20 +2,21 @@ package entrega
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 
 	"strings"
 	"time"
 
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
+	estoque "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/Estoque"
 )
 
 //go:generate mockery --name=EntregaInterface --output=mocks --outpkg=mocks
 type EntregaInterface interface {
-	Addentrega(ctx context.Context, model model.EntregaParaInserir) error
+	Addentrega(ctx context.Context, tx *sql.Tx,model model.EntregaParaInserir) (int64, error)
 	BuscaEntrega(ctx context.Context, id int) (*model.EntregaDto, error)
 	BuscaEntregaPorIdFuncionario(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error)
 	BuscaEntregaPorIdFuncionarioCanceladas(ctx context.Context, idFuncionario int) ([]*model.EntregaDto, error)
@@ -26,13 +27,20 @@ type EntregaInterface interface {
 }
 
 type EntregaService struct {
+
+	db *sql.DB
 	EntregaRepo EntregaInterface
+	baixaEstoque estoque.BaixaEstoque
+
 }
 
-func NewEntregaService(repo EntregaInterface) *EntregaService {
+func NewEntregaService(Db *sql.DB, repo EntregaInterface, es estoque.BaixaEstoque) *EntregaService {
 
 	return &EntregaService{
+		db: Db,
 		EntregaRepo: repo,
+		baixaEstoque: es,
+
 	}
 }
 
@@ -55,15 +63,77 @@ func (e *EntregaService) SalvarEntrega(ctx context.Context, model model.EntregaP
 		return errDataMenor
 	}
 
-	err := e.EntregaRepo.Addentrega(ctx, model)
+	tx, err:= e.db.BeginTx(ctx, nil)
 	if err != nil {
 
-		log.Printf("erro ao salvar entrega: %v", err)
-		return ErrFalhaNoBancoDeDados
-
+		return err
 	}
 
-	return nil
+	defer tx.Rollback()
+
+	entregaId, err:= e.EntregaRepo.Addentrega(ctx, tx, model)
+	if err != nil {
+		return  err
+	}
+
+	for _, item := range model.Itens{
+
+		if item.Quantidade <= 0 {
+
+			continue
+		}
+
+		entradas, err:= e.baixaEstoque.ListarLotesParaConsumo(ctx, tx, int64(item.ID_epi), int64(item.ID_tamanho))
+		if err != nil {
+
+			return fmt.Errorf("erro ao buscar lotes para o EPI %d: %v", item.ID_epi, err)
+		}
+		 
+	    quantidadeRestante :=  item.Quantidade
+
+		for _, entrada := range entradas{
+
+			if quantidadeRestante == 0 {
+				break
+			}
+
+			var quantidadeParaAbater int
+
+			if entrada.Quantidade >= quantidadeRestante{
+				quantidadeParaAbater = quantidadeRestante
+				quantidadeRestante = 0 
+			}else {
+
+				quantidadeParaAbater = entrada.Quantidade
+				quantidadeRestante = quantidadeRestante - entrada.Quantidade
+			}
+
+			err := e.baixaEstoque.AbaterEstoqueLote(ctx, tx, entrada.ID, quantidadeParaAbater)
+			if err != nil {
+
+				return fmt.Errorf("erro ao baixar estoque do lote %d: %v", entrada.ID, err)
+			}
+
+			err = e.baixaEstoque.RegistrarItemEntrega(ctx, tx, int64(item.ID_epi), int64(item.ID_tamanho), quantidadeParaAbater, 
+			entregaId, entrada.ID,entrada.ValorUnitario)
+			if err != nil {
+				return fmt.Errorf("erro ao registrar item da entrega: %v", err)
+
+			}
+
+		}
+
+			if quantidadeRestante > 0 {
+
+				return fmt.Errorf("estoque insuficiente para o EPI ID %d (Tamanho %d). Faltam %d unidades", item.ID_epi, item.ID_tamanho, quantidadeRestante)
+			}
+	}
+
+	if err := tx.Commit(); err != nil {
+        return fmt.Errorf("erro ao fazer commit da transação: %v", err)
+    }
+
+    return nil
 }
 
 func (e *EntregaService) ListaEntrega(ctx context.Context, id int) (model.EntregaDto, error) {
