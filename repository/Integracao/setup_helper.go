@@ -29,7 +29,7 @@ func SetupTestDB(t *testing.T) *sql.DB {
 			"MSSQL_SA_PASSWORD": dbPassword,
 		},
 		WaitingFor: wait.ForLog("SQL Server is now ready for client connections").
-			WithStartupTimeout(90 * time.Second),
+			WithStartupTimeout(240 * time.Second),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -86,7 +86,7 @@ func pingComRetentativa(db *sql.DB) error {
 		if err == nil {
 			return nil // Sucesso!
 		}
-		time.Sleep(500 * time.Millisecond) // Espera meio segundo
+		time.Sleep(20 * time.Second) // Espera meio segundo
 	}
 	return err
 }
