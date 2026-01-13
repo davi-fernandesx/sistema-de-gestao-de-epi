@@ -26,7 +26,7 @@ func NewEntradaRepository(db *sql.DB) *EntradaRepositorySQL {
 const entradaQueryJoin = `  
 select ee.id, ee.IdEpi,  e.nome as epi,  e.fabricante, e.CA, e.descricao,ee.data_fabricacao, ee.data_validade, e.validade_CA,
 		e.IdTipoProtecao, tp.nome as 'protecao para',
-	   	ee.IdTamanho,t.tamanho as tamanho, ee.quantidade, ee.data_entrada,
+	   	ee.IdTamanho,t.tamanho as tamanho, ee.quantidade,ee.quantidadeAtual ,ee.data_entrada,
 	   ee.lote, ee.fornecedor, ee.valor_unitario
 from entrada_epi ee
 inner join
@@ -66,6 +66,7 @@ func (n *EntradaRepositorySQL) buscaEntradas(ctx context.Context, query string, 
 			&entrada.Id_Tamanho,
 			&entrada.TamanhoDescricao,
 			&entrada.Quantidade,
+			&entrada.Quantidade_Atual,
 			&entrada.Data_entrada,
 			&entrada.Lote,
 			&entrada.Fornecedor,
@@ -91,8 +92,8 @@ func (n *EntradaRepositorySQL) buscaEntradas(ctx context.Context, query string, 
 func (n *EntradaRepositorySQL) AddEntradaEpi(ctx context.Context, EntradaEpi *model.EntradaEpiInserir) error {
 
 	query := `
-		insert into entrada_epi(IdEpi,IdTamanho, data_entrada, quantidade,data_fabricacao, data_validade, lote, fornecedor, valor_unitario)
-			values (@id_epi,@id_tamanho, @data_entrada, @quantidade ,@dataFabricacao, @dataValidade, @lote, @fornecedor,@valorUnitario )
+		insert into entrada_epi(IdEpi,IdTamanho, data_entrada, quantidade,quantidadeAtual,data_fabricacao, data_validade, lote, fornecedor, valor_unitario)
+			values (@id_epi,@id_tamanho, @data_entrada, @quantidade,@QuantidadeAtual, @dataFabricacao, @dataValidade, @lote, @fornecedor,@valorUnitario )
 	`
 
 	_, err := n.DB.ExecContext(ctx, query,
@@ -100,6 +101,7 @@ func (n *EntradaRepositorySQL) AddEntradaEpi(ctx context.Context, EntradaEpi *mo
 		sql.Named("id_tamanho", EntradaEpi.Id_tamanho),
 		sql.Named("data_entrada", EntradaEpi.Data_entrada),
 		sql.Named("quantidade", EntradaEpi.Quantidade),
+		sql.Named("quantidadeAtual", EntradaEpi.Quantidade_Atual),
 		sql.Named("dataFabricacao", EntradaEpi.DataFabricacao),
 		sql.Named("dataValidade", EntradaEpi.DataValidade),
 		sql.Named("lote", EntradaEpi.Lote),
