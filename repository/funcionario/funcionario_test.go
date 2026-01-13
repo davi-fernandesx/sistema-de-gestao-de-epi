@@ -129,7 +129,7 @@ func TestCriarFuncionario_Integracao(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, funcionario)
 		require.NotEmpty(t, funcionario)
-		require.Equal(t, &funcionario.ID_departamento, funcionarios[0].ID_departamento)
+		require.Equal(t, int64(funcionario.ID_departamento), *funcionarios[0].ID_departamento)
 
 		t.Run("erro - matricula nao encontrada", func(t *testing.T) {
 
