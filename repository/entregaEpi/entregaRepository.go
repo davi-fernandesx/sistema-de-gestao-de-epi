@@ -4,23 +4,24 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 	Errors "github.com/davi-fernandesx/sistema-de-gestao-de-epi/errors"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/model"
-	trocaepi "github.com/davi-fernandesx/sistema-de-gestao-de-epi/repository/trocaEpi"
 )
 
 type EntregaRepository struct {
 	Db           *sql.DB
-	BaixaEstoque trocaepi.DevolucaoInterfaceRepository
+
 }
 
-func NewEntregaRepository(db *sql.DB, RepoDevolucao trocaepi.DevolucaoInterfaceRepository) *EntregaRepository {
+func NewEntregaRepository(db *sql.DB ) *EntregaRepository {
 
 	return &EntregaRepository{
 		Db:           db,
-		BaixaEstoque: RepoDevolucao,
+
 	}
 
 }
@@ -42,7 +43,7 @@ select
 			e.descricao,  
 			e.validade_CA,
 			e.IdTipoProtecao,
-			tp.id, 
+			tp.nome, 
 			i.IdTamanho, 
 			t.tamanho, 
 			i.quantidade,
@@ -75,11 +76,11 @@ func (n *EntregaRepository) buscaEntregas(ctx context.Context, query string, arg
 	}
 	defer linhas.Close()
 
-	EntregaMap := make(map[int]*model.EntregaDto)
+	EntregaMap := make(map[int64]*model.EntregaDto)
 
 	for linhas.Next() {
 		var item model.ItemEntregueDto
-		var entregaID int
+		var entregaID int64
 		var dataEntrega configs.DataBr
 		var assinatura string
 		var funcID int
@@ -88,6 +89,11 @@ func (n *EntregaRepository) buscaEntregas(ctx context.Context, query string, arg
 		var depNome string
 		var funcaoID int
 		var funcaoNome string
+
+		item.Epi = model.EpiDto{}
+		item.Epi.Protecao = model.TipoProtecaoDto{}
+		item.Tamanho = model.TamanhoDto{}
+		
 
 		err := linhas.Scan(
 			&entregaID,
@@ -114,8 +120,10 @@ func (n *EntregaRepository) buscaEntregas(ctx context.Context, query string, arg
 		)
 		if err != nil {
 
-			return nil, fmt.Errorf("a  %w", Errors.ErrFalhaAoEscanearDados)
+			return nil, fmt.Errorf("a  %w", err)
 		}
+
+		assinatura = strings.ReplaceAll(strings.ReplaceAll(assinatura, "\x00", ""), "\x00", "")
 
 		if _, ok := EntregaMap[entregaID]; !ok {
 
@@ -140,6 +148,8 @@ func (n *EntregaRepository) buscaEntregas(ctx context.Context, query string, arg
 			}
 		}
 
+		
+
 		EntregaMap[entregaID].Itens = append(EntregaMap[entregaID].Itens, item) //caso ja exista, faço um append dos itens
 	}
 
@@ -159,13 +169,7 @@ func (n *EntregaRepository) buscaEntregas(ctx context.Context, query string, arg
 }
 
 // Addentrega implements EntregaInterface.
-func (n *EntregaRepository) Addentrega(ctx context.Context, model model.EntregaParaInserir) error {
-
-	tx, err := n.Db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("erro ao iniciar a transação, %w", err)
-	}
-	defer tx.Rollback()
+func (n *EntregaRepository) Addentrega(ctx context.Context,tx *sql.Tx ,model model.EntregaParaInserir) (int64 ,error) {
 
 	//add as entregas
 	queryEntrega := `insert into entrega_epi(IdFuncionario, data_entrega, assinatura)
@@ -181,23 +185,14 @@ func (n *EntregaRepository) Addentrega(ctx context.Context, model model.EntregaP
 	).Scan(&idEntrega)
 	if errSql != nil {
 
-		return fmt.Errorf("erro interno ao salvar entrega, %w", Errors.ErrInternal)
-	}
+		if helper.IsForeignKeyViolation(errSql){	
 
-	for _, item := range model.Itens {
-
-		err := n.BaixaEstoque.BaixaEstoque(ctx, tx, int64(item.ID_epi), int64(item.ID_tamanho), item.Quantidade, idEntrega)
-		if err != nil {
-			return err
+			return 0, fmt.Errorf("funcionario não existe no sistema, verifique os dados, %w", Errors.ErrDadoIncompativel)
 		}
-
+		return 0, fmt.Errorf("erro interno ao salvar entrega, %w", Errors.ErrInternal)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("erro ao comitar transação: %w", Errors.ErrInternal)
-	}
-
-	return nil
+	return idEntrega, nil
 }
 
 // BuscaEntrega implements EntregaInterface.
@@ -300,7 +295,7 @@ func (n *EntregaRepository) BuscaEntregaCancelada(ctx context.Context, id int) (
 // DeletarEntregas implements EntregaInterface.
 func (n *EntregaRepository) CancelarEntrega(ctx context.Context, id int) error {
 
-	query := `update entrega
+	query := `update entrega_epi
 			set cancelada_em  = GETDATE(), ativo = 0
 			where id = @id AND cancelada_em IS NULL;`
 
