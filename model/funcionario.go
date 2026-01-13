@@ -3,8 +3,8 @@ package model
 type FuncionarioINserir struct {
 	Nome            string `json:"nome" binding:"required,min=3,max=150"`
 	Matricula       string `json:"matricula" binding:"required,min=7,max=7"`
-	ID_departamento *int   `json:"id_departamento" binding:"required,min=1"`
-	ID_funcao       *int   `json:"id_funcao"  binding:"required,min=1"`
+	ID_departamento *int64   `json:"id_departamento" binding:"required,min=1"`
+	ID_funcao       *int64   `json:"id_funcao"  binding:"required,min=1"`
 }
 
 type Funcionario struct {
