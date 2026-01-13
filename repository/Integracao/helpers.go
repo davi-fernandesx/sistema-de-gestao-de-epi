@@ -24,8 +24,8 @@ func randomInt() *rand.Rand{
 }
 
 
-func CreateDepartamento(t *testing.T, db *sql.DB) int {
-	var id int
+func CreateDepartamento(t *testing.T, db *sql.DB) int64 {
+	var id int64
 	// SQL Server usa OUTPUT INSERTED.id para retornar o ID gerado
 	query := `INSERT INTO departamento (nome) OUTPUT INSERTED.id VALUES (@p1)`
 
@@ -36,8 +36,8 @@ func CreateDepartamento(t *testing.T, db *sql.DB) int {
 	return id
 }
 
-func CreateFuncao(t *testing.T, db *sql.DB, idDepartamento int) int {
-	var id int
+func CreateFuncao(t *testing.T, db *sql.DB, idDepartamento int64) int64 {
+	var id int64
 	query := `INSERT INTO funcao (nome, IdDepartamento) OUTPUT INSERTED.id VALUES (@p1, @p2)`
 
 	err := db.QueryRow(query, randomString("Func"), idDepartamento).Scan(&id)
@@ -47,9 +47,9 @@ func CreateFuncao(t *testing.T, db *sql.DB, idDepartamento int) int {
 	return id
 }
 
-func CreateProtecao(t *testing.T, db *sql.DB) int {
+func CreateProtecao(t *testing.T, db *sql.DB) int64 {
 
-	var id int
+	var id int64
 
 	query := `insert into tipo_protecao(nome) OUTPUT INSERTED.id values (@p1)`
 	err := db.QueryRow(query, randomString("protec")).Scan(&id)
@@ -61,9 +61,9 @@ func CreateProtecao(t *testing.T, db *sql.DB) int {
 
 }
 
-func CreateTamanho(t *testing.T, db *sql.DB) int {
+func CreateTamanho(t *testing.T, db *sql.DB) int64 {
 
-	var id int
+	var id int64
 	query := `insert into tamanho(tamanho) OUTPUT INSERTED.id values (@p1)`
 	err := db.QueryRow(query, randomString("tam")).Scan(&id)
 	if err != nil {
@@ -73,11 +73,11 @@ func CreateTamanho(t *testing.T, db *sql.DB) int {
 
 }
 
-func CreateFuncionario(t *testing.T, db *sql.DB,IdDepartamento,IdFuncao int) int {
+func CreateFuncionario(t *testing.T, db *sql.DB,IdDepartamento,IdFuncao int64) int64 {
 
 
-	var id int
-	query:= `insert into funcionario(nome, matricula, IdDepartamento, IdFuncao) values( @p1, @p2, @p3, @p4)`
+	var id int64
+	query:= `insert into funcionario(nome, matricula, IdDepartamento, IdFuncao) OUTPUT INSERTED.id values( @p1, @p2, @p3, @p4)`
 
 	r:= randomInt()
 
@@ -99,8 +99,8 @@ func CreateFuncionario(t *testing.T, db *sql.DB,IdDepartamento,IdFuncao int) int
 
 }
 
-func CreateEpi(t *testing.T, db *sql.DB, idTipoProtecao int) int {
-	var id int
+func CreateEpi(t *testing.T, db *sql.DB, idTipoProtecao int64) int64 {
+	var id int64
 
 	// Usamos @p1, @p2... para o driver mapear automaticamente os argumentos na ordem
 	query := `
@@ -137,14 +137,14 @@ func CreateEpi(t *testing.T, db *sql.DB, idTipoProtecao int) int {
 	return id
 }
 
-func CreateEntradaEpi(t  *testing.T, db *sql.DB,IdFuncionario, idEpi, IdTipoProtecao, IdTamanho int) int {
+func CreateEntradaEpi(t  *testing.T, db *sql.DB,IdFuncionario, idEpi, IdTipoProtecao, IdTamanho int64) int64 {
 
-	var id int
+	var id int64
 
-	query:= `insert into entrada_epi(IdEpi,IdTamanho, data_entrada, quantidade,data_fabricacao,
-			 data_validade, lote, fornecedor, valor_unitario)
-				values (@id_epi,@id_tamanho, @data_entrada, @quantidade ,
-						@dataFabricacao, @dataValidade, @lote, @fornecedor,@valorUnitario )`
+	query:= `insert into entrada_epi(IdEpi,IdTamanho, data_entrada, quantidade,quantidadeAtual,data_fabricacao,
+			 data_validade, lote, fornecedor, valor_unitario) OUTPUT INSERTED.id 
+				values (@p1,@p2, @p3, @p4 ,
+						@p5, @p6, @p7, @p8,@p9, @p10 )`
 
 	
 	lote:= randomString("lote")
@@ -153,7 +153,8 @@ func CreateEntradaEpi(t  *testing.T, db *sql.DB,IdFuncionario, idEpi, IdTipoProt
 		idEpi,
 		IdTamanho,
 		configs.NewDataBrPtr(time.Now()),
-		11,
+		100,
+		100,
 		configs.NewDataBrPtr(time.Now().AddDate(-1,0,0)),
 		configs.NewDataBrPtr(time.Now().AddDate(1,0,0)),
 		lote,

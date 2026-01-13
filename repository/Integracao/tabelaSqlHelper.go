@@ -69,6 +69,7 @@ func criarTabelasDoUsuario(t *testing.T, db *sql.DB) {
 		IdTamanho int not null,
 		data_entrada date not null,
 		quantidade int not null,
+		quantidadeAtual int not null,
 		data_fabricacao date not null,
 		data_validade date not null,
 		lote varchar(50) not null,
@@ -83,10 +84,23 @@ func criarTabelasDoUsuario(t *testing.T, db *sql.DB) {
 		id int primary key identity(1,1),
 		IdFuncionario int not null,
 		data_entrega date not null,
-		assinatura varbinary(MAX) not null, -- MUDADO: De varbinary para varbinary(MAX)
+		assinatura varchar(max) not null, -- MUDADO: De varbinary para varbinary(MAX)
 		IdTroca int null,
 		cancelada_em datetime null, -- Vírgula adicionada aqui
 		foreign key (IdFuncionario) references funcionario(id)
+	);
+
+		CREATE TABLE epis_entregues(
+		id int primary key identity(1,1),
+		IdEntrega int not null,
+		IdEntrada int not null,
+		IdEpi int not null,
+		IdTamanho int not null,
+		quantidade int not null,
+		valor_unitario decimal(10,2) not null, -- Vírgula adicionada aqui
+		foreign key (IdEntrega) references entrega_epi(id),
+		foreign key (IdEpi) references epi(id),
+		foreign key (IdEntrada) references entrada_epi(id)
 	);
 
 		-- TABELA: funcionario
@@ -122,6 +136,10 @@ func criarTabelasDoUsuario(t *testing.T, db *sql.DB) {
 
 		-- TABELA: entrega_epi
 		ALTER TABLE entrega_epi ADD ativo BIT NOT NULL DEFAULT 1 WITH VALUES;
+
+		-- TABELA:epis_entregues
+		ALTER TABLE epis_entregues ADD ativo BIT NOT NULL DEFAULT 1 WITH VALUES;
+		ALTER TABLE epis_entregues ADD deletado_em DATETIME NULL;
 
 	`
 	// Executa o CREATE TABLE

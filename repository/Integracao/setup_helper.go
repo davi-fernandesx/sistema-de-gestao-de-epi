@@ -19,7 +19,7 @@ func SetupTestDB(t *testing.T) *sql.DB {
 	ctx := context.Background()
 
 	// Senha forte definida em uma variável para garantir que é a mesma em todo lugar
-	const dbPassword = "Password123!"
+	const dbPassword = "Password123!7645!!!iiJ"
 
 	req := testcontainers.ContainerRequest{
 		Image:        "mcr.microsoft.com/mssql/server:2022-latest",
