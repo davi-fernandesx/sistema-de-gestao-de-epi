@@ -120,7 +120,7 @@ func (e *EpiService) ListasTodosEpis(ctx context.Context) ([]model.EpiDto, error
 			Descricao:      epi.Descricao,
 			DataValidadeCa: *configs.NewDataBrPtr(epi.DataValidadeCa.Time()),
 			Protecao: model.TipoProtecaoDto{
-				ID:   epi.IDprotecao,
+				ID:   int64(epi.IDprotecao),
 				Nome: model.Protecao(epi.NomeProtecao),
 			},
 		}
@@ -163,7 +163,7 @@ func (e *EpiService) ListarEpi(ctx context.Context, id int) (model.EpiDto, error
 		Descricao:      epi.Descricao,
 		DataValidadeCa: *configs.NewDataBrPtr(epi.DataValidadeCa.Time()),
 		Protecao: model.TipoProtecaoDto{
-			ID:   epi.IDprotecao,
+			ID:   int64(epi.IDprotecao),
 			Nome: model.Protecao(epi.NomeProtecao),
 		},
 	}

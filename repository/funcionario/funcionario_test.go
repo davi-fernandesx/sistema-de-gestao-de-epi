@@ -79,8 +79,8 @@ func TestCriarFuncionario_Integracao(t *testing.T) {
 
 	t.Run("erro de fk, id funcao ou departamento nao existe", func(t *testing.T) {
 
-		idDepto := 9999
-		idFuncaoNaoExiste := 9999
+		idDepto := int64(9999)
+		idFuncaoNaoExiste := int64(9999)
 
 		funcComErro := &model.FuncionarioINserir{
 			Nome:            "davi",

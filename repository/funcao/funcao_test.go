@@ -25,16 +25,16 @@ func TestDepartamento(t *testing.T) {
 		{
 
 			Funcao:         "analista",
-			IdDepartamento: idDepto,
+			IdDepartamento: int(idDepto),
 		},
 		{
 			Funcao:         "dev",
-			IdDepartamento: idDepto,
+			IdDepartamento: int(idDepto),
 		},
 		{
 
 			Funcao:         "gestor",
-			IdDepartamento: idDepto,
+			IdDepartamento: int(idDepto),
 		},
 	}
 
@@ -58,7 +58,7 @@ func TestDepartamento(t *testing.T) {
 
 		funcFalse := model.FuncaoInserir{
 			Funcao:         "analista",
-			IdDepartamento: idDepto,
+			IdDepartamento: int(idDepto),
 		}
 
 		err := repo.AddFuncao(ctx, &funcFalse)

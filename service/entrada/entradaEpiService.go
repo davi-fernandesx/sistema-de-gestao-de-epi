@@ -116,7 +116,7 @@ func (e *EntradaService) ListarEntrada(ctx context.Context, id int) (model.Entra
 			Descricao:      entrada.Descricao,
 			DataValidadeCa: entrada.DataValidadeCa,
 			Protecao: model.TipoProtecaoDto{
-				ID:   entrada.IDprotecao,
+				ID:   int64(entrada.IDprotecao),
 				Nome: model.Protecao(entrada.NomeProtecao),
 			},
 		},
@@ -167,7 +167,7 @@ func (e *EntradaService) ListasTodasEntradas(ctx context.Context) ([]model.Entra
 				Descricao:      entrada.Descricao,
 				DataValidadeCa: entrada.DataValidadeCa,
 				Protecao: model.TipoProtecaoDto{
-					ID:   entrada.IDprotecao,
+					ID:   int64(entrada.IDprotecao),
 					Nome: model.Protecao(entrada.NomeProtecao)},
 			},
 			Data_entrada:  entrada.Data_entrada,

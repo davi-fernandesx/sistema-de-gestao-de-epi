@@ -32,8 +32,8 @@ func TestEpiAdd(t *testing.T) {
 			CA:             "12345",
 			Descricao:      "luva de borracha",
 			DataValidadeCa: *configs.NewDataBrPtr(time.Now()),
-			Idtamanho:      []int{idTam},
-			IDprotecao:     idProtec,
+			Idtamanho:      []int{int(idTam)},
+			IDprotecao:     int(idProtec),
 			AlertaMinimo:   10,
 		},
 		{
@@ -42,8 +42,8 @@ func TestEpiAdd(t *testing.T) {
 			CA:             "23456",
 			Descricao:      "bopta de borracha",
 			DataValidadeCa: *configs.NewDataBrPtr(time.Now()),
-			Idtamanho:      []int{idTam},
-			IDprotecao:     idProtec,
+			Idtamanho:      []int{int(idTam)},
+			IDprotecao:      int(idProtec),
 			AlertaMinimo:   3,
 		},
 		{
@@ -52,8 +52,8 @@ func TestEpiAdd(t *testing.T) {
 			CA:             "34567",
 			Descricao:      "mascara de pano",
 			DataValidadeCa: *configs.NewDataBrPtr(time.Now()),
-			Idtamanho:      []int{idTam},
-			IDprotecao:     idProtec,
+			Idtamanho:      []int{int(idTam)},
+			IDprotecao:      int(idProtec),
 			AlertaMinimo:   4,
 		},
 	}
@@ -84,8 +84,8 @@ func TestEpiAdd(t *testing.T) {
 			CA:             "12345",
 			Descricao:      "repetiddo de borracha",
 			DataValidadeCa: *configs.NewDataBrPtr(time.Now()),
-			Idtamanho:      []int{idTam},
-			IDprotecao:     idProtec,
+			Idtamanho:      []int{int(idTam)},
+			IDprotecao:     int(idProtec),
 			AlertaMinimo:   10,
 		}
 
@@ -103,7 +103,7 @@ func TestEpiAdd(t *testing.T) {
 			CA:             "9999",
 			Descricao:      "repetiddo de borracha",
 			DataValidadeCa: *configs.NewDataBrPtr(time.Now()),
-			Idtamanho:      []int{idTam},
+			Idtamanho:      []int{int(idTam)},
 			IDprotecao:     44,
 			AlertaMinimo:   1,
 		}
@@ -123,7 +123,7 @@ func TestEpiAdd(t *testing.T) {
 			Descricao:      "repetido de borracha2",
 			DataValidadeCa: *configs.NewDataBrPtr(time.Now()),
 			Idtamanho:      []int{8},
-			IDprotecao:     idProtec,
+			IDprotecao:     int(idProtec),
 			AlertaMinimo:   12,
 		}
 
