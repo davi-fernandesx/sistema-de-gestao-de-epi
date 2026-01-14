@@ -1,77 +1,78 @@
 package configs
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/sqlserver"
+	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jmoiron/sqlx"
-	_ "github.com/microsoft/go-mssqldb"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 type Conexao interface {
-	Conn() (*sql.DB, error)
+	Conn() (*pgxpool.Pool, error)
 }
 
 type ConexaoDbSqlserverSqlx struct{}
 type ConexaoDbSqlserver struct{}
+type ConexaoDbPostgres struct{
 
-func (C *ConexaoDbSqlserver) Conn() (*sql.DB, error) {
+	Pool *pgxpool.Pool
+}
 
-	connString := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s", Env.DB_USER, Env.SA_PASSWORD, Env.DB_SERVER, Env.DB_PORT, Env.DATABASE)
 
-	db, err := sql.Open("sqlserver", connString)
+func(p *ConexaoDbPostgres) Conn() (*pgxpool.Pool, error){
+
+	// Formato: postgres://usuario:senha@host:porta/database
+	connString:= fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+			Env.DB_USER,
+			Env.SA_PASSWORD,
+			Env.DB_SERVER,
+			Env.DB_PORT,
+			Env.DATABASE,
+		)
+
+	config, err:= pgxpool.ParseConfig(connString)
 	if err != nil {
 
+		return nil, fmt.Errorf("erro ao configurar pool de banco de dados: %v", err)
+	}
+
+	pool, err:= pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
 		return nil, fmt.Errorf("erro ao se conectar com o banco de dados: %v", err)
 	}
 
-	err = db.Ping()
+	// 4. Ping para verificar se está ativo
+	err = pool.Ping(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("erro ao verificar se a conexao ainda está ativa: %v", err)
 	}
 
-	stats := db.Stats()
-	log.Printf("Conexões em uso: %d\n", stats.InUse)
-	log.Printf("Conexões ociosas: %d\n", stats.Idle)
+	s:= pool.Stat()
+	log.Printf("Conexões totais: %d | Em uso: %d | Ociosas: %d\n", 
+		s.TotalConns(), s.AcquiredConns(), s.IdleConns())
 
-	return db, nil
-
+	p.Pool = pool
+	return pool, nil
 }
 
-func (Cx *ConexaoDbSqlserverSqlx) Conn() (*sqlx.DB, error) {
+func (p *ConexaoDbPostgres) RunMigrationPostgress(db *pgxpool.Pool) error {
 
-	connString := fmt.Sprintf("sqlserver://%s:%s@%s:%s?database=%s", Env.DB_USER, Env.SA_PASSWORD, Env.DB_SERVER, Env.DB_PORT, Env.DATABASE)
-
-	db, err := sqlx.Open("sqlserver", connString)
-	if err != nil {
-
-		return nil, fmt.Errorf("erro ao se conectar com o banco de dados: %v", err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		return nil, fmt.Errorf("erro ao verificar se a conexao ainda está ativa: %v", err)
-	}
-
-	return db, nil
-
-}
-
-func (C *ConexaoDbSqlserver) RunMigrationSqlserver(db *sql.DB) error {
-
-	driver, err := sqlserver.WithInstance(db, &sqlserver.Config{})
+	sqlDB := stdlib.OpenDBFromPool(db)
+	driver, err := pgx.WithInstance(sqlDB, &pgx.Config{})
 	if err != nil {
 
 		return fmt.Errorf("erro ao iniciar drive da migração, %w", err)
 	}
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://database/migrate",
-		"sqlserver", driver)
+		"postgres", driver)
 	if err != nil {
 		return fmt.Errorf("erro ao instanciar migraççao no banco de dados")
 	}
