@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - schema: "database/migrate"      # Pasta onde estão seus arquivos .up.sql
+    queries: "database/queries/" # Onde você vai escrever seus SELECTs/INSERTs
+    engine: "postgresql"
+    gen:
+      go:
+        package: "repository"       # Nome do pacote Go gerado
+        out: "database/repository"  # Pasta onde o código será salvo
+        sql_package: "pgx/v5"       # Já configura para usar o seu pgx v5
