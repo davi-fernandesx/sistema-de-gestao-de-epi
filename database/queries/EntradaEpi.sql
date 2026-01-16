@@ -1,8 +1,8 @@
 -- name: AddEntradaEpi :exec
 INSERT INTO entrada_epi (
     IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-    data_fabricacao, data_validade, lote, fornecedor, valor_unitario
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+    data_fabricacao, data_validade, lote, fornecedor, valor_unitario,nota_fiscal_numero, nota_fiscal_serie
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
 
 -- name: ListarEntradas :many
 SELECT 
@@ -11,7 +11,7 @@ SELECT
     e.IdTipoProtecao, tp.nome as protecao_nome,
     ee.IdTamanho, t.tamanho as tamanho_nome, 
     ee.quantidade, ee.quantidadeAtual, ee.data_entrada,
-    ee.lote, ee.fornecedor, ee.valor_unitario
+    ee.lote, ee.fornecedor, ee.valor_unitario, ee.nota_fiscal_numero, ee.nota_fiscal_serie
 FROM entrada_epi ee
 INNER JOIN epi e ON ee.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id

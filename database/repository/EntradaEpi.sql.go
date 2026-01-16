@@ -14,21 +14,23 @@ import (
 const addEntradaEpi = `-- name: AddEntradaEpi :exec
 INSERT INTO entrada_epi (
     IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-    data_fabricacao, data_validade, lote, fornecedor, valor_unitario
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    data_fabricacao, data_validade, lote, fornecedor, valor_unitario,nota_fiscal_numero, nota_fiscal_serie
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 `
 
 type AddEntradaEpiParams struct {
-	Idepi           int32
-	Idtamanho       int32
-	DataEntrada     pgtype.Date
-	Quantidade      int32
-	Quantidadeatual int32
-	DataFabricacao  pgtype.Date
-	DataValidade    pgtype.Date
-	Lote            string
-	Fornecedor      string
-	ValorUnitario   pgtype.Numeric
+	Idepi            int32
+	Idtamanho        int32
+	DataEntrada      pgtype.Date
+	Quantidade       int32
+	Quantidadeatual  int32
+	DataFabricacao   pgtype.Date
+	DataValidade     pgtype.Date
+	Lote             string
+	Fornecedor       string
+	ValorUnitario    pgtype.Numeric
+	NotaFiscalNumero string
+	NotaFiscalSerie  pgtype.Text
 }
 
 func (q *Queries) AddEntradaEpi(ctx context.Context, arg AddEntradaEpiParams) error {
@@ -43,6 +45,8 @@ func (q *Queries) AddEntradaEpi(ctx context.Context, arg AddEntradaEpiParams) er
 		arg.Lote,
 		arg.Fornecedor,
 		arg.ValorUnitario,
+		arg.NotaFiscalNumero,
+		arg.NotaFiscalSerie,
 	)
 	return err
 }
@@ -69,7 +73,7 @@ SELECT
     e.IdTipoProtecao, tp.nome as protecao_nome,
     ee.IdTamanho, t.tamanho as tamanho_nome, 
     ee.quantidade, ee.quantidadeAtual, ee.data_entrada,
-    ee.lote, ee.fornecedor, ee.valor_unitario
+    ee.lote, ee.fornecedor, ee.valor_unitario, ee.nota_fiscal_numero, ee.nota_fiscal_serie
 FROM entrada_epi ee
 INNER JOIN epi e ON ee.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
@@ -88,25 +92,27 @@ type ListarEntradasParams struct {
 }
 
 type ListarEntradasRow struct {
-	ID              int32
-	Idepi           int32
-	EpiNome         string
-	Fabricante      string
-	Ca              string
-	EpiDescricao    string
-	DataFabricacao  pgtype.Date
-	DataValidade    pgtype.Date
-	ValidadeCa      pgtype.Date
-	Idtipoprotecao  int32
-	ProtecaoNome    string
-	Idtamanho       int32
-	TamanhoNome     string
-	Quantidade      int32
-	Quantidadeatual int32
-	DataEntrada     pgtype.Date
-	Lote            string
-	Fornecedor      string
-	ValorUnitario   pgtype.Numeric
+	ID               int32
+	Idepi            int32
+	EpiNome          string
+	Fabricante       string
+	Ca               string
+	EpiDescricao     string
+	DataFabricacao   pgtype.Date
+	DataValidade     pgtype.Date
+	ValidadeCa       pgtype.Date
+	Idtipoprotecao   int32
+	ProtecaoNome     string
+	Idtamanho        int32
+	TamanhoNome      string
+	Quantidade       int32
+	Quantidadeatual  int32
+	DataEntrada      pgtype.Date
+	Lote             string
+	Fornecedor       string
+	ValorUnitario    pgtype.Numeric
+	NotaFiscalNumero string
+	NotaFiscalSerie  pgtype.Text
 }
 
 func (q *Queries) ListarEntradas(ctx context.Context, arg ListarEntradasParams) ([]ListarEntradasRow, error) {
@@ -138,6 +144,8 @@ func (q *Queries) ListarEntradas(ctx context.Context, arg ListarEntradasParams) 
 			&i.Lote,
 			&i.Fornecedor,
 			&i.ValorUnitario,
+			&i.NotaFiscalNumero,
+			&i.NotaFiscalSerie,
 		); err != nil {
 			return nil, err
 		}
