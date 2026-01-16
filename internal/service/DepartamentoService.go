@@ -11,10 +11,22 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+//go:generate mockery --name=DepartamentoRepository --output=../../mocks --outpkg=mocks --with-expecter
+type DepartamentoRepository interface {
+	Adicionar(ctx context.Context, departamento string) error
+	ListarDepartamento(ctx context.Context, id int32) (repository.BuscarDepartamentoRow, error)
+	ListarDepartamentos(ctx context.Context) ([]repository.BuscarTodosDepartamentosRow, error)
+	CancelarDepartamento(ctx context.Context, id int32) (int64, error)
+	AtualizarDepartamento(ctx context.Context, arg repository.UpdateDepartamentoParams) (int64, error)
+}
 
 type DepartamentoService struct {
 
-	repo *repository.DepartamentoRepository
+	repo DepartamentoRepository
+}
+
+func NewDepartamentoService(r DepartamentoRepository) *DepartamentoService {
+	return &DepartamentoService{repo: r}
 }
 
 
@@ -24,13 +36,13 @@ func (d *DepartamentoService) SalvarDepartamento(ctx context.Context, model mode
 
 	if len(model.Departamento) < 2 {
 
-		return  fmt.Errorf("departamento deve ter ao minimo 2 caracteres")
+		return  helper.ErrNomeCurto
 
 	}
 
 	if err := d.repo.Adicionar(ctx, model.Departamento); err != nil {
 
-		return  helper.TraduzErroPostgres(err)
+	  return fmt.Errorf("erro ao salvar departamento: %w", err)
 	}
 
 	return  nil
@@ -116,7 +128,7 @@ func (d *DepartamentoService) AtualizarDepartamento(ctx context.Context, id int3
 
 	novoNome = strings.TrimSpace(novoNome)
 	if len(novoNome) < 2 {
-        return fmt.Errorf("nome muito curto")
+        return helper.ErrNomeCurto
     }
 
 	arg := repository.UpdateDepartamentoParams{
@@ -127,7 +139,7 @@ func (d *DepartamentoService) AtualizarDepartamento(ctx context.Context, id int3
 	 linha,errDep:= d.repo.AtualizarDepartamento(ctx, arg)
 	 if errDep != nil {
 
-		return  helper.TraduzErroPostgres(errDep)
+		return  errDep
 	 }
 
 	 if linha == 0 {
