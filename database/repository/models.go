@@ -32,19 +32,21 @@ type Devolucao struct {
 }
 
 type EntradaEpi struct {
-	ID              int32
-	Idepi           int32
-	Idtamanho       int32
-	DataEntrada     pgtype.Date
-	Quantidade      int32
-	Quantidadeatual int32
-	DataFabricacao  pgtype.Date
-	DataValidade    pgtype.Date
-	Lote            string
-	Fornecedor      string
-	ValorUnitario   pgtype.Numeric
-	CanceladaEm     pgtype.Timestamp
-	Ativo           bool
+	ID               int32
+	Idepi            int32
+	Idtamanho        int32
+	DataEntrada      pgtype.Date
+	Quantidade       int32
+	Quantidadeatual  int32
+	DataFabricacao   pgtype.Date
+	DataValidade     pgtype.Date
+	Lote             string
+	Fornecedor       string
+	ValorUnitario    pgtype.Numeric
+	CanceladaEm      pgtype.Timestamp
+	Ativo            bool
+	NotaFiscalNumero string
+	NotaFiscalSerie  pgtype.Text
 }
 
 type EntregaEpi struct {
