@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,9 +22,15 @@ func NewDepartamentoRepository(pool *pgxpool.Pool) *DepartamentoRepository {
 	}
 }
 
-func (d *DepartamentoRepository) Adicionar(ctx context.Context, nome string) error{
+func (d *DepartamentoRepository) Adicionar(ctx context.Context, departamento string) error{
+	
+	err :=d.q.CriaDepartamento(ctx, departamento)
+	if err != nil {
 
-	return d.q.CriaDepartamento(ctx, nome)
+		return helper.TraduzErroPostgres(err)
+	}
+
+	return nil
 }
 
 func (d *DepartamentoRepository) ListarDepartamento(ctx context.Context, id int32 ) (BuscarDepartamentoRow, error){
@@ -45,7 +52,7 @@ func (d *DepartamentoRepository) CancelarDepartamento(ctx context.Context, id in
 		return 0, err
 	}
 
-	return  linhasAfetadas, err
+	return  linhasAfetadas, nil
 }
 
 func (d *DepartamentoRepository) AtualizarDepartamento(ctx context.Context, arg UpdateDepartamentoParams) (int64, error){
