@@ -17,3 +17,5 @@ type FuncaoDto struct {
 	Funcao string `json:"cargo"`
 	Departamento DepartamentoDto `json:"departamento"`
 }
+
+type DepartamentoDto struct {}
