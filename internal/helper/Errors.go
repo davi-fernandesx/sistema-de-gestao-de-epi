@@ -18,6 +18,9 @@ var (
 	ErrEstoqueInsuficiente = errors.New("estoque insuficiente para esta operação")
 	ErrSessaoExpirada      = errors.New("sua sessão expirou, faça login novamente")
 	ErrNomeCurto           = errors.New("deve ter ao minimo 2 caracteres")
+	ErrDataIgual           = errors.New("data de fabricacao e validade não podem ser iguais")
+	ErrDataMenor           = errors.New("A data de entrada não pode ser menor que hoje")
+	ErrDataMenorValidade   = errors.New("A data de validade não pode ser menor que a data de fabricação")
 )
 
 // Códigos de Erro Oficiais do PostgreSQL
