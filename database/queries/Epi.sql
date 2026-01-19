@@ -22,14 +22,17 @@ FROM tamanho t
 INNER JOIN tamanhos_epis te ON t.id = te.IdTamanho
 WHERE te.IdEpi = $1 AND te.ativo = TRUE;
 
--- name: BuscarTodosEpis :many
+-- name: BuscarTodosEpisPaginado :many
 SELECT 
     e.id, e.nome, e.fabricante, e.CA, e.descricao,
     e.validade_CA, e.alerta_minimo, e.IdTipoProtecao, 
-    tp.nome as tipo_protecao_nome
+    tp.nome as tipo_protecao_nome,
+    COUNT(*) OVER() as total_geral
 FROM epi e
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
-WHERE e.ativo = TRUE;
+WHERE e.ativo = TRUE
+order by e.id
+LIMIT $1 OFFSET $2;
 
 -- name: BuscarTodosTamanhosAgrupados :many
 SELECT te.IdEpi, t.id, t.tamanho
@@ -40,12 +43,13 @@ WHERE te.ativo = TRUE;
 -- name: DeletarEpi :execrows
 UPDATE epi SET ativo = FALSE, deletado_em = NOW() WHERE id = $1 AND ativo = TRUE;
 
--- name: DeletarTamanhosPorEpi :exec
+-- name: DeletarTamanhosPorEpi :execrows
 UPDATE tamanhos_epis SET ativo = FALSE, deletado_em = NOW() WHERE IdEpi = $1 AND ativo = TRUE;
 
 -- name: UpdateEpiCampo :execrows
 UPDATE epi 
-SET nome = COALESCE(sqlc.narg('nome'), nome),
+SET id = COALESCE(sqlc.narg('id'), id),
+    nome = COALESCE(sqlc.narg('nome'), nome),
     fabricante = COALESCE(sqlc.narg('fabricante'), fabricante),
     CA = COALESCE(sqlc.narg('ca'), CA),
     descricao = COALESCE(sqlc.narg('descricao'), descricao),
