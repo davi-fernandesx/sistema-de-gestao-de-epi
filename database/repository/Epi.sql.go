@@ -128,17 +128,25 @@ func (q *Queries) BuscarTamanhosPorEpi(ctx context.Context, idepi int32) ([]Busc
 	return items, nil
 }
 
-const buscarTodosEpis = `-- name: BuscarTodosEpis :many
+const buscarTodosEpisPaginado = `-- name: BuscarTodosEpisPaginado :many
 SELECT 
     e.id, e.nome, e.fabricante, e.CA, e.descricao,
     e.validade_CA, e.alerta_minimo, e.IdTipoProtecao, 
-    tp.nome as tipo_protecao_nome
+    tp.nome as tipo_protecao_nome,
+    COUNT(*) OVER() as total_geral
 FROM epi e
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
 WHERE e.ativo = TRUE
+order by e.id
+LIMIT $1 OFFSET $2
 `
 
-type BuscarTodosEpisRow struct {
+type BuscarTodosEpisPaginadoParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type BuscarTodosEpisPaginadoRow struct {
 	ID               int32
 	Nome             string
 	Fabricante       string
@@ -148,17 +156,18 @@ type BuscarTodosEpisRow struct {
 	AlertaMinimo     int32
 	Idtipoprotecao   int32
 	TipoProtecaoNome string
+	TotalGeral       int64
 }
 
-func (q *Queries) BuscarTodosEpis(ctx context.Context) ([]BuscarTodosEpisRow, error) {
-	rows, err := q.db.Query(ctx, buscarTodosEpis)
+func (q *Queries) BuscarTodosEpisPaginado(ctx context.Context, arg BuscarTodosEpisPaginadoParams) ([]BuscarTodosEpisPaginadoRow, error) {
+	rows, err := q.db.Query(ctx, buscarTodosEpisPaginado, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []BuscarTodosEpisRow
+	var items []BuscarTodosEpisPaginadoRow
 	for rows.Next() {
-		var i BuscarTodosEpisRow
+		var i BuscarTodosEpisPaginadoRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Nome,
@@ -169,6 +178,7 @@ func (q *Queries) BuscarTodosEpis(ctx context.Context) ([]BuscarTodosEpisRow, er
 			&i.AlertaMinimo,
 			&i.Idtipoprotecao,
 			&i.TipoProtecaoNome,
+			&i.TotalGeral,
 		); err != nil {
 			return nil, err
 		}
@@ -225,42 +235,46 @@ func (q *Queries) DeletarEpi(ctx context.Context, id int32) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
-const deletarTamanhosPorEpi = `-- name: DeletarTamanhosPorEpi :exec
+const deletarTamanhosPorEpi = `-- name: DeletarTamanhosPorEpi :execrows
 UPDATE tamanhos_epis SET ativo = FALSE, deletado_em = NOW() WHERE IdEpi = $1 AND ativo = TRUE
 `
 
-func (q *Queries) DeletarTamanhosPorEpi(ctx context.Context, idepi int32) error {
-	_, err := q.db.Exec(ctx, deletarTamanhosPorEpi, idepi)
-	return err
+func (q *Queries) DeletarTamanhosPorEpi(ctx context.Context, idepi int32) (int64, error) {
+	result, err := q.db.Exec(ctx, deletarTamanhosPorEpi, idepi)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateEpiCampo = `-- name: UpdateEpiCampo :execrows
 UPDATE epi 
-SET nome = COALESCE($1, nome),
-    fabricante = COALESCE($2, fabricante),
-    CA = COALESCE($3, CA),
-    descricao = COALESCE($4, descricao),
-    validade_CA = COALESCE($5, validade_CA)
-WHERE id = $6 AND ativo = TRUE
+SET id = COALESCE($1, id),
+    nome = COALESCE($2, nome),
+    fabricante = COALESCE($3, fabricante),
+    CA = COALESCE($4, CA),
+    descricao = COALESCE($5, descricao),
+    validade_CA = COALESCE($6, validade_CA)
+WHERE id = $1 AND ativo = TRUE
 `
 
 type UpdateEpiCampoParams struct {
+	ID         pgtype.Int4
 	Nome       pgtype.Text
 	Fabricante pgtype.Text
 	Ca         pgtype.Text
 	Descricao  pgtype.Text
 	ValidadeCa pgtype.Date
-	ID         int32
 }
 
 func (q *Queries) UpdateEpiCampo(ctx context.Context, arg UpdateEpiCampoParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateEpiCampo,
+		arg.ID,
 		arg.Nome,
 		arg.Fabricante,
 		arg.Ca,
 		arg.Descricao,
 		arg.ValidadeCa,
-		arg.ID,
 	)
 	if err != nil {
 		return 0, err
