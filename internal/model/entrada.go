@@ -8,6 +8,7 @@ import (
 type EntradaEpiInserir struct {
 	ID_epi             int             `json:"id_epi" binding:"required,numeric"`
 	Id_tamanho         int             `json:"id_tamanho" binding:"required,numeric"`
+	Id_user            int             `json:"id_user" binding:"required,numeric"`
 	Data_entrada       configs.DataBr  `json:"data_entrada" binding:"required"`
 	Quantidade_Atual   int             `json:"quantidade_Atual" binding:"required,numeric,gt=0"`
 	Quantidade         int             `json:"quantidade" binding:"required,numeric,gt=0"`
@@ -22,6 +23,7 @@ type EntradaEpiInserir struct {
 
 type EntradaEpiDto struct {
 	ID                 int             `json:"id"`
+	Id_user            int             `json:"id_user"`
 	Epi                EpiDto          `json:"epi"`
 	Data_entrada       configs.DataBr  `json:"data_entrada"`
 	Quantidade         int             `json:"quantidade"`
