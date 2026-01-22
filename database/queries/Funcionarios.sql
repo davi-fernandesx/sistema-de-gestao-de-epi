@@ -50,3 +50,18 @@ WHERE id = $1 AND ativo = TRUE;
 UPDATE funcionario
 SET IdFuncao = $2
 WHERE id = $1 AND ativo = TRUE;
+
+
+-- name: BuscaFuncionarioPorId :one
+SELECT 
+    fn.id, 
+    fn.nome, 
+    fn.matricula, 
+    fn.IdDepartamento, 
+    d.nome as departamento_nome,
+    fn.IdFuncao, 
+    f.nome as funcao_nome
+FROM funcionario fn
+INNER JOIN departamento d ON fn.IdDepartamento = d.id
+INNER JOIN funcao f ON fn.IdFuncao = f.id
+WHERE fn.id = $1 AND fn.ativo = TRUE;
