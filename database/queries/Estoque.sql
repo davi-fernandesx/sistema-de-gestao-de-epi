@@ -1,6 +1,5 @@
 -- name: ListarLotesParaConsumo :many
 -- O PostgreSQL usa FOR UPDATE para o que o SQL Server chama de UPDLOCK.
--- O 'SKIP LOCKED' é opcional, mas evita que um processo fique travado esperando o outro.
 SELECT id, quantidadeAtual, data_validade, valor_unitario 
 FROM entrada_epi 
 WHERE IdEpi = $1 
@@ -15,8 +14,18 @@ FOR UPDATE;
 UPDATE entrada_epi 
 SET quantidadeAtual = quantidadeAtual - $1 
 WHERE id = $2 
-  AND ativo = TRUE;
+  AND ativo = TRUE
+  AND quantidadeAtual >= $1;
+
+
+-- name: ReporEstoqueLote :execrows
+UPDATE entrada_epi 
+SET quantidadeAtual = quantidadeAtual + $1 
+WHERE id = $2 
+  AND ativo = TRUE
+  AND quantidadeAtual >= $1;
 
 -- name: RegistrarItemEntrega :exec
 INSERT INTO epis_entregues (IdEpi, IdTamanho, quantidade, IdEntrega, IdEntrada, valor_unitario) 
 VALUES ($1, $2, $3, $4, $5, $6);
+

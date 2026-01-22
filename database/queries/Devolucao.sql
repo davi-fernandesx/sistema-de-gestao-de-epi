@@ -1,14 +1,14 @@
 -- name: AddDevolucaoSimples :exec
 INSERT INTO devolucao (
     IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
-    quantidadeAdevolver, assinatura_digital
-) VALUES ($1, $2, $3, $4, $5, $6, $7);
+    quantidadeAdevolver, assinatura_digital,id_usuario_cancelamento
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: AddTrocaEpi :one
 INSERT INTO devolucao (
     IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
-    quantidadeAdevolver, IdEpiNovo, IdTamanhoNovo, quantidadeNova, assinatura_digital
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    quantidadeAdevolver, IdEpiNovo, IdTamanhoNovo, quantidadeNova, assinatura_digital,id_usuario_cancelamento
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id;
 
 -- name: AddEntregaVinculada :one
@@ -26,7 +26,7 @@ SELECT
     d.quantidadeAdevolver, d.IdMotivo, m.motivo as motivo_nome,
     d.IdEpiNovo, en.nome as epi_novo_nome, en.fabricante as epi_novo_fab, en.CA as epi_novo_ca,
     d.quantidadeNova, d.IdTamanhoNovo, tn.tamanho as tam_novo_nome,
-    d.assinatura_digital, d.data_devolucao
+    d.assinatura_digital, d.data_devolucao, d.id_usuario_cancelamento
 FROM devolucao d
 INNER JOIN epi e ON d.IdEpi = e.id
 INNER JOIN funcionario f ON d.IdFuncionario = f.id	
@@ -46,5 +46,6 @@ ORDER BY d.data_devolucao DESC;
 -- name: CancelarDevolucao :execrows
 UPDATE devolucao
 SET cancelada_em = NOW(),
-    ativo = FALSE
+    ativo = FALSE,
+    id_usuario_devolucao_cancelamento = $2
 WHERE id = $1 AND cancelada_em IS NULL;

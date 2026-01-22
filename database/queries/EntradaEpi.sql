@@ -1,8 +1,8 @@
 -- name: AddEntradaEpi :exec
 INSERT INTO entrada_epi (
     IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-    data_fabricacao, data_validade, lote, fornecedor, valor_unitario,nota_fiscal_numero, nota_fiscal_serie
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+    data_fabricacao, data_validade, lote, fornecedor, valor_unitario,nota_fiscal_numero, nota_fiscal_serie,id_usuario_criacao
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
 
 -- name: ListarEntradas :many
 -- name: ListarEntradas :many
@@ -12,7 +12,7 @@ SELECT
     e.IdTipoProtecao, tp.nome as protecao_nome,
     ee.IdTamanho, t.tamanho as tamanho_nome, 
     ee.quantidade, ee.quantidadeAtual, ee.data_entrada,
-    ee.lote, ee.fornecedor, ee.valor_unitario, ee.nota_fiscal_numero, ee.nota_fiscal_serie
+    ee.lote, ee.fornecedor, ee.valor_unitario, ee.nota_fiscal_numero, ee.nota_fiscal_serie, ee.id_usuario_criacao
 FROM entrada_epi ee
 INNER JOIN epi e ON ee.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
@@ -31,11 +31,11 @@ ORDER BY ee.data_entrada DESC
 LIMIT $1 OFFSET $2;
 
 -- name: CancelarEntrada :execrows
--- name: CancelarEntrada :execrows
 UPDATE entrada_epi 
 SET 
     cancelada_em = NOW(), 
-    ativo = FALSE 
+    ativo = FALSE,
+    id_usuario_criacao_cancelamento = $2
 WHERE id = $1 
   AND cancelada_em IS NULL 
   AND quantidadeAtual = quantidade; -- Garante que nada foi usado
