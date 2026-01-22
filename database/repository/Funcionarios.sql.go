@@ -71,6 +71,46 @@ func (q *Queries) BuscaFuncionario(ctx context.Context, matricula string) (Busca
 	return i, err
 }
 
+const buscaFuncionarioPorId = `-- name: BuscaFuncionarioPorId :one
+SELECT 
+    fn.id, 
+    fn.nome, 
+    fn.matricula, 
+    fn.IdDepartamento, 
+    d.nome as departamento_nome,
+    fn.IdFuncao, 
+    f.nome as funcao_nome
+FROM funcionario fn
+INNER JOIN departamento d ON fn.IdDepartamento = d.id
+INNER JOIN funcao f ON fn.IdFuncao = f.id
+WHERE fn.id = $1 AND fn.ativo = TRUE
+`
+
+type BuscaFuncionarioPorIdRow struct {
+	ID               int32
+	Nome             string
+	Matricula        string
+	Iddepartamento   int32
+	DepartamentoNome string
+	Idfuncao         int32
+	FuncaoNome       string
+}
+
+func (q *Queries) BuscaFuncionarioPorId(ctx context.Context, id int32) (BuscaFuncionarioPorIdRow, error) {
+	row := q.db.QueryRow(ctx, buscaFuncionarioPorId, id)
+	var i BuscaFuncionarioPorIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.Nome,
+		&i.Matricula,
+		&i.Iddepartamento,
+		&i.DepartamentoNome,
+		&i.Idfuncao,
+		&i.FuncaoNome,
+	)
+	return i, err
+}
+
 const buscarTodosFuncionarios = `-- name: BuscarTodosFuncionarios :many
 SELECT 
     fn.id, 
