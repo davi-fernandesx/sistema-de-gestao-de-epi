@@ -16,6 +16,7 @@ UPDATE entrada_epi
 SET quantidadeAtual = quantidadeAtual - $1 
 WHERE id = $2 
   AND ativo = TRUE
+  AND quantidadeAtual >= $1
 `
 
 type AbaterEstoqueLoteParams struct {
@@ -56,7 +57,6 @@ type ListarLotesParaConsumoRow struct {
 }
 
 // O PostgreSQL usa FOR UPDATE para o que o SQL Server chama de UPDLOCK.
-// O 'SKIP LOCKED' é opcional, mas evita que um processo fique travado esperando o outro.
 func (q *Queries) ListarLotesParaConsumo(ctx context.Context, arg ListarLotesParaConsumoParams) ([]ListarLotesParaConsumoRow, error) {
 	rows, err := q.db.Query(ctx, listarLotesParaConsumo, arg.Idepi, arg.Idtamanho)
 	if err != nil {
@@ -106,4 +106,25 @@ func (q *Queries) RegistrarItemEntrega(ctx context.Context, arg RegistrarItemEnt
 		arg.ValorUnitario,
 	)
 	return err
+}
+
+const reporEstoqueLote = `-- name: ReporEstoqueLote :execrows
+UPDATE entrada_epi 
+SET quantidadeAtual = quantidadeAtual + $1 
+WHERE id = $2 
+  AND ativo = TRUE
+  AND quantidadeAtual >= $1
+`
+
+type ReporEstoqueLoteParams struct {
+	Quantidadeatual int32
+	ID              int32
+}
+
+func (q *Queries) ReporEstoqueLote(ctx context.Context, arg ReporEstoqueLoteParams) (int64, error) {
+	result, err := q.db.Exec(ctx, reporEstoqueLote, arg.Quantidadeatual, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

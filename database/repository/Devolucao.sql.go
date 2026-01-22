@@ -14,18 +14,19 @@ import (
 const addDevolucaoSimples = `-- name: AddDevolucaoSimples :exec
 INSERT INTO devolucao (
     IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
-    quantidadeAdevolver, assinatura_digital
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    quantidadeAdevolver, assinatura_digital,id_usuario_cancelamento
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type AddDevolucaoSimplesParams struct {
-	Idfuncionario       int32
-	Idepi               int32
-	Idmotivo            int32
-	DataDevolucao       pgtype.Date
-	Idtamanho           int32
-	Quantidadeadevolver int32
-	AssinaturaDigital   string
+	Idfuncionario         int32
+	Idepi                 int32
+	Idmotivo              int32
+	DataDevolucao         pgtype.Date
+	Idtamanho             int32
+	Quantidadeadevolver   int32
+	AssinaturaDigital     string
+	IDUsuarioCancelamento pgtype.Int4
 }
 
 func (q *Queries) AddDevolucaoSimples(ctx context.Context, arg AddDevolucaoSimplesParams) error {
@@ -37,6 +38,7 @@ func (q *Queries) AddDevolucaoSimples(ctx context.Context, arg AddDevolucaoSimpl
 		arg.Idtamanho,
 		arg.Quantidadeadevolver,
 		arg.AssinaturaDigital,
+		arg.IDUsuarioCancelamento,
 	)
 	return err
 }
@@ -69,22 +71,23 @@ func (q *Queries) AddEntregaVinculada(ctx context.Context, arg AddEntregaVincula
 const addTrocaEpi = `-- name: AddTrocaEpi :one
 INSERT INTO devolucao (
     IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
-    quantidadeAdevolver, IdEpiNovo, IdTamanhoNovo, quantidadeNova, assinatura_digital
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    quantidadeAdevolver, IdEpiNovo, IdTamanhoNovo, quantidadeNova, assinatura_digital,id_usuario_cancelamento
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id
 `
 
 type AddTrocaEpiParams struct {
-	Idfuncionario       int32
-	Idepi               int32
-	Idmotivo            int32
-	DataDevolucao       pgtype.Date
-	Idtamanho           int32
-	Quantidadeadevolver int32
-	Idepinovo           pgtype.Int4
-	Idtamanhonovo       pgtype.Int4
-	Quantidadenova      pgtype.Int4
-	AssinaturaDigital   string
+	Idfuncionario         int32
+	Idepi                 int32
+	Idmotivo              int32
+	DataDevolucao         pgtype.Date
+	Idtamanho             int32
+	Quantidadeadevolver   int32
+	Idepinovo             pgtype.Int4
+	Idtamanhonovo         pgtype.Int4
+	Quantidadenova        pgtype.Int4
+	AssinaturaDigital     string
+	IDUsuarioCancelamento pgtype.Int4
 }
 
 func (q *Queries) AddTrocaEpi(ctx context.Context, arg AddTrocaEpiParams) (int32, error) {
@@ -99,6 +102,7 @@ func (q *Queries) AddTrocaEpi(ctx context.Context, arg AddTrocaEpiParams) (int32
 		arg.Idtamanhonovo,
 		arg.Quantidadenova,
 		arg.AssinaturaDigital,
+		arg.IDUsuarioCancelamento,
 	)
 	var id int32
 	err := row.Scan(&id)
@@ -108,12 +112,18 @@ func (q *Queries) AddTrocaEpi(ctx context.Context, arg AddTrocaEpiParams) (int32
 const cancelarDevolucao = `-- name: CancelarDevolucao :execrows
 UPDATE devolucao
 SET cancelada_em = NOW(),
-    ativo = FALSE
+    ativo = FALSE,
+    id_usuario_devolucao_cancelamento = $2
 WHERE id = $1 AND cancelada_em IS NULL
 `
 
-func (q *Queries) CancelarDevolucao(ctx context.Context, id int32) (int64, error) {
-	result, err := q.db.Exec(ctx, cancelarDevolucao, id)
+type CancelarDevolucaoParams struct {
+	ID                             int32
+	IDUsuarioDevolucaoCancelamento pgtype.Int4
+}
+
+func (q *Queries) CancelarDevolucao(ctx context.Context, arg CancelarDevolucaoParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelarDevolucao, arg.ID, arg.IDUsuarioDevolucaoCancelamento)
 	if err != nil {
 		return 0, err
 	}
@@ -130,7 +140,7 @@ SELECT
     d.quantidadeAdevolver, d.IdMotivo, m.motivo as motivo_nome,
     d.IdEpiNovo, en.nome as epi_novo_nome, en.fabricante as epi_novo_fab, en.CA as epi_novo_ca,
     d.quantidadeNova, d.IdTamanhoNovo, tn.tamanho as tam_novo_nome,
-    d.assinatura_digital, d.data_devolucao
+    d.assinatura_digital, d.data_devolucao, d.id_usuario_cancelamento
 FROM devolucao d
 INNER JOIN epi e ON d.IdEpi = e.id
 INNER JOIN funcionario f ON d.IdFuncionario = f.id	
@@ -155,32 +165,33 @@ type ListarDevolucoesParams struct {
 }
 
 type ListarDevolucoesRow struct {
-	ID                  int32
-	Idfuncionario       int32
-	FuncNome            string
-	Matricula           string
-	Iddepartamento      int32
-	DepNome             string
-	Idfuncao            int32
-	FuncaoNome          string
-	Idepi               int32
-	EpiAntigoNome       string
-	EpiAntigoFab        string
-	EpiAntigoCa         string
-	TamAntigoID         int32
-	TamAntigoNome       string
-	Quantidadeadevolver int32
-	Idmotivo            int32
-	MotivoNome          string
-	Idepinovo           pgtype.Int4
-	EpiNovoNome         pgtype.Text
-	EpiNovoFab          pgtype.Text
-	EpiNovoCa           pgtype.Text
-	Quantidadenova      pgtype.Int4
-	Idtamanhonovo       pgtype.Int4
-	TamNovoNome         pgtype.Text
-	AssinaturaDigital   string
-	DataDevolucao       pgtype.Date
+	ID                    int32
+	Idfuncionario         int32
+	FuncNome              string
+	Matricula             string
+	Iddepartamento        int32
+	DepNome               string
+	Idfuncao              int32
+	FuncaoNome            string
+	Idepi                 int32
+	EpiAntigoNome         string
+	EpiAntigoFab          string
+	EpiAntigoCa           string
+	TamAntigoID           int32
+	TamAntigoNome         string
+	Quantidadeadevolver   int32
+	Idmotivo              int32
+	MotivoNome            string
+	Idepinovo             pgtype.Int4
+	EpiNovoNome           pgtype.Text
+	EpiNovoFab            pgtype.Text
+	EpiNovoCa             pgtype.Text
+	Quantidadenova        pgtype.Int4
+	Idtamanhonovo         pgtype.Int4
+	TamNovoNome           pgtype.Text
+	AssinaturaDigital     string
+	DataDevolucao         pgtype.Date
+	IDUsuarioCancelamento pgtype.Int4
 }
 
 func (q *Queries) ListarDevolucoes(ctx context.Context, arg ListarDevolucoesParams) ([]ListarDevolucoesRow, error) {
@@ -219,6 +230,7 @@ func (q *Queries) ListarDevolucoes(ctx context.Context, arg ListarDevolucoesPara
 			&i.TamNovoNome,
 			&i.AssinaturaDigital,
 			&i.DataDevolucao,
+			&i.IDUsuarioCancelamento,
 		); err != nil {
 			return nil, err
 		}

@@ -16,47 +16,54 @@ type Departamento struct {
 }
 
 type Devolucao struct {
-	ID                  int32
-	Idepi               int32
-	Idfuncionario       int32
-	Idmotivo            int32
-	DataDevolucao       pgtype.Date
-	Idtamanho           int32
-	Quantidadeadevolver int32
-	Idepinovo           pgtype.Int4
-	Idtamanhonovo       pgtype.Int4
-	Quantidadenova      pgtype.Int4
-	CanceladaEm         pgtype.Timestamp
-	AssinaturaDigital   string
-	Ativo               bool
+	ID                             int32
+	Idepi                          int32
+	Idfuncionario                  int32
+	Idmotivo                       int32
+	DataDevolucao                  pgtype.Date
+	Idtamanho                      int32
+	Quantidadeadevolver            int32
+	Idepinovo                      pgtype.Int4
+	Idtamanhonovo                  pgtype.Int4
+	Quantidadenova                 pgtype.Int4
+	CanceladaEm                    pgtype.Timestamp
+	AssinaturaDigital              string
+	Ativo                          bool
+	IDUsuarioCancelamento          pgtype.Int4
+	IDUsuarioDevolucaoCancelamento pgtype.Int4
 }
 
 type EntradaEpi struct {
-	ID               int32
-	Idepi            int32
-	Idtamanho        int32
-	DataEntrada      pgtype.Date
-	Quantidade       int32
-	Quantidadeatual  int32
-	DataFabricacao   pgtype.Date
-	DataValidade     pgtype.Date
-	Lote             string
-	Fornecedor       string
-	ValorUnitario    pgtype.Numeric
-	CanceladaEm      pgtype.Timestamp
-	Ativo            bool
-	NotaFiscalNumero string
-	NotaFiscalSerie  pgtype.Text
+	ID                           int32
+	Idepi                        int32
+	Idtamanho                    int32
+	DataEntrada                  pgtype.Date
+	Quantidade                   int32
+	Quantidadeatual              int32
+	DataFabricacao               pgtype.Date
+	DataValidade                 pgtype.Date
+	Lote                         string
+	Fornecedor                   string
+	ValorUnitario                pgtype.Numeric
+	CanceladaEm                  pgtype.Timestamp
+	Ativo                        bool
+	NotaFiscalNumero             string
+	NotaFiscalSerie              pgtype.Text
+	IDUsuarioCriacao             pgtype.Int4
+	IDUsuarioCriacaoCancelamento pgtype.Int4
 }
 
 type EntregaEpi struct {
-	ID            int32
-	Idfuncionario int32
-	DataEntrega   pgtype.Date
-	Assinatura    string
-	Idtroca       pgtype.Int4
-	CanceladaEm   pgtype.Timestamp
-	Ativo         bool
+	ID                           int32
+	Idfuncionario                int32
+	DataEntrega                  pgtype.Date
+	Assinatura                   string
+	Idtroca                      pgtype.Int4
+	CanceladaEm                  pgtype.Timestamp
+	Ativo                        bool
+	TokenValidacao               pgtype.Text
+	IDUsuarioEntrega             pgtype.Int4
+	IDUsuarioEntregaCancelamento pgtype.Int4
 }
 
 type Epi struct {
@@ -129,4 +136,12 @@ type TipoProtecao struct {
 	Nome       string
 	Ativo      bool
 	DeletadoEm pgtype.Timestamp
+}
+
+type Usuario struct {
+	ID        int32
+	Nome      string
+	Email     string
+	SenhaHash string
+	Ativo     pgtype.Bool
 }
