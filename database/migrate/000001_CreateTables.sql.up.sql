@@ -95,8 +95,6 @@ CREATE TABLE entrega_epi (
     id SERIAL PRIMARY KEY,
     IdFuncionario INT NOT NULL,
     data_entrega DATE NOT NULL,
-    -- Como vamos usar Supabase/URL, TEXT é o ideal para o link. 
-    -- Se fosse binário puro, usaríamos BYTEA.
     assinatura TEXT NOT NULL, 
     IdTroca INT NULL,
     cancelada_em TIMESTAMP NULL,
