@@ -1,0 +1,1 @@
+ALTER TABLE entrega_epi ADD COLUMN token_validacao TEXT;
