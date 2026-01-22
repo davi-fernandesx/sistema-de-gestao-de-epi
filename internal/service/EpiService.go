@@ -105,7 +105,7 @@ func (e *EpiService) ListarEpis(ctx context.Context, pagina, limite int32) (EpiP
 	todosTamanhos, err:= e.queries.BuscarTodosTamanhosAgrupados(ctx)
 	if err != nil {
 
-		return EpiPaginado{Epis: []model.EpiDto{{}}, Pagina: pagina}, nil
+		return EpiPaginado{Epis: []model.EpiDto{{}}, Pagina: pagina}, err
 	}
 
 	tamanhosMap:= make(map[int32][]model.TamanhoDto)
