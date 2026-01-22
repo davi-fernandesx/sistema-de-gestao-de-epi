@@ -14,8 +14,8 @@ import (
 const addEntradaEpi = `-- name: AddEntradaEpi :exec
 INSERT INTO entrada_epi (
     IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-    data_fabricacao, data_validade, lote, fornecedor, valor_unitario,nota_fiscal_numero, nota_fiscal_serie
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    data_fabricacao, data_validade, lote, fornecedor, valor_unitario,nota_fiscal_numero, nota_fiscal_serie,id_usuario_criacao
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 `
 
 type AddEntradaEpiParams struct {
@@ -31,6 +31,7 @@ type AddEntradaEpiParams struct {
 	ValorUnitario    pgtype.Numeric
 	NotaFiscalNumero string
 	NotaFiscalSerie  pgtype.Text
+	IDUsuarioCriacao pgtype.Int4
 }
 
 func (q *Queries) AddEntradaEpi(ctx context.Context, arg AddEntradaEpiParams) error {
@@ -47,6 +48,7 @@ func (q *Queries) AddEntradaEpi(ctx context.Context, arg AddEntradaEpiParams) er
 		arg.ValorUnitario,
 		arg.NotaFiscalNumero,
 		arg.NotaFiscalSerie,
+		arg.IDUsuarioCriacao,
 	)
 	return err
 }
@@ -55,14 +57,20 @@ const cancelarEntrada = `-- name: CancelarEntrada :execrows
 UPDATE entrada_epi 
 SET 
     cancelada_em = NOW(), 
-    ativo = FALSE 
+    ativo = FALSE,
+    id_usuario_criacao_cancelamento = $2
 WHERE id = $1 
   AND cancelada_em IS NULL 
   AND quantidadeAtual = quantidade
 `
 
-func (q *Queries) CancelarEntrada(ctx context.Context, id int32) (int64, error) {
-	result, err := q.db.Exec(ctx, cancelarEntrada, id)
+type CancelarEntradaParams struct {
+	ID                           int32
+	IDUsuarioCriacaoCancelamento pgtype.Int4
+}
+
+func (q *Queries) CancelarEntrada(ctx context.Context, arg CancelarEntradaParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelarEntrada, arg.ID, arg.IDUsuarioCriacaoCancelamento)
 	if err != nil {
 		return 0, err
 	}
@@ -116,7 +124,7 @@ SELECT
     e.IdTipoProtecao, tp.nome as protecao_nome,
     ee.IdTamanho, t.tamanho as tamanho_nome, 
     ee.quantidade, ee.quantidadeAtual, ee.data_entrada,
-    ee.lote, ee.fornecedor, ee.valor_unitario, ee.nota_fiscal_numero, ee.nota_fiscal_serie
+    ee.lote, ee.fornecedor, ee.valor_unitario, ee.nota_fiscal_numero, ee.nota_fiscal_serie, ee.id_usuario_criacao
 FROM entrada_epi ee
 INNER JOIN epi e ON ee.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
@@ -168,6 +176,7 @@ type ListarEntradasRow struct {
 	ValorUnitario    pgtype.Numeric
 	NotaFiscalNumero string
 	NotaFiscalSerie  pgtype.Text
+	IDUsuarioCriacao pgtype.Int4
 }
 
 func (q *Queries) ListarEntradas(ctx context.Context, arg ListarEntradasParams) ([]ListarEntradasRow, error) {
@@ -210,6 +219,7 @@ func (q *Queries) ListarEntradas(ctx context.Context, arg ListarEntradasParams) 
 			&i.ValorUnitario,
 			&i.NotaFiscalNumero,
 			&i.NotaFiscalSerie,
+			&i.IDUsuarioCriacao,
 		); err != nil {
 			return nil, err
 		}

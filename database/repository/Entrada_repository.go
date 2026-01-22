@@ -47,10 +47,10 @@ func (e *EntradaRepository) ListarEntradas(ctx context.Context, args ListarEntra
 
 }
 
-func (e *EntradaRepository) CancelarEntrada(ctx context.Context, id int) (int64, error) {
+func (e *EntradaRepository) CancelarEntrada(ctx context.Context, args CancelarEntradaParams) (int64, error) {
 
 
-	linhasAfetadas,err:= e.q.CancelarEntrada(ctx, int32(id))
+	linhasAfetadas,err:= e.q.CancelarEntrada(ctx, args)
 	if err != nil {
 
 		return 0 ,err
