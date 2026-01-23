@@ -13,7 +13,6 @@ import (
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,7 +48,7 @@ func TestEntrega(t *testing.T) {
 					ID_epi:         idepi,
 					ID_tamanho:     idtam,
 					Quantidade:     10,
-					Valor_unitario: decimal.NewFromFloat(45.99),
+				
 				},
 			},
 		},
@@ -143,7 +142,7 @@ func TestEntrega(t *testing.T) {
 					ID_epi:         idepi,
 					ID_tamanho:     idtam,
 					Quantidade:     300,
-					Valor_unitario: decimal.NewFromFloat(45.99),
+					
 				},
 			},
 		}
