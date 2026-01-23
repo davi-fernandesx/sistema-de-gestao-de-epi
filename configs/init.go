@@ -1,17 +1,16 @@
 package configs
 
 import (
-	"database/sql"
 	"log"
 
-
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Init struct {
 	Conexao Conexao
 }
 
-func (I *Init) InitAplicattion() (*sql.DB, error) {
+func (I *Init) InitAplicattion() (*pgxpool.Pool, error) {
 
 	db, err := I.Conexao.Conn()
 	if err != nil {

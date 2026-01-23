@@ -1,0 +1,78 @@
+package repository
+
+import (
+	"context"
+
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+
+type EpiRepository struct {
+
+	q *Queries
+	db *pgxpool.Pool
+}
+
+
+func NewEpiRepository(pool *pgxpool.Pool) *EpiRepository {
+
+	return  &EpiRepository{q: New(pool), db: pool}
+}
+
+func (e *EpiRepository) Adicionar(ctx context.Context,qtx *Queries, epi AddEpiParams)(int32, error){
+
+	id,err:= qtx.AddEpi(ctx, epi)
+	if err != nil {
+		return 0,helper.TraduzErroPostgres(err)
+	}
+	return id, nil
+}
+
+func (e *EpiRepository) ListarEpi(ctx context.Context, id int) (BuscarEpiRow, error){
+
+	epi, err:= e.q.BuscarEpi(ctx, int32(id))
+	if err != nil {
+
+		return BuscarEpiRow{},helper.TraduzErroPostgres(err)
+	}
+
+	return epi, nil
+}
+
+func (e *EpiRepository) ListarEpis(ctx context.Context, pagina, ItemPorPagina int32) ([]BuscarTodosEpisPaginadoRow, error){
+
+	if pagina < 1 {pagina = 1}
+
+	offset := (pagina -1 ) * ItemPorPagina
+	epis, err:= e.q.BuscarTodosEpisPaginado(ctx, BuscarTodosEpisPaginadoParams{Limit: ItemPorPagina, Offset: offset})
+	if err != nil {
+
+		return []BuscarTodosEpisPaginadoRow{},helper.TraduzErroPostgres(err)
+	}
+
+	return epis, nil
+}
+
+func (e *EpiRepository) CancelarEpi(ctx context.Context, qtx *Queries ,id int)(int64, error){
+
+	linhasAfetadas, err:= qtx.DeletarEpi(ctx, int32(id))
+	if err != nil {
+
+		return 0, helper.TraduzErroPostgres(err)
+	}
+
+	return  linhasAfetadas, nil
+}
+
+
+func (e *EpiRepository) AtualizaEpi(ctx context.Context , epi  UpdateEpiCampoParams)(int64, error) {
+
+	linhasAfetadas, err:= e.q.UpdateEpiCampo(ctx, epi)
+	if err != nil {
+
+		return 0, helper.TraduzErroPostgres(err)
+	}
+
+	return linhasAfetadas, nil
+} 

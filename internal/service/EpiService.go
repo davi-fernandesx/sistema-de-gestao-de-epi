@@ -1,0 +1,307 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"math"
+
+	"strings"
+
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type EpiRepository interface {
+	Adicionar(ctx context.Context, qtx *repository.Queries, epi repository.AddEpiParams) (int32, error)
+	ListarEpi(ctx context.Context, id int) (repository.BuscarEpiRow, error)
+	ListarEpis(ctx context.Context, pagina, ItemPorPagina int32) ([]repository.BuscarTodosEpisPaginadoRow, error)
+	CancelarEpi(ctx context.Context, qtx *repository.Queries ,id int) (int64, error)
+	AtualizaEpi(ctx context.Context, epi repository.UpdateEpiCampoParams) (int64, error)
+}
+
+type EpiService struct {
+	repo    EpiRepository
+	db      *pgxpool.Pool
+	queries *repository.Queries
+}
+
+func NewEpiService(repo EpiRepository, db *pgxpool.Pool) *EpiService {
+
+	return &EpiService{
+		repo: repo,
+		db:   db,
+	}
+}
+
+func (e *EpiService) Salvar(ctx context.Context, model model.EpiInserir) error {
+
+	tx, err := e.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback(ctx)
+
+	model.Descricao = strings.TrimSpace(model.Descricao)
+	model.Fabricante = strings.TrimSpace(model.Fabricante)
+	model.Nome = strings.TrimSpace(model.Nome)
+
+	qtx := e.queries.WithTx(tx)
+
+	epiId, err := e.repo.Adicionar(ctx, qtx, repository.AddEpiParams{
+		Nome:           model.Nome,
+		Fabricante:     model.Fabricante,
+		Ca:             model.CA,
+		Descricao:      model.Descricao,
+		ValidadeCa:     pgtype.Date{Time: model.DataValidadeCa.Time(), Valid: true},
+		Idtipoprotecao: int32(model.IDprotecao),
+		AlertaMinimo:   int32(model.AlertaMinimo),
+	})
+	if err != nil {
+
+		return err
+	}
+
+	for _, tamanhoId := range model.Idtamanho {
+		err := qtx.AddEpiTamanho(ctx, repository.AddEpiTamanhoParams{
+			Idepi:     epiId,
+			Idtamanho: int32(tamanhoId),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type EpiPaginado struct {
+	Epis        []model.EpiDto
+	Total       int64
+	Pagina      int32
+	PaginaFinal int32
+}
+
+func (e *EpiService) ListarEpis(ctx context.Context, pagina, limite int32) (EpiPaginado, error) {
+
+
+	epis, err:= e.repo.ListarEpis(ctx,pagina, limite)
+	if err != nil {
+		return EpiPaginado{},err
+	}
+
+	if len(epis) == 0 {
+		return EpiPaginado{Epis: []model.EpiDto{{}}, Pagina: pagina}, nil
+	}
+
+	todosTamanhos, err:= e.queries.BuscarTodosTamanhosAgrupados(ctx)
+	if err != nil {
+
+		return EpiPaginado{Epis: []model.EpiDto{{}}, Pagina: pagina}, err
+	}
+
+	tamanhosMap:= make(map[int32][]model.TamanhoDto)
+	for _, t := range todosTamanhos {
+
+		tamanhosMap[t.Idepi] = append(tamanhosMap[t.Idepi], model.TamanhoDto{
+			ID: int(t.ID),
+			Tamanho: t.Tamanho,
+		})
+	}
+
+	dto:= make([]model.EpiDto, 0, len(epis))
+
+	for _, epi:=range epis {
+
+		e:= model.EpiDto{
+			Id: int(epi.ID),
+			Nome: epi.Nome,
+			Fabricante: epi.Fabricante,
+			CA: epi.Ca,
+			Tamanho: tamanhosMap[epi.ID],
+			Descricao: epi.Descricao,
+			DataValidadeCa: *configs.NewDataBrPtr(epi.ValidadeCa.Time),
+			Protecao: model.TipoProtecaoDto{
+				ID: int64(epi.Idtipoprotecao),
+				Nome: epi.TipoProtecaoNome,
+			},
+		}
+
+		if e.Tamanho == nil {
+			e.Tamanho = []model.TamanhoDto{}
+		}
+
+		dto = append(dto, e)
+	}
+
+ var total int64
+    if len(epis) > 0 {
+
+         total = epis[0].TotalGeral
+
+    }
+
+    //numero da ultima pagina
+    ultimaPagina := int32(math.Ceil(float64(total) / float64(limite)))
+    return EpiPaginado{
+		Epis: dto,
+        Total: total,
+        Pagina: pagina,
+        PaginaFinal: ultimaPagina,
+    }, nil
+}
+
+
+func (e *EpiService) ListarEpi(ctx context.Context, id int)(model.EpiDto, error){
+
+	if id <= 0 {
+
+		return model.EpiDto{},helper.ErrId
+	}
+
+	epi, err:= e.repo.ListarEpi(ctx, id)
+	if err != nil {
+
+		return model.EpiDto{}, err
+	}
+
+	tamanhoId, err:= e.queries.BuscarTamanhosPorIdEpi(ctx, epi.ID)
+	if err != nil {
+		return model.EpiDto{}, err
+	}
+
+	tamdTO:=make([]model.TamanhoDto, 0, len(tamanhoId))
+
+	for _ ,tamanho:= range tamanhoId {
+
+		t := model.TamanhoDto {
+			ID: int(tamanho.ID),
+			Tamanho: tamanho.Tamanho,
+		}
+
+		tamdTO = append(tamdTO, t)
+	}
+	
+	return model.EpiDto{
+		Id: int(epi.ID),
+		Nome: epi.Nome,
+		Fabricante: epi.Fabricante,
+		CA: epi.Ca,
+		Tamanho:tamdTO,
+		Descricao: epi.Descricao,
+		DataValidadeCa: *configs.NewDataBrPtr(epi.ValidadeCa.Time),
+		Protecao: model.TipoProtecaoDto{
+			ID: int64(epi.Idtipoprotecao),
+			Nome: epi.TipoProtecaoNome,
+		},
+	}, nil
+}
+
+func (e *EpiService) CancelarEpi(ctx context.Context, id int) (int64, error){
+
+	if id <= 0 {
+
+		return 0, helper.ErrId
+	}
+
+	tx,err:=e.db.Begin(ctx)
+	if err != nil {
+
+		return 0, err
+	}
+
+	defer tx.Rollback(ctx)
+	qtx:= e.queries.WithTx(tx)
+
+	linhasAfetadas, err:= e.repo.CancelarEpi(ctx,qtx,id)
+	if err != nil {
+		return 0, err
+	}
+
+	if linhasAfetadas == 0 {
+
+		return 0, helper.ErrNaoEncontrado
+	}
+
+	linhasTamanhaosId,err := qtx.DeletarTamanhosPorEpi(ctx, int32(id))
+	if err != nil {
+		return 0, err
+	}
+
+	if linhasTamanhaosId == 0 {
+
+		return  0, errors.New("erro de integridade: EPI ativo sem tamanhos vinculados")
+	}
+
+
+	if err:= tx.Commit(ctx) ; err != nil {
+
+		return 0, err
+	}
+
+	return linhasAfetadas, nil
+}
+
+func (e *EpiService) AtualizaEpi(ctx context.Context, model model.UpdateEpiInput) (error){
+
+	tx,err:= e.db.Begin(ctx)
+	if err != nil {
+		return  err
+	}
+
+	defer tx.Rollback(ctx)
+
+	qtx := e.queries.WithTx(tx)
+
+	u:= repository.UpdateEpiCampoParams{
+		ID: pgtype.Int4{Int32: model.ID},
+		Nome: pgtype.Text{String: *model.Nome},
+		Fabricante: pgtype.Text{String: *model.Fabricante},
+		Ca: pgtype.Text{String: *model.CA},
+		Descricao: pgtype.Text{String: *model.Descricao},
+		ValidadeCa: pgtype.Date{Time: model.ValidadeCa.Time()},
+	}
+
+	linhasAfetadas, err := qtx.UpdateEpiCampo(ctx, u)
+	if err != nil {
+
+		return err
+	}
+
+	if linhasAfetadas == 0 {
+
+		return helper.ErrNaoEncontrado
+	}
+
+	if model.Tamanhos != nil {
+
+		_,err = qtx.DeletarTamanhosPorEpi(ctx, model.ID)
+		if err != nil {
+
+			return err
+		}
+
+		for _, tamId := range model.Tamanhos {
+
+			err:= qtx.AddEpiTamanho(ctx, repository.AddEpiTamanhoParams{
+				Idepi: model.ID,
+				Idtamanho: tamId,
+			})
+
+			if err != nil {
+
+				return err
+			}
+		}
+	}
+
+	return tx.Commit(ctx)
+}
