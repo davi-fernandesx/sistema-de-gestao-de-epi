@@ -41,6 +41,7 @@ func NewEntregaService(r EntregaRepository, pool *pgxpool.Pool) *EntregaService 
 	}
 }
 
+
 func (e *EntregaService) Salvar(ctx context.Context, model model.EntregaParaInserir) error {
 
 	tx, err := e.db.Begin(ctx)
@@ -49,6 +50,18 @@ func (e *EntregaService) Salvar(ctx context.Context, model model.EntregaParaInse
 	}
 	defer tx.Rollback(ctx)
 
+	qtx:= e.queries.WithTx(tx)
+	err = e.RegistrarEntrega(ctx, qtx,model)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Queries,model model.EntregaParaInserir) error{
+
+
 	funcionario, err := e.queries.BuscaFuncionarioPorId(ctx, int32(model.ID_funcionario))
 	if err != nil {
 
@@ -56,7 +69,6 @@ func (e *EntregaService) Salvar(ctx context.Context, model model.EntregaParaInse
 	}
 	token := helper.GerarTokenAuditoria(funcionario.Nome, funcionario.FuncaoNome, funcionario.DepartamentoNome, model.Data_entrega.Time())
 
-	qtx := e.queries.WithTx(tx)
 
 	args := repository.AddEntregaEpiParams{
 
@@ -135,7 +147,7 @@ func (e *EntregaService) Salvar(ctx context.Context, model model.EntregaParaInse
 		}
 	}
 
-	return tx.Commit(ctx)
+	return nil
 }
 
 type FiltroEntregas struct {
