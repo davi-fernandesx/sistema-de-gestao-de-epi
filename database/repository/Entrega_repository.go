@@ -68,15 +68,15 @@ func (e *EntregaRepository) Cancelar(ctx context.Context,qtx *Queries,args Cance
 	return id, nil
 }
 
-func (e *EntregaRepository) CancelarEntregaItem(ctx context.Context, qtx *Queries,id int32) error {
+func (e *EntregaRepository) CancelarEntregaItem(ctx context.Context, qtx *Queries,id int32) ([]CancelaItemEntregueRow, error) {
 
-	err:= qtx.CancelaItemEntregue(ctx, id)
+	itemsCancelados, err:= qtx.CancelaItemEntregue(ctx, id)
 	if err != nil {
 
-		return helper.TraduzErroPostgres(err)
+		return []CancelaItemEntregueRow{},helper.TraduzErroPostgres(err)
 	}
 
-	return  nil
+	return  itemsCancelados,nil
 }
 
 func (e *EntregaRepository) AbaterEstoqueEntrada(ctx context.Context, qtx *Queries, args AbaterEstoqueLoteParams) (int64, error) {
