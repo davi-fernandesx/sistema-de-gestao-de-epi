@@ -29,3 +29,15 @@ WHERE id = $2
 INSERT INTO epis_entregues (IdEpi, IdTamanho, quantidade, IdEntrega, IdEntrada, valor_unitario) 
 VALUES ($1, $2, $3, $4, $5, $6);
 
+-- name: DevolverItemAoEstoque :exec
+UPDATE entrada_epi eed
+SET eed.quantidadeAtual = eed.quantidadeAtual + $3
+WHERE id = (
+    -- Subselect para achar o ID da entrada mais recente
+    SELECT ee.id
+    FROM entrada_epi ee
+    WHERE ee.IdEpi = $1 
+      AND ee.IdTamanho = $2
+    ORDER BY ee.data_entrada DESC -- Ordena pela data (mais nova primeiro)
+    LIMIT 1 -- Pega apenas uma
+);  
