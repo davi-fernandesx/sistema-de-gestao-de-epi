@@ -8,10 +8,11 @@ INSERT INTO epis_entregues (IdEntrega, IdEntrada ,IdEpi, IdTamanho, quantidade, 
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING IdEntrega;
 
--- name: CancelaItemEntregue :exec
+-- name: CancelaItemEntregue :many
 UPDATE epis_entregues
-set ativo = FALSE, deletado_em = NOW()
-WHERE IdEntrega = $1 ; 
+SET ativo = FALSE, deletado_em = NOW()
+WHERE IdEntrega = $1
+RETURNING IdEntrada, quantidade;
 
 -- name: ListarEntregas :many
 SELECT 
@@ -67,3 +68,12 @@ WHERE  i.ativo = TRUE;
 select quantidade,IdEntrada
 from epis_entregues
 where IdEntrega = $1 and ativo = FALSE and deletado_em is not null;
+
+
+-- name: CancelaEntregaPorIdTroca :one
+UPDATE entrega_epi
+SET cancelada_em = NOW(),
+    ativo = FALSE,
+    id_usuario_entrega_cancelamento = $2
+where IdTroca = $1 AND cancelada_em IS NULL
+RETURNING id;
