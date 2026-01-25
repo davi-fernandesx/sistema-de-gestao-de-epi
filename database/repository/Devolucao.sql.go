@@ -109,12 +109,13 @@ func (q *Queries) AddTrocaEpi(ctx context.Context, arg AddTrocaEpiParams) (int32
 	return id, err
 }
 
-const cancelarDevolucao = `-- name: CancelarDevolucao :execrows
+const cancelarDevolucao = `-- name: CancelarDevolucao :one
 UPDATE devolucao
 SET cancelada_em = NOW(),
     ativo = FALSE,
     id_usuario_devolucao_cancelamento = $2
 WHERE id = $1 AND cancelada_em IS NULL
+RETURNING id
 `
 
 type CancelarDevolucaoParams struct {
@@ -122,12 +123,11 @@ type CancelarDevolucaoParams struct {
 	IDUsuarioDevolucaoCancelamento pgtype.Int4
 }
 
-func (q *Queries) CancelarDevolucao(ctx context.Context, arg CancelarDevolucaoParams) (int64, error) {
-	result, err := q.db.Exec(ctx, cancelarDevolucao, arg.ID, arg.IDUsuarioDevolucaoCancelamento)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+func (q *Queries) CancelarDevolucao(ctx context.Context, arg CancelarDevolucaoParams) (int32, error) {
+	row := q.db.QueryRow(ctx, cancelarDevolucao, arg.ID, arg.IDUsuarioDevolucaoCancelamento)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }
 
 const listarDevolucoes = `-- name: ListarDevolucoes :many
@@ -136,11 +136,15 @@ SELECT
     f.IdDepartamento, dd.nome as dep_nome,
     f.IdFuncao, ff.nome as funcao_nome,
     d.IdEpi, e.nome as epi_antigo_nome, e.fabricante as epi_antigo_fab, e.CA as epi_antigo_ca,
-    d.IdTamanho as tam_antigo_id, t.tamanho as tam_antigo_nome,
+    d.IdTamanho as tam_antigo_id, t.tamanho as tam_antigo_nome,e.descricao as desc_antiga,
+    e.validade_CA as validade_ca_antiga,e.IdTipoProtecao as idprotecaoAntigo,tp.nome as tipo_protecao_nomeAntigo,
     d.quantidadeAdevolver, d.IdMotivo, m.motivo as motivo_nome,
-    d.IdEpiNovo, en.nome as epi_novo_nome, en.fabricante as epi_novo_fab, en.CA as epi_novo_ca,
-    d.quantidadeNova, d.IdTamanhoNovo, tn.tamanho as tam_novo_nome,
-    d.assinatura_digital, d.data_devolucao, d.id_usuario_cancelamento
+    d.IdEpiNovo, 
+    en.nome as epi_novo_nome, en.fabricante as epi_novo_fab, en.CA as epi_novo_ca,
+    d.quantidadeNova, d.IdTamanhoNovo, tn.tamanho as tam_novo_nome,en.descricao as desc_nova,
+    en.validade_CA as validade_ca_nova,en.IdTipoProtecao as idprotecaoNovo,tpn.nome as tipo_protecao_nomeNovo,
+    d.assinatura_digital, d.data_devolucao, d.id_usuario_cancelamento,
+    COUNT(*) OVER() as total_geral
 FROM devolucao d
 INNER JOIN epi e ON d.IdEpi = e.id
 INNER JOIN funcionario f ON d.IdFuncionario = f.id	
@@ -148,54 +152,81 @@ INNER JOIN departamento dd ON f.IdDepartamento = dd.id
 INNER JOIN funcao ff ON f.IdFuncao = ff.id
 INNER JOIN tamanho t ON d.IdTamanho = t.id
 INNER JOIN motivo_devolucao m ON d.IdMotivo = m.id
+inner join tipo_protecao tp on e.IdTipoProtecao = tp.id
 LEFT JOIN epi en ON d.IdEpiNovo = en.id
 LEFT JOIN tamanho tn ON d.IdTamanhoNovo = tn.id
+left join tipo_protecao tpn on en.IdTipoProtecao = tpn.id
+
 WHERE 
-    (($1::boolean IS FALSE AND d.cancelada_em IS NULL) OR
-     ($1::boolean IS TRUE AND d.cancelada_em IS NOT NULL))
-AND ($2::int IS NULL OR d.id = $2)
-AND ($3::text IS NULL OR f.matricula = $3)
-ORDER BY d.data_devolucao DESC
+    (($3::boolean IS FALSE AND d.cancelada_em IS NULL) OR
+     ($3::boolean IS TRUE AND d.cancelada_em IS NOT NULL))
+AND ($4::int IS NULL OR d.id = $4)
+AND ($5::text IS NULL OR f.matricula = $5)
+AND($6::date IS NULL OR d.data_devolucao >= $6)
+and ($7::date IS NULL OR d.data_devolucao <= $7)
+ORDER BY d.data_devolucao DESC 
+limit $1 offset $2
 `
 
 type ListarDevolucoesParams struct {
+	Limit      int32
+	Offset     int32
 	Canceladas bool
 	ID         pgtype.Int4
 	Matricula  pgtype.Text
+	DataInicio pgtype.Date
+	DataFim    pgtype.Date
 }
 
 type ListarDevolucoesRow struct {
-	ID                    int32
-	Idfuncionario         int32
-	FuncNome              string
-	Matricula             string
-	Iddepartamento        int32
-	DepNome               string
-	Idfuncao              int32
-	FuncaoNome            string
-	Idepi                 int32
-	EpiAntigoNome         string
-	EpiAntigoFab          string
-	EpiAntigoCa           string
-	TamAntigoID           int32
-	TamAntigoNome         string
-	Quantidadeadevolver   int32
-	Idmotivo              int32
-	MotivoNome            string
-	Idepinovo             pgtype.Int4
-	EpiNovoNome           pgtype.Text
-	EpiNovoFab            pgtype.Text
-	EpiNovoCa             pgtype.Text
-	Quantidadenova        pgtype.Int4
-	Idtamanhonovo         pgtype.Int4
-	TamNovoNome           pgtype.Text
-	AssinaturaDigital     string
-	DataDevolucao         pgtype.Date
-	IDUsuarioCancelamento pgtype.Int4
+	ID                     int32
+	Idfuncionario          int32
+	FuncNome               string
+	Matricula              string
+	Iddepartamento         int32
+	DepNome                string
+	Idfuncao               int32
+	FuncaoNome             string
+	Idepi                  int32
+	EpiAntigoNome          string
+	EpiAntigoFab           string
+	EpiAntigoCa            string
+	TamAntigoID            int32
+	TamAntigoNome          string
+	DescAntiga             string
+	ValidadeCaAntiga       pgtype.Date
+	Idprotecaoantigo       int32
+	TipoProtecaoNomeantigo string
+	Quantidadeadevolver    int32
+	Idmotivo               int32
+	MotivoNome             string
+	Idepinovo              pgtype.Int4
+	EpiNovoNome            pgtype.Text
+	EpiNovoFab             pgtype.Text
+	EpiNovoCa              pgtype.Text
+	Quantidadenova         pgtype.Int4
+	Idtamanhonovo          pgtype.Int4
+	TamNovoNome            pgtype.Text
+	DescNova               pgtype.Text
+	ValidadeCaNova         pgtype.Date
+	Idprotecaonovo         pgtype.Int4
+	TipoProtecaoNomenovo   pgtype.Text
+	AssinaturaDigital      string
+	DataDevolucao          pgtype.Date
+	IDUsuarioCancelamento  pgtype.Int4
+	TotalGeral             int64
 }
 
 func (q *Queries) ListarDevolucoes(ctx context.Context, arg ListarDevolucoesParams) ([]ListarDevolucoesRow, error) {
-	rows, err := q.db.Query(ctx, listarDevolucoes, arg.Canceladas, arg.ID, arg.Matricula)
+	rows, err := q.db.Query(ctx, listarDevolucoes,
+		arg.Limit,
+		arg.Offset,
+		arg.Canceladas,
+		arg.ID,
+		arg.Matricula,
+		arg.DataInicio,
+		arg.DataFim,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -218,6 +249,10 @@ func (q *Queries) ListarDevolucoes(ctx context.Context, arg ListarDevolucoesPara
 			&i.EpiAntigoCa,
 			&i.TamAntigoID,
 			&i.TamAntigoNome,
+			&i.DescAntiga,
+			&i.ValidadeCaAntiga,
+			&i.Idprotecaoantigo,
+			&i.TipoProtecaoNomeantigo,
 			&i.Quantidadeadevolver,
 			&i.Idmotivo,
 			&i.MotivoNome,
@@ -228,9 +263,14 @@ func (q *Queries) ListarDevolucoes(ctx context.Context, arg ListarDevolucoesPara
 			&i.Quantidadenova,
 			&i.Idtamanhonovo,
 			&i.TamNovoNome,
+			&i.DescNova,
+			&i.ValidadeCaNova,
+			&i.Idprotecaonovo,
+			&i.TipoProtecaoNomenovo,
 			&i.AssinaturaDigital,
 			&i.DataDevolucao,
 			&i.IDUsuarioCancelamento,
+			&i.TotalGeral,
 		); err != nil {
 			return nil, err
 		}
