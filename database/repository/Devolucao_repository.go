@@ -57,19 +57,19 @@ func (d *DevolucaoRepository) EntregaVinculada(ctx context.Context, qtx *Queries
 	return identrega, nil
 }
 
-func (d *DevolucaoRepository) Cancelar(ctx context.Context,qtx *Queries , arg CancelarDevolucaoParams) (int64, error) {
+func (d *DevolucaoRepository) Cancelar(ctx context.Context,qtx *Queries , arg CancelarDevolucaoParams) (int32, error) {
 
-	linhasAfetadas, err:= qtx.CancelarDevolucao(ctx, arg)
+	id, err:= qtx.CancelarDevolucao(ctx, arg)
 	if err != nil {
 		return 0, helper.TraduzErroPostgres(err)
 	}
 
-	return  linhasAfetadas, nil
+	return  id, nil
 }
 
-func (d *DevolucaoRepository) Listar(ctx context.Context, qtx *Queries ,args ListarDevolucoesParams) ([]ListarDevolucoesRow, error){
+func (d *DevolucaoRepository) Listar(ctx context.Context,args ListarDevolucoesParams) ([]ListarDevolucoesRow, error){
 
-	devolucoes, err:= qtx.ListarDevolucoes(ctx, args)
+	devolucoes, err:= d.q.ListarDevolucoes(ctx, args)
 	if err != nil {
 
 		return []ListarDevolucoesRow{}, helper.TraduzErroPostgres(err)
