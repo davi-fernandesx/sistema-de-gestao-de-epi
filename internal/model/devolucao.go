@@ -18,13 +18,13 @@ type DevolucaoInserir struct {
 }
 
 type DevolucaoDto struct {
-	Id                  int             `json:"id"`
-	IdFuncionario       Funcionario_Dto `json:"id_funcionario"`
-	IdEpi               EpiDto          `json:"id_epi"`
-	MotivoDevolucao     string          `json:"motivoDaDevolucao"`
-	DataDevolucao       configs.DataBr  `json:"dataDevolucao"`
-	QuantidadeADevolver int             `json:"quantidade_a_devolver"`
-	AssinaturaDigital   string          `json:"assinatura_digital"`
+	Id                  int                   `json:"id"`
+	IdFuncionario       Funcionario_Dto       `json:"id_funcionario"`
+	IdEpi               EpiDto                `json:"id_epi"`
+	MotivoDevolucao     MotivoDevolucaoEpiDto `json:"motivoDaDevolucao"`
+	DataDevolucao       configs.DataBr        `json:"dataDevolucao"`
+	QuantidadeADevolver int                   `json:"quantidade_a_devolver"`
+	AssinaturaDigital   string                `json:"assinatura_digital"`
 
 	IdEpiNovo      *EpiDto     `json:"id_novo_epi"`
 	Tamanho        *TamanhoDto `json:"tamanho"`

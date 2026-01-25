@@ -19,7 +19,7 @@ type EntregaRepository interface {
 	AdicionarEntregaItem(ctx context.Context, qtx *repository.Queries, arg repository.AddItemEntregueParams) (int32, error)
 	ListarEntregas(ctx context.Context, args repository.ListarEntregasParams) ([]repository.ListarEntregasRow, error)
 	Cancelar(ctx context.Context,qtx *repository.Queries,args repository.CancelarEntregaParams) (int32, error)
-	CancelarEntregaItem(ctx context.Context, qtx *repository.Queries, id int32) error
+	CancelarEntregaItem(ctx context.Context, qtx *repository.Queries,id int32) ([]repository.CancelaItemEntregueRow, error)
 	AbaterEstoqueEntrada(ctx context.Context, qtx *repository.Queries, args repository.AbaterEstoqueLoteParams) (int64, error)
 	ReporEstoqueEntrada(ctx context.Context, qtx *repository.Queries, args repository.ReporEstoqueLoteParams) (int64, error)
 	ListarEntregasDisponiveis(ctx context.Context, qtx *repository.Queries, args repository.ListarLotesParaConsumoParams) ([]repository.ListarLotesParaConsumoRow, error)
@@ -62,7 +62,7 @@ func (e *EntregaService) Salvar(ctx context.Context, model model.EntregaParaInse
 func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Queries,model model.EntregaParaInserir) error{
 
 
-	funcionario, err := e.queries.BuscaFuncionarioPorId(ctx, int32(model.ID_funcionario))
+	funcionario, err := qtx.BuscaFuncionarioPorId(ctx, int32(model.ID_funcionario))
 	if err != nil {
 
 		return err
@@ -287,44 +287,57 @@ func (e *EntregaService) ListaEntregas(ctx context.Context, f FiltroEntregas) (E
 	}, nil
 }
 
-func (e *EntregaService) CancelarEntrega(ctx context.Context, id int, iduser int) (int64, error) {
+func (e *EntregaService) CancelarEntrega(ctx context.Context, id int, iduser int) (error) {
 
 	if id <= 0 {
 
-		return 0, helper.ErrId
+		return  helper.ErrId
 	}
 
 	tx, err := e.db.Begin(ctx)
 	if err != nil {
-		return 0, err
+		return  err
 	}
 	defer tx.Rollback(ctx)
 
-	arg:= repository.CancelarEntregaParams{
+	qtx:= e.queries.WithTx(tx)
+	err = e.RegistrarCancelamento(ctx, qtx, id, iduser)
+	
+
+	if err:= tx.Commit(ctx); err != nil {
+
+		return  err
+	}
+	return  nil
+}
+
+
+func (e *EntregaService) RegistrarCancelamento(ctx context.Context, qtx *repository.Queries,id int, iduser int )(error) {
+
+arg:= repository.CancelarEntregaParams{
 		ID: int32(id),
-		IDUsuarioEntregaCancelamento: pgtype.Int4{Int32: int32(iduser)},
+		IDUsuarioEntregaCancelamento: pgtype.Int4{Int32: int32(iduser), Valid: true},
 	}
 
-	qtx := e.queries.WithTx(tx)
 	identrega, err := e.repo.Cancelar(ctx, qtx, arg)
 	if err != nil {
 
-		return 0, err
+		return  err
 	}
 
 	if identrega == 0 {
 
-		return 0, helper.ErrNaoEncontrado
+		return  helper.ErrNaoEncontrado
 	}
 
-	err = e.repo.CancelarEntregaItem(ctx, qtx, identrega)
+	_,err= e.repo.CancelarEntregaItem(ctx, qtx, identrega)
 	if err != nil {
-		return 0, err
+		return  err
 	}
 
 	cancelados, err:= e.repo.ListarEpisEntreguesCancelados(ctx, qtx, identrega)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	for _, cancelado := range cancelados {
@@ -336,18 +349,14 @@ func (e *EntregaService) CancelarEntrega(ctx context.Context, id int, iduser int
 		linhasAfetadas, err:= e.repo.ReporEstoqueEntrada(ctx, qtx,args)
 		if err != nil {
 
-			return 0, err
+			return  err
 		}
 
 		if linhasAfetadas == 0 {
 
-			return 0, fmt.Errorf("lote de entrada %d não encontrado para reposição", cancelado.Identrada)
+			return  fmt.Errorf("lote de entrada %d não encontrado para reposição", cancelado.Identrada)
 		}
 	}
 
-	if err:= tx.Commit(ctx); err != nil {
-
-		return 0, err
-	}
-	return int64(identrega), nil
+	return nil
 }

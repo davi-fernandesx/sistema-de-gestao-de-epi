@@ -32,6 +32,31 @@ func (q *Queries) AbaterEstoqueLote(ctx context.Context, arg AbaterEstoqueLotePa
 	return result.RowsAffected(), nil
 }
 
+const devolverItemAoEstoque = `-- name: DevolverItemAoEstoque :exec
+UPDATE entrada_epi eed
+SET eed.quantidadeAtual = eed.quantidadeAtual + $3
+WHERE id = (
+    -- Subselect para achar o ID da entrada mais recente
+    SELECT ee.id
+    FROM entrada_epi ee
+    WHERE ee.IdEpi = $1 
+      AND ee.IdTamanho = $2
+    ORDER BY ee.data_entrada DESC -- Ordena pela data (mais nova primeiro)
+    LIMIT 1 -- Pega apenas uma
+)
+`
+
+type DevolverItemAoEstoqueParams struct {
+	Idepi           int32
+	Idtamanho       int32
+	Quantidadeatual int32
+}
+
+func (q *Queries) DevolverItemAoEstoque(ctx context.Context, arg DevolverItemAoEstoqueParams) error {
+	_, err := q.db.Exec(ctx, devolverItemAoEstoque, arg.Idepi, arg.Idtamanho, arg.Quantidadeatual)
+	return err
+}
+
 const listarLotesParaConsumo = `-- name: ListarLotesParaConsumo :many
 SELECT id, quantidadeAtual, data_validade, valor_unitario 
 FROM entrada_epi 

@@ -279,7 +279,7 @@ func TestEntrega(t *testing.T) {
 
 		for y := range 4 {
 
-			_, err := serv.CancelarEntrega(ctx, y+1, int(iduser))
+			err := serv.CancelarEntrega(ctx, y+1, int(iduser))
 			require.NoError(t, err, "o cancelamento %d deveria ter funcionado", y+1)
 
 		}

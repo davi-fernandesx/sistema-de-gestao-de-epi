@@ -132,15 +132,57 @@ func (q *Queries) BuscarTodosItensEntrega(ctx context.Context) ([]BuscarTodosIte
 	return items, nil
 }
 
-const cancelaItemEntregue = `-- name: CancelaItemEntregue :exec
-UPDATE epis_entregues
-set ativo = FALSE, deletado_em = NOW()
-WHERE IdEntrega = $1
+const cancelaEntregaPorIdTroca = `-- name: CancelaEntregaPorIdTroca :one
+UPDATE entrega_epi
+SET cancelada_em = NOW(),
+    ativo = FALSE,
+    id_usuario_entrega_cancelamento = $2
+where IdTroca = $1 AND cancelada_em IS NULL
+RETURNING id
 `
 
-func (q *Queries) CancelaItemEntregue(ctx context.Context, identrega int32) error {
-	_, err := q.db.Exec(ctx, cancelaItemEntregue, identrega)
-	return err
+type CancelaEntregaPorIdTrocaParams struct {
+	Idtroca                      pgtype.Int4
+	IDUsuarioEntregaCancelamento pgtype.Int4
+}
+
+func (q *Queries) CancelaEntregaPorIdTroca(ctx context.Context, arg CancelaEntregaPorIdTrocaParams) (int32, error) {
+	row := q.db.QueryRow(ctx, cancelaEntregaPorIdTroca, arg.Idtroca, arg.IDUsuarioEntregaCancelamento)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
+const cancelaItemEntregue = `-- name: CancelaItemEntregue :many
+UPDATE epis_entregues
+SET ativo = FALSE, deletado_em = NOW()
+WHERE IdEntrega = $1
+RETURNING IdEntrada, quantidade
+`
+
+type CancelaItemEntregueRow struct {
+	Identrada  int32
+	Quantidade int32
+}
+
+func (q *Queries) CancelaItemEntregue(ctx context.Context, identrega int32) ([]CancelaItemEntregueRow, error) {
+	rows, err := q.db.Query(ctx, cancelaItemEntregue, identrega)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CancelaItemEntregueRow
+	for rows.Next() {
+		var i CancelaItemEntregueRow
+		if err := rows.Scan(&i.Identrada, &i.Quantidade); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const cancelarEntrega = `-- name: CancelarEntrega :one
