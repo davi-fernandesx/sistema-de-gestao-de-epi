@@ -31,6 +31,7 @@ type Devolucao struct {
 	Ativo                          bool
 	IDUsuarioCancelamento          pgtype.Int4
 	IDUsuarioDevolucaoCancelamento pgtype.Int4
+	TokenValidacao                 pgtype.Text
 }
 
 type EntradaEpi struct {
@@ -80,15 +81,14 @@ type Epi struct {
 }
 
 type EpisEntregue struct {
-	ID            int32
-	Identrega     int32
-	Identrada     int32
-	Idepi         int32
-	Idtamanho     int32
-	Quantidade    int32
-	ValorUnitario pgtype.Numeric
-	Ativo         bool
-	DeletadoEm    pgtype.Timestamp
+	ID         int32
+	Identrega  int32
+	Identrada  int32
+	Idepi      int32
+	Idtamanho  int32
+	Quantidade int32
+	Ativo      bool
+	DeletadoEm pgtype.Timestamp
 }
 
 type Funcao struct {
