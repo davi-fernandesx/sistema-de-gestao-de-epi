@@ -1,12 +1,12 @@
 -- name: AddEntregaEpi :one
-INSERT INTO entrega_epi (IdFuncionario, data_entrega, assinatura, token_validacao,id_usuario_entrega)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO entrega_epi (IdFuncionario, data_entrega, assinatura, IdTroca ,token_validacao,id_usuario_entrega)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id;
 
 -- name: AddItemEntregue :one
-INSERT INTO epis_entregues (IdEntrega, IdEntrada ,IdEpi, IdTamanho, quantidade, valor_unitario)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING IdEntrega;
+INSERT INTO epis_entregues (IdEntrega, IdEntrada ,IdEpi, IdTamanho, quantidade)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id,IdEntrega;
 
 -- name: CancelaItemEntregue :many
 UPDATE epis_entregues
@@ -23,7 +23,7 @@ SELECT
     e.id as epi_id, e.nome as epi_nome, e.fabricante, e.CA, e.descricao as epi_desc, e.validade_CA,
     tp.id as tp_id, tp.nome as tp_nome,
     t.id as tam_id, t.tamanho as tam_nome,
-    i.quantidade, i.valor_unitario,
+    i.quantidade,
     COUNT(*) OVER() as total_geral
 FROM entrega_epi ee
 INNER JOIN funcionario f ON ee.IdFuncionario = f.id
@@ -54,7 +54,7 @@ RETURNING id;
 
 -- name: BuscarTodosItensEntrega :many
 SELECT 
-    i.IdEntrega as entrega_id,i.id as item_id , i.quantidade, i.valor_unitario,
+    i.IdEntrega as entrega_id,i.id as item_id , i.quantidade,
     e.id as epi_id, e.nome as epi_nome, e.fabricante, e.CA, e.descricao as epi_desc, e.validade_CA,
     tp.id as tp_id, tp.nome as tp_nome,
     t.id as tam_id, t.tamanho as tam_nome
