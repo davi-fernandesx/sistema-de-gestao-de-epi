@@ -247,3 +247,80 @@ func CreateEntradaEpi1(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdT
 
 	return id
 }
+
+func CreateEntregaEpi(t *testing.T, db *pgxpool.Pool, idFuncionario, idUser int64) int64 {
+	var id int64
+	query := `
+		INSERT INTO entrega_epi (IdFuncionario, data_entrega, assinatura, token_validacao,id_usuario_entrega)
+				VALUES ($1, $2, $3, $4, $5)
+					RETURNING id;
+	`
+	dataEntrega:= configs.NewDataBrPtr(time.Now())
+	assinatura:= randomString("teste")
+	token:= randomString("oq")
+	
+	err:= db.QueryRow(context.Background(), query,
+
+			idFuncionario,
+			dataEntrega,
+			assinatura,
+			token,
+			idUser,
+		).Scan(&id)
+	if err != nil{
+
+		t.Fatalf("Helper CreateEntregaEpi falhou: %v", err)
+
+	}
+	return id
+}
+
+
+func CreateEpiEntregues(t *testing.T, db *pgxpool.Pool,idEntrega, idEntrada, IdEpi,IdTamanho int64) int64 {
+
+
+	var id int64
+	query:= `
+		INSERT INTO epis_entregues (IdEntrega, IdEntrada ,IdEpi, IdTamanho, quantidade)
+			VALUES ($1, $2, $3, $4, $5)
+				RETURNING id;
+	`
+
+	quantidade:= 10
+
+	err:= db.QueryRow(context.Background(), query,
+
+		idEntrega,
+		idEntrada,
+		IdEpi,
+		IdTamanho,
+		quantidade,
+	).Scan(&id)
+	if err != nil {
+
+		t.Fatalf("erro ao criar CreateEpiEntregues: %v", err)
+	}
+
+	return id
+}
+
+func CreateMotivoDevolucao(t *testing.T, db *pgxpool.Pool, motivo string) int64{
+
+	var id int64
+
+	query:= `	
+		INSERT INTO motivo_devolucao (motivo) 
+			VALUES ($1)
+			returning id;
+	`
+
+	err:= db.QueryRow(context.Background(), query,
+			motivo,
+		).Scan(&id)
+	if err != nil {
+
+		t.Fatalf("erro ao criar CreateMotivoDevolucao: %v", err)
+	}
+
+	return  id
+}
