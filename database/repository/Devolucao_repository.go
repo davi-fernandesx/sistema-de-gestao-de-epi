@@ -35,7 +35,7 @@ func (d *DevolucaoRepository) AdicionarDevolucao(ctx context.Context,qtx *Querie
 	return nil
 }
 
-func (d *Devolucao) AdicionarTroca(ctx context.Context,qtx *Queries  ,arg AddTrocaEpiParams) (int32, error) {
+func (d *DevolucaoRepository) AdicionarTroca(ctx context.Context,qtx *Queries  ,arg AddTrocaEpiParams) (int32, error) {
 
 	idDevolucao, err:=qtx.AddTrocaEpi(ctx, arg)
 	if err != nil {
