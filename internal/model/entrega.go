@@ -2,7 +2,7 @@ package model
 
 import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
-	"github.com/shopspring/decimal"
+	
 )
 
 type ItemParaInserir struct {
@@ -24,7 +24,7 @@ type ItemEntregueDto struct {
 	Id            int64           `json:"id"`
 	Epi           EpiDto          `json:"epi"`
 	Quantidade    int             `json:"quantidade"`
-	ValorUnitario decimal.Decimal `json:"valor_unitario"`
+	
 }
 
 type EntregaDto struct {

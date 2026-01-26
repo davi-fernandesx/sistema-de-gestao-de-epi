@@ -11,19 +11,18 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shopspring/decimal"
 )
 
 type EntregaRepository interface {
 	AdicionarEntrega(ctx context.Context, qtx *repository.Queries, args repository.AddEntregaEpiParams) (int32, error)
-	AdicionarEntregaItem(ctx context.Context, qtx *repository.Queries, arg repository.AddItemEntregueParams) (int32, error)
+	AdicionarEntregaItem(ctx context.Context, qtx *repository.Queries, arg repository.AddItemEntregueParams) (repository.AddItemEntregueRow, error)
 	ListarEntregas(ctx context.Context, args repository.ListarEntregasParams) ([]repository.ListarEntregasRow, error)
-	Cancelar(ctx context.Context,qtx *repository.Queries,args repository.CancelarEntregaParams) (int32, error)
-	CancelarEntregaItem(ctx context.Context, qtx *repository.Queries,id int32) ([]repository.CancelaItemEntregueRow, error)
+	Cancelar(ctx context.Context, qtx *repository.Queries, args repository.CancelarEntregaParams) (int32, error)
+	CancelarEntregaItem(ctx context.Context, qtx *repository.Queries, id int32) ([]repository.CancelaItemEntregueRow, error)
 	AbaterEstoqueEntrada(ctx context.Context, qtx *repository.Queries, args repository.AbaterEstoqueLoteParams) (int64, error)
 	ReporEstoqueEntrada(ctx context.Context, qtx *repository.Queries, args repository.ReporEstoqueLoteParams) (int64, error)
 	ListarEntregasDisponiveis(ctx context.Context, qtx *repository.Queries, args repository.ListarLotesParaConsumoParams) ([]repository.ListarLotesParaConsumoRow, error)
-	ListarEpisEntreguesCancelados(ctx context.Context,qtx *repository.Queries ,id int32) ([]repository.ListarItensEntregueCanceladosRow, error)
+	ListarEpisEntreguesCancelados(ctx context.Context, qtx *repository.Queries, id int32) ([]repository.ListarItensEntregueCanceladosRow, error)
 }
 
 type EntregaService struct {
@@ -35,12 +34,11 @@ type EntregaService struct {
 func NewEntregaService(r EntregaRepository, pool *pgxpool.Pool) *EntregaService {
 
 	return &EntregaService{
-		repo: r,
-		db: pool,
+		repo:    r,
+		db:      pool,
 		queries: repository.New(pool),
 	}
 }
-
 
 func (e *EntregaService) Salvar(ctx context.Context, model model.EntregaParaInserir) error {
 
@@ -50,8 +48,8 @@ func (e *EntregaService) Salvar(ctx context.Context, model model.EntregaParaInse
 	}
 	defer tx.Rollback(ctx)
 
-	qtx:= e.queries.WithTx(tx)
-	err = e.RegistrarEntrega(ctx, qtx,model)
+	qtx := e.queries.WithTx(tx)
+	err = e.RegistrarEntrega(ctx, qtx, model)
 	if err != nil {
 		return err
 	}
@@ -59,8 +57,7 @@ func (e *EntregaService) Salvar(ctx context.Context, model model.EntregaParaInse
 	return tx.Commit(ctx)
 }
 
-func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Queries,model model.EntregaParaInserir) error{
-
+func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Queries, model model.EntregaParaInserir) error {
 
 	funcionario, err := qtx.BuscaFuncionarioPorId(ctx, int32(model.ID_funcionario))
 	if err != nil {
@@ -68,15 +65,24 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 		return err
 	}
 	token := helper.GerarTokenAuditoria(funcionario.Nome, funcionario.FuncaoNome, funcionario.DepartamentoNome, model.Data_entrega.Time())
+	// 1. Cria a variável vazia (Valid: false por padrão)
+	var idTrocaParaBanco pgtype.Int4
 
-
+	// 2. Verifica se veio valor. Se veio, preenche e marca como Valid: true
+	if model.IdTroca != nil {
+		idTrocaParaBanco = pgtype.Int4{
+			Int32: int32(*model.IdTroca),
+			Valid: true,
+		}
+	}
 	args := repository.AddEntregaEpiParams{
 
-		Idfuncionario:  int32(model.ID_funcionario),
-		DataEntrega:    pgtype.Date{Time: model.Data_entrega.Time(), Valid: true},
-		Assinatura:     model.Assinatura_Digital,
-		TokenValidacao: pgtype.Text{String: token},
+		Idfuncionario:    int32(model.ID_funcionario),
+		DataEntrega:      pgtype.Date{Time: model.Data_entrega.Time(), Valid: true},
+		Assinatura:       model.Assinatura_Digital,
+		TokenValidacao:   pgtype.Text{String: token},
 		IDUsuarioEntrega: pgtype.Int4{Int32: int32(model.Id_user)},
+		Idtroca:          idTrocaParaBanco,
 	}
 
 	identrega, err := e.repo.AdicionarEntrega(ctx, qtx, args) //salva o "cabeçalho"
@@ -101,7 +107,7 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 		}
 
 		if len(entradaLotes) == 0 {
-             return fmt.Errorf("estoque insuficiente para o EPI ID %d", item.ID_epi)
+			return fmt.Errorf("estoque insuficiente para o EPI ID %d", item.ID_epi)
 		}
 
 		/*percorre todas as entradas achadas*/
@@ -115,12 +121,11 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 			quantidadeAbater := min(entradaLote.Quantidadeatual, int32(quantidadeNescessaria))
 
 			itemAdd := repository.AddItemEntregueParams{
-				Identrega:     identrega,
-				Idepi:         int32(item.ID_epi),
-				Idtamanho:     int32(item.ID_tamanho),
-				Quantidade:    quantidadeAbater,
-				ValorUnitario: entradaLote.ValorUnitario,
-				Identrada:     entradaLote.ID,
+				Identrega:  identrega,
+				Idepi:      int32(item.ID_epi),
+				Idtamanho:  int32(item.ID_tamanho),
+				Quantidade: quantidadeAbater,
+				Identrada:  entradaLote.ID,
 			}
 
 			_, err := e.repo.AdicionarEntregaItem(ctx, qtx, itemAdd)
@@ -209,7 +214,7 @@ func (e *EntregaService) ListaEntregas(ctx context.Context, f FiltroEntregas) (E
 		tamanhosMap[t.Idepi] = append(tamanhosMap[t.Idepi], model.TamanhoDto{
 			ID:      int(t.ID),
 			Tamanho: t.Tamanho,
-		}) 
+		})
 	}
 	todosItens, err := e.queries.BuscarTodosItensEntrega(ctx)
 	if err != nil {
@@ -219,10 +224,6 @@ func (e *EntregaService) ListaEntregas(ctx context.Context, f FiltroEntregas) (E
 	itensMap := make(map[int32][]model.ItemEntregueDto)
 	for _, I := range todosItens {
 
-		var valorDecimal decimal.Decimal
-		if fVal, err := I.ValorUnitario.Float64Value(); err == nil {
-			valorDecimal = decimal.NewFromFloat(fVal.Float64)
-		}
 		itensMap[I.EntregaID] = append(itensMap[I.EntregaID], model.ItemEntregueDto{
 			Id: int64(I.ItemID),
 			Epi: model.EpiDto{
@@ -238,9 +239,7 @@ func (e *EntregaService) ListaEntregas(ctx context.Context, f FiltroEntregas) (E
 					Nome: I.TpNome,
 				},
 			},
-			Quantidade:    int(I.Quantidade),
-			ValorUnitario: valorDecimal,
-
+			Quantidade: int(I.Quantidade),
 		})
 	}
 	dto := make([]model.EntregaDto, 0, len(entregas))
@@ -265,7 +264,7 @@ func (e *EntregaService) ListaEntregas(ctx context.Context, f FiltroEntregas) (E
 			Data_entrega:       configs.DataBr(entrega.DataEntrega.Time),
 			Assinatura_Digital: entrega.Assinatura,
 			Itens:              itensMap[entrega.EntregaID],
-			Id_user: int(entrega.IDUsuarioEntrega.Int32),
+			Id_user:            int(entrega.IDUsuarioEntrega.Int32),
 		}
 
 		dto = append(dto, e)
@@ -287,74 +286,72 @@ func (e *EntregaService) ListaEntregas(ctx context.Context, f FiltroEntregas) (E
 	}, nil
 }
 
-func (e *EntregaService) CancelarEntrega(ctx context.Context, id int, iduser int) (error) {
+func (e *EntregaService) CancelarEntrega(ctx context.Context, id int, iduser int) error {
 
 	if id <= 0 {
 
-		return  helper.ErrId
+		return helper.ErrId
 	}
 
 	tx, err := e.db.Begin(ctx)
 	if err != nil {
-		return  err
+		return err
 	}
 	defer tx.Rollback(ctx)
 
-	qtx:= e.queries.WithTx(tx)
+	qtx := e.queries.WithTx(tx)
 	err = e.RegistrarCancelamento(ctx, qtx, id, iduser)
-	
 
-	if err:= tx.Commit(ctx); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 
-		return  err
+		return err
 	}
-	return  nil
+	return nil
 }
 
+func (e *EntregaService) RegistrarCancelamento(ctx context.Context, qtx *repository.Queries, id int, iduser int) error {
 
-func (e *EntregaService) RegistrarCancelamento(ctx context.Context, qtx *repository.Queries,id int, iduser int )(error) {
-
-arg:= repository.CancelarEntregaParams{
-		ID: int32(id),
+	arg := repository.CancelarEntregaParams{
+		ID:                           int32(id),
 		IDUsuarioEntregaCancelamento: pgtype.Int4{Int32: int32(iduser), Valid: true},
 	}
 
 	identrega, err := e.repo.Cancelar(ctx, qtx, arg)
 	if err != nil {
 
-		return  err
+		return err
 	}
 
 	if identrega == 0 {
 
-		return  helper.ErrNaoEncontrado
+		return helper.ErrNaoEncontrado
 	}
 
-	_,err= e.repo.CancelarEntregaItem(ctx, qtx, identrega)
+	_, err = e.repo.CancelarEntregaItem(ctx, qtx, identrega)
 	if err != nil {
-		return  err
+		return err
 	}
 
-	cancelados, err:= e.repo.ListarEpisEntreguesCancelados(ctx, qtx, identrega)
+	cancelados, err := e.repo.ListarEpisEntreguesCancelados(ctx, qtx, identrega)
 	if err != nil {
 		return err
 	}
 
 	for _, cancelado := range cancelados {
 
-		args:= repository.ReporEstoqueLoteParams{
+		args := repository.ReporEstoqueLoteParams{
 			Quantidadeatual: cancelado.Quantidade,
-			ID: cancelado.Identrada,
+			ID:              cancelado.Identrada,
 		}
-		linhasAfetadas, err:= e.repo.ReporEstoqueEntrada(ctx, qtx,args)
+		linhasAfetadas, err := e.repo.ReporEstoqueEntrada(ctx, qtx, args)
 		if err != nil {
 
-			return  err
+			return err
 		}
 
 		if linhasAfetadas == 0 {
 
-			return  fmt.Errorf("lote de entrada %d não encontrado para reposição", cancelado.Identrada)
+			return fmt.Errorf("lote de entrada %d não encontrado para reposição", cancelado.Identrada)
 		}
 	}
 

@@ -36,16 +36,16 @@ func (e *EntregaRepository) AdicionarEntrega(ctx context.Context, qtx *Queries ,
 	return id, nil
 }
 
-func (e *EntregaRepository) AdicionarEntregaItem(ctx context.Context, qtx *Queries, arg AddItemEntregueParams) (int32, error) {
+func (e *EntregaRepository) AdicionarEntregaItem(ctx context.Context, qtx *Queries, arg AddItemEntregueParams) (AddItemEntregueRow, error) {
 
 
-	idEntrega,err:= qtx.AddItemEntregue(ctx, arg)
+	ids,err:= qtx.AddItemEntregue(ctx, arg)
 	if err != nil {
 
-		return  0,helper.TraduzErroPostgres(err)
+		return  AddItemEntregueRow{},helper.TraduzErroPostgres(err)
 	}
 
-	return idEntrega, nil
+	return  ids, nil
 }
 
 func (e *EntregaRepository) ListarEntregas(ctx context.Context, args ListarEntregasParams) ([]ListarEntregasRow, error){
