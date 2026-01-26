@@ -14,8 +14,8 @@ import (
 const addDevolucaoSimples = `-- name: AddDevolucaoSimples :exec
 INSERT INTO devolucao (
     IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
-    quantidadeAdevolver, assinatura_digital,id_usuario_cancelamento
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    quantidadeAdevolver, assinatura_digital,id_usuario_cancelamento,token_validacao
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type AddDevolucaoSimplesParams struct {
@@ -27,6 +27,7 @@ type AddDevolucaoSimplesParams struct {
 	Quantidadeadevolver   int32
 	AssinaturaDigital     string
 	IDUsuarioCancelamento pgtype.Int4
+	TokenValidacao        pgtype.Text
 }
 
 func (q *Queries) AddDevolucaoSimples(ctx context.Context, arg AddDevolucaoSimplesParams) error {
@@ -39,6 +40,7 @@ func (q *Queries) AddDevolucaoSimples(ctx context.Context, arg AddDevolucaoSimpl
 		arg.Quantidadeadevolver,
 		arg.AssinaturaDigital,
 		arg.IDUsuarioCancelamento,
+		arg.TokenValidacao,
 	)
 	return err
 }
@@ -71,8 +73,8 @@ func (q *Queries) AddEntregaVinculada(ctx context.Context, arg AddEntregaVincula
 const addTrocaEpi = `-- name: AddTrocaEpi :one
 INSERT INTO devolucao (
     IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
-    quantidadeAdevolver, IdEpiNovo, IdTamanhoNovo, quantidadeNova, assinatura_digital,id_usuario_cancelamento
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    quantidadeAdevolver, IdEpiNovo, IdTamanhoNovo, quantidadeNova, assinatura_digital,id_usuario_cancelamento,token_validacao
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id
 `
 
@@ -88,6 +90,7 @@ type AddTrocaEpiParams struct {
 	Quantidadenova        pgtype.Int4
 	AssinaturaDigital     string
 	IDUsuarioCancelamento pgtype.Int4
+	TokenValidacao        pgtype.Text
 }
 
 func (q *Queries) AddTrocaEpi(ctx context.Context, arg AddTrocaEpiParams) (int32, error) {
@@ -103,6 +106,7 @@ func (q *Queries) AddTrocaEpi(ctx context.Context, arg AddTrocaEpiParams) (int32
 		arg.Quantidadenova,
 		arg.AssinaturaDigital,
 		arg.IDUsuarioCancelamento,
+		arg.TokenValidacao,
 	)
 	var id int32
 	err := row.Scan(&id)

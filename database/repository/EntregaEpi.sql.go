@@ -12,8 +12,8 @@ import (
 )
 
 const addEntregaEpi = `-- name: AddEntregaEpi :one
-INSERT INTO entrega_epi (IdFuncionario, data_entrega, assinatura, token_validacao,id_usuario_entrega)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO entrega_epi (IdFuncionario, data_entrega, assinatura, IdTroca ,token_validacao,id_usuario_entrega)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id
 `
 
@@ -21,6 +21,7 @@ type AddEntregaEpiParams struct {
 	Idfuncionario    int32
 	DataEntrega      pgtype.Date
 	Assinatura       string
+	Idtroca          pgtype.Int4
 	TokenValidacao   pgtype.Text
 	IDUsuarioEntrega pgtype.Int4
 }
@@ -30,6 +31,7 @@ func (q *Queries) AddEntregaEpi(ctx context.Context, arg AddEntregaEpiParams) (i
 		arg.Idfuncionario,
 		arg.DataEntrega,
 		arg.Assinatura,
+		arg.Idtroca,
 		arg.TokenValidacao,
 		arg.IDUsuarioEntrega,
 	)
@@ -39,37 +41,40 @@ func (q *Queries) AddEntregaEpi(ctx context.Context, arg AddEntregaEpiParams) (i
 }
 
 const addItemEntregue = `-- name: AddItemEntregue :one
-INSERT INTO epis_entregues (IdEntrega, IdEntrada ,IdEpi, IdTamanho, quantidade, valor_unitario)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING IdEntrega
+INSERT INTO epis_entregues (IdEntrega, IdEntrada ,IdEpi, IdTamanho, quantidade)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id,IdEntrega
 `
 
 type AddItemEntregueParams struct {
-	Identrega     int32
-	Identrada     int32
-	Idepi         int32
-	Idtamanho     int32
-	Quantidade    int32
-	ValorUnitario pgtype.Numeric
+	Identrega  int32
+	Identrada  int32
+	Idepi      int32
+	Idtamanho  int32
+	Quantidade int32
 }
 
-func (q *Queries) AddItemEntregue(ctx context.Context, arg AddItemEntregueParams) (int32, error) {
+type AddItemEntregueRow struct {
+	ID        int32
+	Identrega int32
+}
+
+func (q *Queries) AddItemEntregue(ctx context.Context, arg AddItemEntregueParams) (AddItemEntregueRow, error) {
 	row := q.db.QueryRow(ctx, addItemEntregue,
 		arg.Identrega,
 		arg.Identrada,
 		arg.Idepi,
 		arg.Idtamanho,
 		arg.Quantidade,
-		arg.ValorUnitario,
 	)
-	var identrega int32
-	err := row.Scan(&identrega)
-	return identrega, err
+	var i AddItemEntregueRow
+	err := row.Scan(&i.ID, &i.Identrega)
+	return i, err
 }
 
 const buscarTodosItensEntrega = `-- name: BuscarTodosItensEntrega :many
 SELECT 
-    i.IdEntrega as entrega_id,i.id as item_id , i.quantidade, i.valor_unitario,
+    i.IdEntrega as entrega_id,i.id as item_id , i.quantidade,
     e.id as epi_id, e.nome as epi_nome, e.fabricante, e.CA, e.descricao as epi_desc, e.validade_CA,
     tp.id as tp_id, tp.nome as tp_nome,
     t.id as tam_id, t.tamanho as tam_nome
@@ -81,20 +86,19 @@ WHERE  i.ativo = TRUE
 `
 
 type BuscarTodosItensEntregaRow struct {
-	EntregaID     int32
-	ItemID        int32
-	Quantidade    int32
-	ValorUnitario pgtype.Numeric
-	EpiID         int32
-	EpiNome       string
-	Fabricante    string
-	Ca            string
-	EpiDesc       string
-	ValidadeCa    pgtype.Date
-	TpID          int32
-	TpNome        string
-	TamID         int32
-	TamNome       string
+	EntregaID  int32
+	ItemID     int32
+	Quantidade int32
+	EpiID      int32
+	EpiNome    string
+	Fabricante string
+	Ca         string
+	EpiDesc    string
+	ValidadeCa pgtype.Date
+	TpID       int32
+	TpNome     string
+	TamID      int32
+	TamNome    string
 }
 
 func (q *Queries) BuscarTodosItensEntrega(ctx context.Context) ([]BuscarTodosItensEntregaRow, error) {
@@ -110,7 +114,6 @@ func (q *Queries) BuscarTodosItensEntrega(ctx context.Context) ([]BuscarTodosIte
 			&i.EntregaID,
 			&i.ItemID,
 			&i.Quantidade,
-			&i.ValorUnitario,
 			&i.EpiID,
 			&i.EpiNome,
 			&i.Fabricante,
@@ -215,7 +218,7 @@ SELECT
     e.id as epi_id, e.nome as epi_nome, e.fabricante, e.CA, e.descricao as epi_desc, e.validade_CA,
     tp.id as tp_id, tp.nome as tp_nome,
     t.id as tam_id, t.tamanho as tam_nome,
-    i.quantidade, i.valor_unitario,
+    i.quantidade,
     COUNT(*) OVER() as total_geral
 FROM entrega_epi ee
 INNER JOIN funcionario f ON ee.IdFuncionario = f.id
@@ -271,7 +274,6 @@ type ListarEntregasRow struct {
 	TamID            int32
 	TamNome          string
 	Quantidade       int32
-	ValorUnitario    pgtype.Numeric
 	TotalGeral       int64
 }
 
@@ -316,7 +318,6 @@ func (q *Queries) ListarEntregas(ctx context.Context, arg ListarEntregasParams) 
 			&i.TamID,
 			&i.TamNome,
 			&i.Quantidade,
-			&i.ValorUnitario,
 			&i.TotalGeral,
 		); err != nil {
 			return nil, err

@@ -123,7 +123,6 @@ func criarTabelasPostgres(t *testing.T, pool *pgxpool.Pool) {
 			IdEpi INT NOT NULL,
 			IdTamanho INT NOT NULL,
 			quantidade INT NOT NULL,
-			valor_unitario DECIMAL(10,2) NOT NULL,
 			ativo BOOLEAN NOT NULL DEFAULT TRUE,
 			deletado_em TIMESTAMP NULL,
 			FOREIGN KEY (IdEntrega) REFERENCES entrega_epi(id),
@@ -173,6 +172,7 @@ func criarTabelasPostgres(t *testing.T, pool *pgxpool.Pool) {
 		UNIQUE (nota_fiscal_numero, nota_fiscal_serie, fornecedor);
 
 		ALTER TABLE entrega_epi ADD COLUMN token_validacao TEXT;
+		ALTER TABLE devolucao ADD COLUMN token_validacao TEXT;
 	
 		CREATE TABLE usuarios (
 		id SERIAL PRIMARY KEY,

@@ -110,7 +110,6 @@ CREATE TABLE epis_entregues (
     IdEpi INT NOT NULL,
     IdTamanho INT NOT NULL,
     quantidade INT NOT NULL,
-    valor_unitario DECIMAL(10,2) NOT NULL,
     ativo BOOLEAN NOT NULL DEFAULT TRUE,
     deletado_em TIMESTAMP NULL,
     FOREIGN KEY (IdEntrega) REFERENCES entrega_epi(id),

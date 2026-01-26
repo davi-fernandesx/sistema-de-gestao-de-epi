@@ -1,0 +1,1 @@
+ALTER TABLE devolucao ADD COLUMN token_validacao TEXT;

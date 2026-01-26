@@ -76,9 +76,8 @@ func (p *ConexaoDbPostgres) RunMigrationPostgress(db *pgxpool.Pool) error {
 	if err != nil {
 		return fmt.Errorf("erro ao instanciar migraççao no banco de dados")
 	}
-
 	dir, _ := os.Getwd()
-	fmt.Println("O programa está rodando na pasta:", dir)
+	fmt.Println("O programa está rodando na pasta:", dir) 
 	fmt.Println("Tentando ler migrações de:", dir+"/database/migrate")
 	err = m.Up()
 	if err != nil && err != migrate.ErrNoChange {
@@ -93,7 +92,7 @@ func (p *ConexaoDbPostgres) RunMigrationPostgress(db *pgxpool.Pool) error {
 
 	log.Println("Migrações aplicadas no banco de dados!....")
 	return nil
-}
+} 
 
 type ConexaoDbMysql struct{}
 

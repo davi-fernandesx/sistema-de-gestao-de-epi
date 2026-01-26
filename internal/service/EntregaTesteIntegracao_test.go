@@ -98,7 +98,6 @@ func TestEntrega(t *testing.T) {
 					Idepi:         int32(item.ID_epi),
 					Idtamanho:     int32(item.ID_tamanho),
 					Quantidade:    quantidadeAbater,
-					ValorUnitario: entradaLote.ValorUnitario,
 					Identrada:     entradaLote.ID,
 				}
 
@@ -137,6 +136,7 @@ func TestEntrega(t *testing.T) {
 			Id_user:            int(iduser),
 			Data_entrega:       *configs.NewDataBrPtr(time.Now()),
 			Assinatura_Digital: "teste.pop",
+			IdTroca: nil,
 			Itens: []model.ItemParaInserir{
 				{
 					ID_epi:         idepi,
@@ -192,6 +192,7 @@ func TestEntrega(t *testing.T) {
 			ID_funcionario: idfuncionario,
 			Id_user:        int(iduser),
 			Data_entrega:   configs.DataBr(time.Now()),
+			IdTroca: nil,
 
 			Itens: []model.ItemParaInserir{
 				{ID_epi: idepi, ID_tamanho: idtam, Quantidade: 1},

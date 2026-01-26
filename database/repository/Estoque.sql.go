@@ -33,16 +33,15 @@ func (q *Queries) AbaterEstoqueLote(ctx context.Context, arg AbaterEstoqueLotePa
 }
 
 const devolverItemAoEstoque = `-- name: DevolverItemAoEstoque :exec
-UPDATE entrada_epi eed
-SET eed.quantidadeAtual = eed.quantidadeAtual + $3
+UPDATE entrada_epi
+SET quantidadeAtual = entrada_epi.quantidadeAtual + $3 -- Use o nome da tabela AQUI
 WHERE id = (
-    -- Subselect para achar o ID da entrada mais recente
     SELECT ee.id
     FROM entrada_epi ee
     WHERE ee.IdEpi = $1 
       AND ee.IdTamanho = $2
-    ORDER BY ee.data_entrada DESC -- Ordena pela data (mais nova primeiro)
-    LIMIT 1 -- Pega apenas uma
+    ORDER BY ee.data_entrada DESC
+    LIMIT 1
 )
 `
 
@@ -108,17 +107,16 @@ func (q *Queries) ListarLotesParaConsumo(ctx context.Context, arg ListarLotesPar
 }
 
 const registrarItemEntrega = `-- name: RegistrarItemEntrega :exec
-INSERT INTO epis_entregues (IdEpi, IdTamanho, quantidade, IdEntrega, IdEntrada, valor_unitario) 
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO epis_entregues (IdEpi, IdTamanho, quantidade, IdEntrega, IdEntrada) 
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type RegistrarItemEntregaParams struct {
-	Idepi         int32
-	Idtamanho     int32
-	Quantidade    int32
-	Identrega     int32
-	Identrada     int32
-	ValorUnitario pgtype.Numeric
+	Idepi      int32
+	Idtamanho  int32
+	Quantidade int32
+	Identrega  int32
+	Identrada  int32
 }
 
 func (q *Queries) RegistrarItemEntrega(ctx context.Context, arg RegistrarItemEntregaParams) error {
@@ -128,7 +126,6 @@ func (q *Queries) RegistrarItemEntrega(ctx context.Context, arg RegistrarItemEnt
 		arg.Quantidade,
 		arg.Identrega,
 		arg.Identrada,
-		arg.ValorUnitario,
 	)
 	return err
 }

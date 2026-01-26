@@ -76,14 +76,15 @@ func SetupTestDB(t *testing.T) *pgxpool.Pool {
 	// 5. Executar migrations/scripts de criação
 	// Passe o pool para criar suas tabelas
 	criarTabelasPostgres(t, pool)
-
+	
+	
 	return pool
 }
 
 
 func pingPostgres(ctx context.Context, pool *pgxpool.Pool) error {
 	var err error
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		err = pool.Ping(ctx)
 		if err == nil {
 			return nil
