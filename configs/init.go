@@ -12,7 +12,8 @@ type Init struct {
 
 func (I *Init) InitAplicattion() (*pgxpool.Pool, error) {
 
-	db, err := I.Conexao.Conn()
+	conf := NewVariaveisAmbiente()
+	db, err := I.Conexao.Conn(conf)
 	if err != nil {
 
 		log.Printf("erro ao carregar o arquivo .env: %v", err)

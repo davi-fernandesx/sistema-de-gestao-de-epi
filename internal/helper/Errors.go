@@ -58,5 +58,5 @@ func TraduzErroPostgres(err error) error {
 			return fmt.Errorf("o sistema está ocupado, tente novamente em instantes")
 		}
 	}
-	return fmt.Errorf("%w: %v", ErrInternal, err)
+	return fmt.Errorf("%v", err)
 }
