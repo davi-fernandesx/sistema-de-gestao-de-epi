@@ -1,1 +1,2 @@
-../configs/.env
+# Ignorar variáveis de ambiente na pasta configs
+configs/.env
