@@ -1,0 +1,30 @@
+# Usa apenas uma imagem base para tudo
+FROM golang:1.25.5-alpine
+
+# Define o diretório de trabalho
+WORKDIR /app
+
+# Instala dependências de sistema (Certificados e Timezone)
+# Como essa imagem do Go é baseada em Alpine, usamos o 'apk'
+RUN apk --no-cache add ca-certificates tzdata
+
+# Define o timezone (opcional)
+ENV TZ=America/Sao_Paulo
+
+# Copia os arquivos de dependência
+COPY go.mod go.sum ./
+
+# Baixa as dependências do Go
+RUN go mod download
+
+# Copia todo o código fonte para dentro do container
+COPY . .
+
+# Compila o binário
+RUN go build -o main main.go
+
+# Expõe a porta
+EXPOSE 8080
+
+# Roda o binário que acabamos de compilar
+CMD ["./main"]
