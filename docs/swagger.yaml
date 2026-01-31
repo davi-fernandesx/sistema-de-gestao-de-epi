@@ -1,0 +1,204 @@
+basePath: /api
+definitions:
+  helper.HTTPError:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+    type: object
+  model.Departamento:
+    properties:
+      departamento:
+        maxLength: 50
+        type: string
+    required:
+    - departamento
+    type: object
+  model.DepartamentoDto:
+    properties:
+      departamento:
+        example: Recursos Humanos
+        type: string
+      id:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: suporte@seusaas.com.br
+    name: Suporte API
+    url: http://www.seusaas.com.br
+  description: API para gestão de EPIs e Departamentos.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: SaaS EPI API
+  version: "1.0"
+paths:
+  /departamentos:
+    get:
+      description: Retorna uma lista com todos os departamentos
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.DepartamentoDto'
+            type: array
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Listar todos
+      tags:
+      - Departamentos
+    post:
+      consumes:
+      - application/json
+      description: Cadastra um novo departamento no sistema
+      parameters:
+      - description: Dados do departamento
+        in: body
+        name: departamento
+        required: true
+        schema:
+          $ref: '#/definitions/model.Departamento'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Dados inválidos
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "409":
+          description: Departamento já existe
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Criar novo departamento
+      tags:
+      - Departamentos
+  /departamentos/{id}:
+    delete:
+      description: Remove (ou inativa) um departamento pelo ID
+      parameters:
+      - description: ID do Departamento
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Sem Conteúdo (Sucesso)
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "404":
+          description: Não encontrado
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Deletar departamento
+      tags:
+      - Departamentos
+    get:
+      description: Retorna os detalhes de um único departamento
+      parameters:
+      - description: ID do Departamento
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.DepartamentoDto'
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "404":
+          description: Não encontrado
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Buscar por ID
+      tags:
+      - Departamentos
+    put:
+      consumes:
+      - application/json
+      description: Atualiza o nome de um departamento existente
+      parameters:
+      - description: ID do Departamento
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Novo nome
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.Departamento'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sucesso
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Erro de validação (ID ou Nome curto)
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "404":
+          description: Não encontrado
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      summary: Atualizar departamento
+      tags:
+      - Departamentos
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
