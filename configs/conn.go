@@ -15,35 +15,33 @@ import (
 )
 
 type Conexao interface {
-	Conn() (*pgxpool.Pool, error)
+	Conn(configEnv *VariaveisDeAmbiente) (*pgxpool.Pool, error)
 }
 
 type ConexaoDbSqlserverSqlx struct{}
 type ConexaoDbSqlserver struct{}
-type ConexaoDbPostgres struct{
-
+type ConexaoDbPostgres struct {
 	Pool *pgxpool.Pool
 }
 
-
-func(p *ConexaoDbPostgres) Conn() (*pgxpool.Pool, error){
+func (p *ConexaoDbPostgres) Conn(configEnv *VariaveisDeAmbiente) (*pgxpool.Pool, error) {
 
 	// Formato: postgres://usuario:senha@host:porta/database
-	connString:= fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-			Env.DB_USER,
-			Env.SA_PASSWORD,
-			Env.DB_SERVER,
-			Env.DB_PORT,
-			Env.DATABASE,
-		)
+	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		configEnv.DB_SERVER,
+		configEnv.DB_PORT,
+		configEnv.DB_USER,
+		configEnv.DB_PASSWORD,
+		configEnv.DATABASE,
+	)
 
-	config, err:= pgxpool.ParseConfig(connString)
+	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 
 		return nil, fmt.Errorf("erro ao configurar pool de banco de dados: %v", err)
 	}
 
-	pool, err:= pgxpool.NewWithConfig(context.Background(), config)
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao se conectar com o banco de dados: %v", err)
 	}
@@ -54,8 +52,8 @@ func(p *ConexaoDbPostgres) Conn() (*pgxpool.Pool, error){
 		return nil, fmt.Errorf("erro ao verificar se a conexao ainda está ativa: %v", err)
 	}
 
-	s:= pool.Stat()
-	log.Printf("Conexões totais: %d | Em uso: %d | Ociosas: %d\n", 
+	s := pool.Stat()
+	log.Printf("Conexões totais: %d | Em uso: %d | Ociosas: %d\n",
 		s.TotalConns(), s.AcquiredConns(), s.IdleConns())
 
 	p.Pool = pool
@@ -77,7 +75,7 @@ func (p *ConexaoDbPostgres) RunMigrationPostgress(db *pgxpool.Pool) error {
 		return fmt.Errorf("erro ao instanciar migraççao no banco de dados")
 	}
 	dir, _ := os.Getwd()
-	fmt.Println("O programa está rodando na pasta:", dir) 
+	fmt.Println("O programa está rodando na pasta:", dir)
 	fmt.Println("Tentando ler migrações de:", dir+"/database/migrate")
 	err = m.Up()
 	if err != nil && err != migrate.ErrNoChange {
@@ -92,7 +90,7 @@ func (p *ConexaoDbPostgres) RunMigrationPostgress(db *pgxpool.Pool) error {
 
 	log.Println("Migrações aplicadas no banco de dados!....")
 	return nil
-} 
+}
 
 type ConexaoDbMysql struct{}
 
