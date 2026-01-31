@@ -39,7 +39,7 @@ func NewDepartamentoController(service DepartamentoService) *DepartamentoControl
 // @Failure      400  {object}  helper.HTTPError "Dados inválidos"
 // @Failure      409  {object}  helper.HTTPError "Departamento já existe"
 // @Failure      500  {object}  helper.HTTPError "Erro interno"
-// @Router       /departamentos [post]
+// @Router       /cadastro-departamento [post]
 // @Security     BearerAuth
 func (d *DepartamentoController) RegistraDepartamento() gin.HandlerFunc {
 
@@ -170,7 +170,7 @@ func (d *DepartamentoController) ListarDepartamentoId() gin.HandlerFunc {
 // @Failure      400  {object}  helper.HTTPError "ID inválido"
 // @Failure      404  {object}  helper.HTTPError "Não encontrado"
 // @Failure      500  {object}  helper.HTTPError "Erro interno"
-// @Router       /departamentos/{id} [delete]
+// @Router       /departamento/{id} [delete]
 // @Security     BearerAuth
 func (d *DepartamentoController) DeletarDepartamento() gin.HandlerFunc {
 
