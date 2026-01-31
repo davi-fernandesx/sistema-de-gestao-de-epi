@@ -24,39 +24,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/departamentos": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retorna uma lista com todos os departamentos",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Departamentos"
-                ],
-                "summary": "Listar todos",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.DepartamentoDto"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Erro interno",
-                        "schema": {
-                            "$ref": "#/definitions/helper.HTTPError"
-                        }
-                    }
-                }
-            },
+        "/cadastro-departamento": {
             "post": {
                 "security": [
                     {
@@ -105,6 +73,146 @@ const docTemplate = `{
                         "description": "Departamento já existe",
                         "schema": {
                             "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/cadastro-funcao": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cadastra uma nova funcao no sistema",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "funcao"
+                ],
+                "summary": "Criar uma funcao",
+                "parameters": [
+                    {
+                        "description": "Dados da funcao",
+                        "name": "funcao",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Funcao"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Dados inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "409": {
+                        "description": "id de departamento nao existe no sistema",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/departamento/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove (ou inativa) um departamento pelo ID",
+                "tags": [
+                    "Departamentos"
+                ],
+                "summary": "Deletar departamento",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID do Departamento",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sem Conteúdo (Sucesso)"
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/departamentos": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retorna uma lista com todos os departamentos",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Departamentos"
+                ],
+                "summary": "Listar todos",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.DepartamentoDto"
+                            }
                         }
                     },
                     "500": {
@@ -226,50 +334,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Remove (ou inativa) um departamento pelo ID",
-                "tags": [
-                    "Departamentos"
-                ],
-                "summary": "Deletar departamento",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID do Departamento",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Sem Conteúdo (Sucesso)"
-                    },
-                    "400": {
-                        "description": "ID inválido",
-                        "schema": {
-                            "$ref": "#/definitions/helper.HTTPError"
-                        }
-                    },
-                    "404": {
-                        "description": "Não encontrado",
-                        "schema": {
-                            "$ref": "#/definitions/helper.HTTPError"
-                        }
-                    },
-                    "500": {
-                        "description": "Erro interno",
-                        "schema": {
-                            "$ref": "#/definitions/helper.HTTPError"
-                        }
-                    }
-                }
             }
         }
     },
@@ -308,6 +372,24 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "model.Funcao": {
+            "type": "object",
+            "required": [
+                "funcao",
+                "id_departamento"
+            ],
+            "properties": {
+                "funcao": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 2
+                },
+                "id_departamento": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -326,7 +408,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/api",
 	Schemes:          []string{},
 	Title:            "SaaS EPI API",
-	Description:      "API para gestão de EPIs e Departamentos.",
+	Description:      "API para gestão de EPIs.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

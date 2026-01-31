@@ -23,13 +23,26 @@ definitions:
       id:
         type: integer
     type: object
+  model.Funcao:
+    properties:
+      funcao:
+        maxLength: 50
+        minLength: 2
+        type: string
+      id_departamento:
+        minimum: 1
+        type: integer
+    required:
+    - funcao
+    - id_departamento
+    type: object
 host: localhost:8080
 info:
   contact:
     email: suporte@seusaas.com.br
     name: Suporte API
     url: http://www.seusaas.com.br
-  description: API para gestão de EPIs e Departamentos.
+  description: API para gestão de EPIs.
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -37,27 +50,7 @@ info:
   title: SaaS EPI API
   version: "1.0"
 paths:
-  /departamentos:
-    get:
-      description: Retorna uma lista com todos os departamentos
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.DepartamentoDto'
-            type: array
-        "500":
-          description: Erro interno
-          schema:
-            $ref: '#/definitions/helper.HTTPError'
-      security:
-      - BearerAuth: []
-      summary: Listar todos
-      tags:
-      - Departamentos
+  /cadastro-departamento:
     post:
       consumes:
       - application/json
@@ -95,7 +88,45 @@ paths:
       summary: Criar novo departamento
       tags:
       - Departamentos
-  /departamentos/{id}:
+  /cadastro-funcao:
+    post:
+      consumes:
+      - application/json
+      description: Cadastra uma nova funcao no sistema
+      parameters:
+      - description: Dados da funcao
+        in: body
+        name: funcao
+        required: true
+        schema:
+          $ref: '#/definitions/model.Funcao'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Dados inválidos
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "409":
+          description: id de departamento nao existe no sistema
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Criar uma funcao
+      tags:
+      - funcao
+  /departamento/{id}:
     delete:
       description: Remove (ou inativa) um departamento pelo ID
       parameters:
@@ -124,6 +155,28 @@ paths:
       summary: Deletar departamento
       tags:
       - Departamentos
+  /departamentos:
+    get:
+      description: Retorna uma lista com todos os departamentos
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.DepartamentoDto'
+            type: array
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Listar todos
+      tags:
+      - Departamentos
+  /departamentos/{id}:
     get:
       description: Retorna os detalhes de um único departamento
       parameters:
