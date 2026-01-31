@@ -2,7 +2,8 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	
 	"strings"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
@@ -42,7 +43,12 @@ func (d *DepartamentoService) SalvarDepartamento(ctx context.Context, model mode
 
 	if err := d.repo.Adicionar(ctx, model.Departamento); err != nil {
 
-	  return fmt.Errorf("erro ao salvar departamento: %w", err)
+	  if errors.Is(err, helper.ErrDadoDuplicado){
+
+		return  err
+	  }
+
+	  return err
 	}
 
 	return  nil
@@ -62,7 +68,7 @@ func (d *DepartamentoService) ListarDepartamento(ctx context.Context, id int32) 
 
 			return model.DepartamentoDto{},helper.ErrNaoEncontrado
 		}
-		return  model.DepartamentoDto{}, helper.ErrNaoEncontrado
+		return  model.DepartamentoDto{}, err
 	}
 	
 	return model.DepartamentoDto{
