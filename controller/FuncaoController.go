@@ -93,3 +93,30 @@ func (f *FuncaoController) RegistraFuncao() gin.HandlerFunc {
 
 	}
 }
+
+
+// ListarFuncoes godoc
+// @Summary      Listar todos
+// @Description  Retorna uma lista com todas as funcoess
+// @Tags         Departamentos
+// @Produce      json
+// @Success      200  {array}   model.funcaoDto
+// @Failure      500  {object}  helper.HTTPError "Erro interno"
+// @Router       /funcoes [get]
+// @Security     BearerAuth
+func (f *FuncaoController) ListarFuncoes() gin.HandlerFunc {
+
+	return func(ctx *gin.Context) {
+
+		funcoes, err := f.service.ListasTodasFuncao(ctx)
+		if err != nil {
+
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Erro interno ao listar funções",
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, funcoes)
+	}
+}
