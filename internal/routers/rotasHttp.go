@@ -69,6 +69,7 @@ func ConfigurarRotas(r *gin.Engine, c *Container) {
 		//funcao
 
 		api.POST("cadastro-funcao", c.Funcao.RegistraFuncao())
+		api.GET("/funcoes", c.Funcao.ListarFuncoes())
 	}
 
 }
