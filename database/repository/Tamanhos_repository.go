@@ -19,7 +19,7 @@ func NewTamanhoRepository(pool *pgxpool.Pool) *TamanhosRepository {
 	return &TamanhosRepository{q: New(pool), db: pool}
 }
 
-func (t *TamanhosRepository) Adicionar(ctx context.Context, tamanho string) error {
+func (t *TamanhosRepository) Adicionar(ctx context.Context, tamanho AddTamanhoParams) error {
 
 	err := t.q.AddTamanho(ctx, tamanho)
 	if err != nil {
@@ -30,9 +30,9 @@ func (t *TamanhosRepository) Adicionar(ctx context.Context, tamanho string) erro
 	return nil
 }
 
-func (t *TamanhosRepository) ListarTamanho(ctx context.Context, id int32) (BuscarTamanhoRow, error){
+func (t *TamanhosRepository) ListarTamanho(ctx context.Context, arg BuscarTamanhoParams) (BuscarTamanhoRow, error){
 
-	tamanho, err:= t.q.BuscarTamanho(ctx, id)
+	tamanho, err:= t.q.BuscarTamanho(ctx, arg)
 	if err != nil {
 
 		return  BuscarTamanhoRow{}, helper.TraduzErroPostgres(err)
@@ -42,9 +42,9 @@ func (t *TamanhosRepository) ListarTamanho(ctx context.Context, id int32) (Busca
 
 }
 
-func (t *TamanhosRepository) ListarTamanhos(ctx context.Context) ([]BuscarTodosTamanhosRow, error){
+func (t *TamanhosRepository) ListarTamanhos(ctx context.Context, tenantId int32) ([]BuscarTodosTamanhosRow, error){
 
-	tamanhos, err:= t.q.BuscarTodosTamanhos(ctx)
+	tamanhos, err:= t.q.BuscarTodosTamanhos(ctx, tenantId)
 	if err != nil {
 
 		return  []BuscarTodosTamanhosRow{}, helper.TraduzErroPostgres(err)
@@ -54,9 +54,9 @@ func (t *TamanhosRepository) ListarTamanhos(ctx context.Context) ([]BuscarTodosT
 
 }
 
-func (t *TamanhosRepository) CancelarTamanho(ctx context.Context, id int) (int64, error) {
+func (t *TamanhosRepository) CancelarTamanho(ctx context.Context, arg DeletarTamanhoParams) (int64, error) {
 
-	linhasAfetadas, err:= t.q.DeletarTamanho(ctx, int32(id))
+	linhasAfetadas, err:= t.q.DeletarTamanho(ctx, arg)
 		if err != nil {
 
 		return 0, helper.TraduzErroPostgres(err)

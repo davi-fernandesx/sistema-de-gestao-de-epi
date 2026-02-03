@@ -12,12 +12,16 @@ import (
 )
 
 const addEntregaEpi = `-- name: AddEntregaEpi :one
-INSERT INTO entrega_epi (IdFuncionario, data_entrega, assinatura, IdTroca ,token_validacao,id_usuario_entrega)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO entrega_epi (
+    tenant_id, -- Novo campo
+    IdFuncionario, data_entrega, assinatura, IdTroca, token_validacao, id_usuario_entrega
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id
 `
 
 type AddEntregaEpiParams struct {
+	TenantID         int32
 	Idfuncionario    int32
 	DataEntrega      pgtype.Date
 	Assinatura       string
@@ -28,6 +32,7 @@ type AddEntregaEpiParams struct {
 
 func (q *Queries) AddEntregaEpi(ctx context.Context, arg AddEntregaEpiParams) (int32, error) {
 	row := q.db.QueryRow(ctx, addEntregaEpi,
+		arg.TenantID,
 		arg.Idfuncionario,
 		arg.DataEntrega,
 		arg.Assinatura,
@@ -41,12 +46,16 @@ func (q *Queries) AddEntregaEpi(ctx context.Context, arg AddEntregaEpiParams) (i
 }
 
 const addItemEntregue = `-- name: AddItemEntregue :one
-INSERT INTO epis_entregues (IdEntrega, IdEntrada ,IdEpi, IdTamanho, quantidade)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id,IdEntrega
+INSERT INTO epis_entregues (
+    tenant_id, -- Novo campo (redundante mas necessário para segurança/performance)
+    IdEntrega, IdEntrada, IdEpi, IdTamanho, quantidade
+)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, IdEntrega
 `
 
 type AddItemEntregueParams struct {
+	TenantID   int32
 	Identrega  int32
 	Identrada  int32
 	Idepi      int32
@@ -61,6 +70,7 @@ type AddItemEntregueRow struct {
 
 func (q *Queries) AddItemEntregue(ctx context.Context, arg AddItemEntregueParams) (AddItemEntregueRow, error) {
 	row := q.db.QueryRow(ctx, addItemEntregue,
+		arg.TenantID,
 		arg.Identrega,
 		arg.Identrada,
 		arg.Idepi,
@@ -74,16 +84,24 @@ func (q *Queries) AddItemEntregue(ctx context.Context, arg AddItemEntregueParams
 
 const buscarTodosItensEntrega = `-- name: BuscarTodosItensEntrega :many
 SELECT 
-    i.IdEntrega as entrega_id,i.id as item_id , i.quantidade,
+    i.IdEntrega as entrega_id, i.id as item_id, i.quantidade,
     e.id as epi_id, e.nome as epi_nome, e.fabricante, e.CA, e.descricao as epi_desc, e.validade_CA,
     tp.id as tp_id, tp.nome as tp_nome,
     t.id as tam_id, t.tamanho as tam_nome
-FROM  epis_entregues i
+FROM epis_entregues i
 INNER JOIN epi e ON i.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
 INNER JOIN tamanho t ON i.IdTamanho = t.id
-WHERE  i.ativo = TRUE
+WHERE 
+    i.tenant_id = $1 
+    AND i.IdEntrega = $2 -- FALTOU ISSO
+    AND i.ativo = TRUE
 `
+
+type BuscarTodosItensEntregaParams struct {
+	TenantID  int32
+	IDEntrega int32
+}
 
 type BuscarTodosItensEntregaRow struct {
 	EntregaID  int32
@@ -101,8 +119,8 @@ type BuscarTodosItensEntregaRow struct {
 	TamNome    string
 }
 
-func (q *Queries) BuscarTodosItensEntrega(ctx context.Context) ([]BuscarTodosItensEntregaRow, error) {
-	rows, err := q.db.Query(ctx, buscarTodosItensEntrega)
+func (q *Queries) BuscarTodosItensEntrega(ctx context.Context, arg BuscarTodosItensEntregaParams) ([]BuscarTodosItensEntregaRow, error) {
+	rows, err := q.db.Query(ctx, buscarTodosItensEntrega, arg.TenantID, arg.IDEntrega)
 	if err != nil {
 		return nil, err
 	}
@@ -140,17 +158,20 @@ UPDATE entrega_epi
 SET cancelada_em = NOW(),
     ativo = FALSE,
     id_usuario_entrega_cancelamento = $2
-where IdTroca = $1 AND cancelada_em IS NULL
+WHERE IdTroca = $1 
+  AND tenant_id = $3 -- SEGURANÇA
+  AND cancelada_em IS NULL
 RETURNING id
 `
 
 type CancelaEntregaPorIdTrocaParams struct {
 	Idtroca                      pgtype.Int4
 	IDUsuarioEntregaCancelamento pgtype.Int4
+	TenantID                     int32
 }
 
 func (q *Queries) CancelaEntregaPorIdTroca(ctx context.Context, arg CancelaEntregaPorIdTrocaParams) (int32, error) {
-	row := q.db.QueryRow(ctx, cancelaEntregaPorIdTroca, arg.Idtroca, arg.IDUsuarioEntregaCancelamento)
+	row := q.db.QueryRow(ctx, cancelaEntregaPorIdTroca, arg.Idtroca, arg.IDUsuarioEntregaCancelamento, arg.TenantID)
 	var id int32
 	err := row.Scan(&id)
 	return id, err
@@ -159,17 +180,23 @@ func (q *Queries) CancelaEntregaPorIdTroca(ctx context.Context, arg CancelaEntre
 const cancelaItemEntregue = `-- name: CancelaItemEntregue :many
 UPDATE epis_entregues
 SET ativo = FALSE, deletado_em = NOW()
-WHERE IdEntrega = $1
+WHERE IdEntrega = $1 
+  AND tenant_id = $2 -- SEGURANÇA
 RETURNING IdEntrada, quantidade
 `
+
+type CancelaItemEntregueParams struct {
+	Identrega int32
+	TenantID  int32
+}
 
 type CancelaItemEntregueRow struct {
 	Identrada  int32
 	Quantidade int32
 }
 
-func (q *Queries) CancelaItemEntregue(ctx context.Context, identrega int32) ([]CancelaItemEntregueRow, error) {
-	rows, err := q.db.Query(ctx, cancelaItemEntregue, identrega)
+func (q *Queries) CancelaItemEntregue(ctx context.Context, arg CancelaItemEntregueParams) ([]CancelaItemEntregueRow, error) {
+	rows, err := q.db.Query(ctx, cancelaItemEntregue, arg.Identrega, arg.TenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -193,17 +220,20 @@ UPDATE entrega_epi
 SET cancelada_em = NOW(),
     ativo = FALSE,
     id_usuario_entrega_cancelamento = $2
-WHERE id = $1 AND cancelada_em IS NULL
+WHERE id = $1 
+  AND tenant_id = $3 -- SEGURANÇA
+  AND cancelada_em IS NULL
 RETURNING id
 `
 
 type CancelarEntregaParams struct {
 	ID                           int32
 	IDUsuarioEntregaCancelamento pgtype.Int4
+	TenantID                     int32
 }
 
 func (q *Queries) CancelarEntrega(ctx context.Context, arg CancelarEntregaParams) (int32, error) {
-	row := q.db.QueryRow(ctx, cancelarEntrega, arg.ID, arg.IDUsuarioEntregaCancelamento)
+	row := q.db.QueryRow(ctx, cancelarEntrega, arg.ID, arg.IDUsuarioEntregaCancelamento, arg.TenantID)
 	var id int32
 	err := row.Scan(&id)
 	return id, err
@@ -211,7 +241,7 @@ func (q *Queries) CancelarEntrega(ctx context.Context, arg CancelarEntregaParams
 
 const listarEntregas = `-- name: ListarEntregas :many
 SELECT 
-    ee.id as entrega_id, ee.data_entrega, ee.assinatura,ee.token_validacao,ee.id_usuario_entrega,   
+    ee.id as entrega_id, ee.data_entrega, ee.assinatura, ee.token_validacao, ee.id_usuario_entrega,   
     f.id as func_id, f.nome as func_nome, f.matricula,
     d.id as dep_id, d.nome as dep_nome,
     ff.id as funcao_id, ff.nome as funcao_nome,
@@ -228,21 +258,24 @@ INNER JOIN epis_entregues i ON i.IdEntrega = ee.id
 INNER JOIN epi e ON i.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
 INNER JOIN tamanho t ON i.IdTamanho = t.id
-
 WHERE 
-    (   ($3::boolean IS FALSE AND ee.cancelada_em IS NULL) OR
-        ($3::boolean IS TRUE AND ee.cancelada_em IS NOT NULL))
-AND ($4::int IS NULL OR ee.id = $4)
-AND ($5::int IS NULL OR ee.IdFuncionario = $5)
-and ($6::date IS NULL OR ee.data_entrega >= $6)
-and ($7::date IS NULL OR ee.data_entrega <= $7)
+    ee.tenant_id = $3 -- SEGURANÇA: Filtro Principal
+    AND (
+        ($4::boolean IS FALSE AND ee.cancelada_em IS NULL) OR
+        ($4::boolean IS TRUE AND ee.cancelada_em IS NOT NULL)
+    )
+    AND ($5::int IS NULL OR ee.id = $5)
+    AND ($6::int IS NULL OR ee.IdFuncionario = $6)
+    AND ($7::date IS NULL OR ee.data_entrega >= $7)
+    AND ($8::date IS NULL OR ee.data_entrega <= $8)
 ORDER BY ee.data_entrega DESC
-limit $1 offset $2
+LIMIT $1 OFFSET $2
 `
 
 type ListarEntregasParams struct {
 	Limit         int32
 	Offset        int32
+	TenantID      int32
 	Canceladas    bool
 	IDEntrega     pgtype.Int4
 	IDFuncionario pgtype.Int4
@@ -281,6 +314,7 @@ func (q *Queries) ListarEntregas(ctx context.Context, arg ListarEntregasParams) 
 	rows, err := q.db.Query(ctx, listarEntregas,
 		arg.Limit,
 		arg.Offset,
+		arg.TenantID,
 		arg.Canceladas,
 		arg.IDEntrega,
 		arg.IDFuncionario,
@@ -331,18 +365,26 @@ func (q *Queries) ListarEntregas(ctx context.Context, arg ListarEntregasParams) 
 }
 
 const listarItensEntregueCancelados = `-- name: ListarItensEntregueCancelados :many
-select quantidade,IdEntrada
-from epis_entregues
-where IdEntrega = $1 and ativo = FALSE and deletado_em is not null
+SELECT quantidade, IdEntrada
+FROM epis_entregues
+WHERE IdEntrega = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = FALSE 
+  AND deletado_em IS NOT NULL
 `
+
+type ListarItensEntregueCanceladosParams struct {
+	Identrega int32
+	TenantID  int32
+}
 
 type ListarItensEntregueCanceladosRow struct {
 	Quantidade int32
 	Identrada  int32
 }
 
-func (q *Queries) ListarItensEntregueCancelados(ctx context.Context, identrega int32) ([]ListarItensEntregueCanceladosRow, error) {
-	rows, err := q.db.Query(ctx, listarItensEntregueCancelados, identrega)
+func (q *Queries) ListarItensEntregueCancelados(ctx context.Context, arg ListarItensEntregueCanceladosParams) ([]ListarItensEntregueCanceladosRow, error) {
+	rows, err := q.db.Query(ctx, listarItensEntregueCancelados, arg.Identrega, arg.TenantID)
 	if err != nil {
 		return nil, err
 	}

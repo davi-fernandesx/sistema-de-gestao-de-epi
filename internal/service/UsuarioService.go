@@ -12,48 +12,43 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-
 type UsuarioRepository interface {
-
 	Cadastrar(ctx context.Context, user repository.CreateUserParams) error
-	Listar(ctx context.Context) ([]repository.BuscarTodosUsuariosRow, error)
-	BuscarPorEmail(ctx context.Context, email string) (repository.BuscarUsuarioPorEmailRow, error)
-	BuscarPoId(ctx context.Context, id int) (repository.BuscarPorIdUsuarioRow, error)
+	Listar(ctx context.Context, tenantId int32) ([]repository.BuscarTodosUsuariosRow, error)
+	BuscarPorEmail(ctx context.Context, email repository.BuscarUsuarioPorEmailParams) (repository.BuscarUsuarioPorEmailRow, error)
+	BuscarPoId(ctx context.Context, arg repository.BuscarPorIdUsuarioParams) (repository.BuscarPorIdUsuarioRow, error)
 }
 
-
-type UsuarioService struct {  
-
+type UsuarioService struct {
 	repo UsuarioRepository
 }
 
-
 func NewUsuarioService(repo UsuarioRepository) *UsuarioService {
-	
+
 	return &UsuarioService{repo: repo}
 }
 
-func (u *UsuarioService) Registrar(ctx context.Context, model  model.Usuario) error {
+func (u *UsuarioService) Registrar(ctx context.Context, model model.Usuario, tenantId int32) error {
 
 	model.Email = strings.TrimSpace(model.Email)
 	model.Nome = strings.TrimSpace(model.Nome)
 	model.Senha = strings.TrimSpace(model.Senha)
 
-	novasenha,err:= auth.HashPassword(model.Senha)
+	novasenha, err := auth.HashPassword(model.Senha)
 	if err != nil {
 		return err
 	}
 
-	arg:= repository.CreateUserParams{
-		Nome: model.Nome,
-		Email: model.Email,
+	arg := repository.CreateUserParams{
+		Nome:      model.Nome,
+		Email:     model.Email,
 		SenhaHash: string(novasenha),
+		TenantID:  tenantId,
 	}
 
 	err = u.repo.Cadastrar(ctx, arg)
 	if err != nil {
 
-		
 		if errors.Is(err, helper.ErrDadoDuplicado) {
 
 			return errors.New("este email já está cadastrado")
@@ -65,51 +60,57 @@ func (u *UsuarioService) Registrar(ctx context.Context, model  model.Usuario) er
 	return nil
 }
 
-func (u *UsuarioService) FazerLogin(ctx context.Context, email, senha string) (string,repository.BuscarUsuarioPorEmailRow ,error){
+func (u *UsuarioService) FazerLogin(ctx context.Context, email, senha string, tenantId int32) (string, repository.BuscarUsuarioPorEmailRow, error) {
 
 	//buscando o usuario pelo email
-	usuario, err:= u.repo.BuscarPorEmail(ctx, email)
+	usuario, err := u.repo.BuscarPorEmail(ctx, repository.BuscarUsuarioPorEmailParams{
+		Email: email,
+		TenantID: tenantId,
+	})
 	if err != nil {
 
-		if errors.Is(err, pgx.ErrNoRows){
-			return "", repository.BuscarUsuarioPorEmailRow{},errors.New("email ou senha inválidos")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", repository.BuscarUsuarioPorEmailRow{}, errors.New("email ou senha inválidos")
 		}
 
-		return "", repository.BuscarUsuarioPorEmailRow{},err
+		return "", repository.BuscarUsuarioPorEmailRow{}, err
 	}
 
 	//verificando se a senha bate com o hash salvo no banco de dados
-	_,err = auth.HashCompare([]byte(usuario.SenhaHash), []byte(senha))
+	_, err = auth.HashCompare([]byte(usuario.SenhaHash), []byte(senha))
 	if err != nil {
 
-		return "",repository.BuscarUsuarioPorEmailRow{},errors.New("email ou senha inválidos")
+		return "", repository.BuscarUsuarioPorEmailRow{}, errors.New("email ou senha inválidos")
 	}
 
 	//gerando o token
-	token,err:= auth.GerarJWT(usuario.ID)
+	token, err := auth.GerarJWT(usuario.ID)
 	if err != nil {
-		return "",repository.BuscarUsuarioPorEmailRow{} ,errors.New("erro ao gerar token de acesso")
+		return "", repository.BuscarUsuarioPorEmailRow{}, errors.New("erro ao gerar token de acesso")
 	}
 
-	return token, usuario,nil
+	return token, usuario, nil
 }
 
-func (u *UsuarioService) BuscarPorId(ctx context.Context, id uint) (model.RecuperaUser,error){
+func (u *UsuarioService) BuscarPorId(ctx context.Context, id uint, tenantId int32) (model.RecuperaUser, error) {
 
 	if id <= 0 {
 
-		return  model.RecuperaUser{}, helper.ErrId
+		return model.RecuperaUser{}, helper.ErrId
 	}
 
-	usuario, err:= u.repo.BuscarPoId(ctx, int(id))
+	usuario, err := u.repo.BuscarPoId(ctx,repository.BuscarPorIdUsuarioParams{
+		ID: int32(id),
+		TenantID: tenantId,
+	})
 	if err != nil {
 
 		return model.RecuperaUser{}, err
 	}
 
 	return model.RecuperaUser{
-		Id: int(usuario.ID),
-		Nome: usuario.Nome,
+		Id:    int(usuario.ID),
+		Nome:  usuario.Nome,
 		Email: usuario.Email,
 	}, nil
 }

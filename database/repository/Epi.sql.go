@@ -12,12 +12,13 @@ import (
 )
 
 const addEpi = `-- name: AddEpi :one
-INSERT INTO epi (nome, fabricante, CA, descricao, validade_CA, IdTipoProtecao, alerta_minimo) 
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO epi (tenant_id, nome, fabricante, CA, descricao, validade_CA, IdTipoProtecao, alerta_minimo) 
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id
 `
 
 type AddEpiParams struct {
+	TenantID       int32
 	Nome           string
 	Fabricante     string
 	Ca             string
@@ -29,6 +30,7 @@ type AddEpiParams struct {
 
 func (q *Queries) AddEpi(ctx context.Context, arg AddEpiParams) (int32, error) {
 	row := q.db.QueryRow(ctx, addEpi,
+		arg.TenantID,
 		arg.Nome,
 		arg.Fabricante,
 		arg.Ca,
@@ -43,17 +45,18 @@ func (q *Queries) AddEpi(ctx context.Context, arg AddEpiParams) (int32, error) {
 }
 
 const addEpiTamanho = `-- name: AddEpiTamanho :exec
-INSERT INTO tamanhos_epis (IdEpi, IdTamanho) 
-VALUES ($1, $2)
+INSERT INTO tamanhos_epis (tenant_id, IdEpi, IdTamanho) 
+VALUES ($1, $2, $3)
 `
 
 type AddEpiTamanhoParams struct {
+	TenantID  int32
 	Idepi     int32
 	Idtamanho int32
 }
 
 func (q *Queries) AddEpiTamanho(ctx context.Context, arg AddEpiTamanhoParams) error {
-	_, err := q.db.Exec(ctx, addEpiTamanho, arg.Idepi, arg.Idtamanho)
+	_, err := q.db.Exec(ctx, addEpiTamanho, arg.TenantID, arg.Idepi, arg.Idtamanho)
 	return err
 }
 
@@ -64,8 +67,15 @@ SELECT
     tp.nome as tipo_protecao_nome
 FROM epi e
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
-WHERE e.id = $1 AND e.ativo = TRUE
+WHERE e.id = $1 
+  AND e.tenant_id = $2 -- SEGURANÇA
+  AND e.ativo = TRUE
 `
+
+type BuscarEpiParams struct {
+	ID       int32
+	TenantID int32
+}
 
 type BuscarEpiRow struct {
 	ID               int32
@@ -79,8 +89,8 @@ type BuscarEpiRow struct {
 	TipoProtecaoNome string
 }
 
-func (q *Queries) BuscarEpi(ctx context.Context, id int32) (BuscarEpiRow, error) {
-	row := q.db.QueryRow(ctx, buscarEpi, id)
+func (q *Queries) BuscarEpi(ctx context.Context, arg BuscarEpiParams) (BuscarEpiRow, error) {
+	row := q.db.QueryRow(ctx, buscarEpi, arg.ID, arg.TenantID)
 	var i BuscarEpiRow
 	err := row.Scan(
 		&i.ID,
@@ -100,16 +110,23 @@ const buscarTamanhosPorEpi = `-- name: BuscarTamanhosPorEpi :many
 SELECT t.id, t.tamanho
 FROM tamanho t
 INNER JOIN tamanhos_epis te ON t.id = te.IdTamanho
-WHERE te.IdEpi = $1 AND te.ativo = TRUE
+WHERE te.IdEpi = $1 
+  AND te.tenant_id = $2 -- SEGURANÇA: Garante que a relação pertence à empresa
+  AND te.ativo = TRUE
 `
+
+type BuscarTamanhosPorEpiParams struct {
+	Idepi    int32
+	TenantID int32
+}
 
 type BuscarTamanhosPorEpiRow struct {
 	ID      int32
 	Tamanho string
 }
 
-func (q *Queries) BuscarTamanhosPorEpi(ctx context.Context, idepi int32) ([]BuscarTamanhosPorEpiRow, error) {
-	rows, err := q.db.Query(ctx, buscarTamanhosPorEpi, idepi)
+func (q *Queries) BuscarTamanhosPorEpi(ctx context.Context, arg BuscarTamanhosPorEpiParams) ([]BuscarTamanhosPorEpiRow, error) {
+	rows, err := q.db.Query(ctx, buscarTamanhosPorEpi, arg.Idepi, arg.TenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -136,14 +153,16 @@ SELECT
     COUNT(*) OVER() as total_geral
 FROM epi e
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
-WHERE e.ativo = TRUE
-order by e.id
+WHERE e.tenant_id = $3 -- SEGURANÇA: Filtro de Tenant
+  AND e.ativo = TRUE
+ORDER BY e.id
 LIMIT $1 OFFSET $2
 `
 
 type BuscarTodosEpisPaginadoParams struct {
-	Limit  int32
-	Offset int32
+	Limit    int32
+	Offset   int32
+	TenantID int32
 }
 
 type BuscarTodosEpisPaginadoRow struct {
@@ -160,7 +179,7 @@ type BuscarTodosEpisPaginadoRow struct {
 }
 
 func (q *Queries) BuscarTodosEpisPaginado(ctx context.Context, arg BuscarTodosEpisPaginadoParams) ([]BuscarTodosEpisPaginadoRow, error) {
-	rows, err := q.db.Query(ctx, buscarTodosEpisPaginado, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, buscarTodosEpisPaginado, arg.Limit, arg.Offset, arg.TenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +213,8 @@ const buscarTodosTamanhosAgrupados = `-- name: BuscarTodosTamanhosAgrupados :man
 SELECT te.IdEpi, t.id, t.tamanho
 FROM tamanho t
 INNER JOIN tamanhos_epis te ON t.id = te.IdTamanho
-WHERE te.ativo = TRUE
+WHERE te.tenant_id = $1 -- SEGURANÇA
+  AND te.ativo = TRUE
 `
 
 type BuscarTodosTamanhosAgrupadosRow struct {
@@ -203,8 +223,8 @@ type BuscarTodosTamanhosAgrupadosRow struct {
 	Tamanho string
 }
 
-func (q *Queries) BuscarTodosTamanhosAgrupados(ctx context.Context) ([]BuscarTodosTamanhosAgrupadosRow, error) {
-	rows, err := q.db.Query(ctx, buscarTodosTamanhosAgrupados)
+func (q *Queries) BuscarTodosTamanhosAgrupados(ctx context.Context, tenantID int32) ([]BuscarTodosTamanhosAgrupadosRow, error) {
+	rows, err := q.db.Query(ctx, buscarTodosTamanhosAgrupados, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -224,11 +244,20 @@ func (q *Queries) BuscarTodosTamanhosAgrupados(ctx context.Context) ([]BuscarTod
 }
 
 const deletarEpi = `-- name: DeletarEpi :execrows
-UPDATE epi SET ativo = FALSE, deletado_em = NOW() WHERE id = $1 AND ativo = TRUE
+UPDATE epi 
+SET ativo = FALSE, deletado_em = NOW() 
+WHERE id = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
-func (q *Queries) DeletarEpi(ctx context.Context, id int32) (int64, error) {
-	result, err := q.db.Exec(ctx, deletarEpi, id)
+type DeletarEpiParams struct {
+	ID       int32
+	TenantID int32
+}
+
+func (q *Queries) DeletarEpi(ctx context.Context, arg DeletarEpiParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletarEpi, arg.ID, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -236,11 +265,20 @@ func (q *Queries) DeletarEpi(ctx context.Context, id int32) (int64, error) {
 }
 
 const deletarTamanhosPorEpi = `-- name: DeletarTamanhosPorEpi :execrows
-UPDATE tamanhos_epis SET ativo = FALSE, deletado_em = NOW() WHERE IdEpi = $1 AND ativo = TRUE
+UPDATE tamanhos_epis 
+SET ativo = FALSE, deletado_em = NOW() 
+WHERE IdEpi = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
-func (q *Queries) DeletarTamanhosPorEpi(ctx context.Context, idepi int32) (int64, error) {
-	result, err := q.db.Exec(ctx, deletarTamanhosPorEpi, idepi)
+type DeletarTamanhosPorEpiParams struct {
+	Idepi    int32
+	TenantID int32
+}
+
+func (q *Queries) DeletarTamanhosPorEpi(ctx context.Context, arg DeletarTamanhosPorEpiParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletarTamanhosPorEpi, arg.Idepi, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -249,32 +287,36 @@ func (q *Queries) DeletarTamanhosPorEpi(ctx context.Context, idepi int32) (int64
 
 const updateEpiCampo = `-- name: UpdateEpiCampo :execrows
 UPDATE epi 
-SET id = COALESCE($1, id),
-    nome = COALESCE($2, nome),
-    fabricante = COALESCE($3, fabricante),
-    CA = COALESCE($4, CA),
-    descricao = COALESCE($5, descricao),
-    validade_CA = COALESCE($6, validade_CA)
-WHERE id = $1 AND ativo = TRUE
+SET 
+    nome = COALESCE($1, nome),
+    fabricante = COALESCE($2, fabricante),
+    CA = COALESCE($3, CA),
+    descricao = COALESCE($4, descricao),
+    validade_CA = COALESCE($5, validade_CA)
+WHERE id = $6 
+  AND tenant_id = $7 -- SEGURANÇA: Obrigatório para update
+  AND ativo = TRUE
 `
 
 type UpdateEpiCampoParams struct {
-	ID         pgtype.Int4
 	Nome       pgtype.Text
 	Fabricante pgtype.Text
 	Ca         pgtype.Text
 	Descricao  pgtype.Text
 	ValidadeCa pgtype.Date
+	ID         int32
+	TenantID   int32
 }
 
 func (q *Queries) UpdateEpiCampo(ctx context.Context, arg UpdateEpiCampoParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateEpiCampo,
-		arg.ID,
 		arg.Nome,
 		arg.Fabricante,
 		arg.Ca,
 		arg.Descricao,
 		arg.ValidadeCa,
+		arg.ID,
+		arg.TenantID,
 	)
 	if err != nil {
 		return 0, err

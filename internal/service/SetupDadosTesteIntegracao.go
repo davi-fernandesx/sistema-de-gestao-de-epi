@@ -7,320 +7,383 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
 )
+
+// --- UTILITÁRIOS ---
 
 func randomString(prefix string) string {
 	return fmt.Sprintf("%s_%d", prefix, time.Now().UnixNano())
 }
 
 func randomInt() *rand.Rand {
-
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
-
 	return r
 }
 
-func CreateUser(t *testing.T, db *pgxpool.Pool) int64 {
+// --- 1. EMPRESA (TENANT) ---
 
+func CreateEmpresa(t *testing.T, db *pgxpool.Pool) int64 {
 	var id int64
+	query := `
+		INSERT INTO empresas (nome_fantasia, razao_social, cnpj, subdominio, ativo) 
+		VALUES ($1, $2, $3, $4, $5) 
+		RETURNING id;
+	`
+	// Gera dados aleatórios para satisfazer as constraints UNIQUE
+	nano := time.Now().UnixNano()
+	nomeFantasia := fmt.Sprintf("Radap Client %d", nano)
+	razaoSocial := fmt.Sprintf("Radap Tech Clientes Ltda %d", nano)
+	cnpj := fmt.Sprintf("%d", nano)       // CNPJ único (fake)
+	subdominio := fmt.Sprintf("cliente%d", nano) // Subdominio único
 
-	query := `insert into usuarios (nome, email, senha_hash) values ($1, $2, $3)
-	RETURNING id;`
+	err := db.QueryRow(context.Background(), query, 
+		nomeFantasia, 
+		razaoSocial, 
+		cnpj, 
+		subdominio, 
+		true,
+	).Scan(&id)
 
-	nome := randomString("rada")
-	email := randomString("rafa@gmail")
-	senha := randomString("teste")
+	if err != nil {
+		t.Fatalf("Helper CreateEmpresa falhou: %v", err)
+	}
+	return id
+}
+
+// --- 2. USUÁRIO (Vinculado ao Tenant) ---
+
+func CreateUser(t *testing.T, db *pgxpool.Pool, tenantID int64) int64 {
+	var id int64
+	query := `
+		INSERT INTO usuarios (tenant_id, nome, email, senha_hash, ativo) 
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id;
+	`
+
+	nome := randomString("Usuario Teste")
+	// O email deve ser único por tenant
+	email := fmt.Sprintf("user_%d@radap.com", time.Now().UnixNano())
+	senha := "hash_senha_segura"
+
 	err := db.QueryRow(context.Background(), query,
+		tenantID,
 		nome,
 		email,
 		senha,
+		true,
 	).Scan(&id)
+
 	if err != nil {
-
-		t.Fatalf("erro ao criar usuario,%v", err)
+		t.Fatalf("Helper CreateUser falhou: %v", err)
 	}
-
-	return id
-}
-func CreateDepartamento(t *testing.T, db *pgxpool.Pool) int64 {
-
-	var id int64
-	query := `insert into departamento (nome) 
-			values ($1)
-			RETURNING id;`
-
-	err := db.QueryRow(context.Background(), query, randomString("dep")).Scan(&id)
-	if err != nil {
-		t.Fatalf("dados de deparatmento falhou durante sua criacao: %v", err)
-	}
-
 	return id
 }
 
-func CreateFuncao(t *testing.T, db *pgxpool.Pool, idDep int64) int64 {
+// --- 3. ESTRUTURA ORGANIZACIONAL ---
 
+func CreateDepartamento(t *testing.T, db *pgxpool.Pool, tenantID int64) int64 {
 	var id int64
 	query := `
-		INSERT INTO funcao (nome, IdDepartamento) 
-			VALUES ($1, $2) 
-			RETURNING id;
+		INSERT INTO departamento (tenant_id, nome, ativo) 
+		VALUES ($1, $2, $3)
+		RETURNING id;
 	`
-
-	err := db.QueryRow(context.Background(), query, randomString("func"), idDep).Scan(&id)
+	err := db.QueryRow(context.Background(), query, 
+		tenantID, 
+		randomString("Dep"), 
+		true,
+	).Scan(&id)
+	
 	if err != nil {
-		t.Fatalf("dados de funcao falhou durante sua criação: %v", err)
+		t.Fatalf("Helper CreateDepartamento falhou: %v", err)
 	}
-
 	return id
 }
 
-func CreateProtecao(t *testing.T, db *pgxpool.Pool) int64 {
-
+func CreateFuncao(t *testing.T, db *pgxpool.Pool, idDep, tenantID int64) int64 {
 	var id int64
-
-	query := `INSERT INTO tipo_protecao (nome) 
-		VALUES ($1)
+	query := `
+		INSERT INTO funcao (tenant_id, nome, IdDepartamento, ativo) 
+		VALUES ($1, $2, $3, $4) 
 		RETURNING id;
-		`
-	err := db.QueryRow(context.Background(), query, randomString("protec")).Scan(&id)
+	`
+	err := db.QueryRow(context.Background(), query, 
+		tenantID, 
+		randomString("Func"), 
+		idDep, 
+		true,
+	).Scan(&id)
+
+	if err != nil {
+		t.Fatalf("Helper CreateFuncao falhou: %v", err)
+	}
+	return id
+}
+
+func CreateFuncionario(t *testing.T, db *pgxpool.Pool, IdDepartamento, IdFuncao, tenantID int64) int64 {
+	var id int64
+	query := `
+		INSERT INTO funcionario (tenant_id, nome, matricula, IdFuncao, IdDepartamento, ativo) 
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id;
+	`
+	r := randomInt()
+	nome := randomString("Funcionario")
+	// Matrícula única por Tenant
+	matricula := fmt.Sprintf("%d", r.Intn(99999999)) 
+
+	err := db.QueryRow(context.Background(), query,
+		tenantID,
+		nome,
+		matricula,
+		IdFuncao,
+		IdDepartamento,
+		true,
+	).Scan(&id)
+
+	if err != nil {
+		t.Fatalf("Helper CreateFuncionario falhou: %v", err)
+	}
+	return id
+}
+
+// --- 4. CATALOGO DE EPIs ---
+
+func CreateProtecao(t *testing.T, db *pgxpool.Pool, tenantID int64) int64 {
+	var id int64
+	query := `
+		INSERT INTO tipo_protecao (tenant_id, nome, ativo) 
+		VALUES ($1, $2, $3)
+		RETURNING id;
+	`
+	err := db.QueryRow(context.Background(), query, 
+		tenantID, 
+		randomString("Protecao"), 
+		true,
+	).Scan(&id)
+
 	if err != nil {
 		t.Fatalf("Helper CreateProtecao falhou: %v", err)
 	}
-
 	return id
-
 }
 
-func CreateTamanho(t *testing.T, db *pgxpool.Pool) int64 {
-
+func CreateTamanho(t *testing.T, db *pgxpool.Pool, tenantID int64) int64 {
 	var id int64
-	query := `INSERT INTO tamanho (tamanho) 
-		VALUES ($1)
-		RETURNING id;`
-	err := db.QueryRow(context.Background(), query, randomString("tam")).Scan(&id)
+	query := `
+		INSERT INTO tamanho (tenant_id, tamanho, ativo) 
+		VALUES ($1, $2, $3)
+		RETURNING id;
+	`
+	err := db.QueryRow(context.Background(), query, 
+		tenantID, 
+		randomString("Tam"), 
+		true,
+	).Scan(&id)
+
 	if err != nil {
 		t.Fatalf("Helper CreateTamanho falhou: %v", err)
 	}
 	return id
 }
 
-func CreateFuncionario(t *testing.T, db *pgxpool.Pool, IdDepartamento, IdFuncao int64) int64 {
-
+func CreateEpi(t *testing.T, db *pgxpool.Pool, idTipoProtecao, tenantID int64) int64 {
 	var id int64
-	query := `INSERT INTO funcionario (nome, matricula, IdDepartamento, IdFuncao) 
-		VALUES ($1, $2, $3, $4)
-		RETURNING id;
-		`
-
-	r := randomInt()
-
-	nome := randomString("rada")
-	matricula := fmt.Sprintf("%d", r.Intn(9999999))
-
-	err := db.QueryRow(context.Background(), query,
-		nome,
-		matricula,
-		IdDepartamento,
-		IdFuncao,
-	).Scan(&id)
-
-	if err != nil {
-		t.Fatalf("Helper CreateFuncionario falhou: %v", err)
-	}
-
-	return id
-
-}
-
-func CreateEpi(t *testing.T, db *pgxpool.Pool, idTipoProtecao int64) int64 {
-	var id int64
-
-	// Usamos @p1, @p2... para o driver mapear automaticamente os argumentos na ordem
 	query := `
-		INSERT INTO epi (nome, fabricante, CA, descricao, validade_CA, IdTipoProtecao, alerta_minimo) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO epi (
+			tenant_id, nome, fabricante, CA, descricao, 
+			validade_CA, IdTipoProtecao, alerta_minimo, ativo
+		) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id;
 	`
-	// 1. Gera seed baseada no tempo para garantir aleatoriedade a cada execução
-
 	r := randomInt()
-	// Gerando dados aleatórios para garantir unicidade
-	nome := randomString("Luva")
-	fabricante := randomString("Fabr")
-	ca := fmt.Sprintf("%d", r.Intn(9999999))
-	descricao := "Descrição de teste gerada automaticamente"
-	validade := time.Now().AddDate(1, 0, 0) // Validade para daqui a 1 ano
+	nome := randomString("Luva X")
+	fabricante := randomString("Fabr Y")
+	ca := fmt.Sprintf("%d", r.Intn(9999999)) // CA único por tenant
+	descricao := "Descrição teste"
+	validade := time.Now().AddDate(1, 0, 0)
 	alertaMinimo := 10
 
-	// A ordem aqui deve bater com @p1, @p2, etc.
 	err := db.QueryRow(context.Background(), query,
+		tenantID,
 		nome,
 		fabricante,
 		ca,
 		descricao,
 		validade,
-		idTipoProtecao, // FK que recebemos como argumento
+		idTipoProtecao,
 		alertaMinimo,
+		true,
 	).Scan(&id)
 
 	if err != nil {
 		t.Fatalf("Helper CreateEpi falhou: %v", err)
 	}
-
 	return id
 }
 
-func CreateEntradaEpi(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTipoProtecao, IdTamanho, iduser int64) int64 {
+// --- 5. ESTOQUE E MOVIMENTAÇÃO ---
 
+func CreateEntradaEpi(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTipoProtecao, IdTamanho, idUserCriacao, tenantID int64) int64 {
 	var id int64
 
-	query := `INSERT INTO entrada_epi (
-    IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-    data_fabricacao, data_validade, lote, fornecedor, valor_unitario,nota_fiscal_numero, nota_fiscal_serie,id_usuario_criacao
-	) 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-	RETURNING id;`
+	// Atenção: Adicionado id_usuario_criacao, nota_fiscal e tenant_id
+	query := `
+		INSERT INTO entrada_epi (
+			tenant_id, IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
+			data_fabricacao, data_validade, lote, fornecedor, valor_unitario, 
+			nota_fiscal_numero, nota_fiscal_serie, id_usuario_criacao, ativo
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		RETURNING id;
+	`
 
-	lote := randomString("lote")
-	fabricante := randomString("fabr")
-	notaFiscal := randomString("notaFiscal")
-	notaFiscalNumero := randomString("notaFiscalNumero")
+	lote := randomString("Lote")
+	// Constraint: UNIQUE (nota_fiscal_numero, nota_fiscal_serie, fornecedor)
+	// Usamos randomString para garantir unicidade nos testes
+	fornecedor := randomString("Fornecedor")
+	notaFiscalNumero := randomString("NF")
+	notaFiscalSerie := "1"
+
 	err := db.QueryRow(context.Background(), query,
+		tenantID,
 		idEpi,
 		IdTamanho,
-		configs.NewDataBrPtr(time.Now()),
-		100,
-		100,
-		configs.NewDataBrPtr(time.Now().AddDate(-1, 0, 0)),
-		configs.NewDataBrPtr(time.Now().AddDate(1, 0, 0)),
+		time.Now(), // Data Entrada (Tipo Date no banco, Driver converte)
+		100,        // Quantidade Inicial
+		100,        // Quantidade Atual
+		time.Now().AddDate(-1, 0, 0), // Fabricação
+		time.Now().AddDate(1, 0, 0),  // Validade
 		lote,
-		fabricante,
+		fornecedor,
 		decimal.NewFromFloat(23.99),
-		notaFiscal,
 		notaFiscalNumero,
-		iduser,
+		notaFiscalSerie,
+		idUserCriacao,
+		true, // Ativo
 	).Scan(&id)
 
 	if err != nil {
 		t.Fatalf("Helper CreateEntradaEpi falhou: %v", err)
 	}
-
 	return id
 }
 
-func CreateEntradaEpi1(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTipoProtecao, IdTamanho, iduser int64) int64 {
-
-	var id int64
-
-	query := `INSERT INTO entrada_epi (
-    IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-    data_fabricacao, data_validade, lote, fornecedor, valor_unitario,nota_fiscal_numero, nota_fiscal_serie,id_usuario_criacao
-	) 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-	RETURNING id;`
-
-	lote := randomString("lote")
-	fabricante := randomString("fabr")
-	notaFiscal := randomString("notaFiscal")
-	notaFiscalNumero := randomString("notaFiscalNumero")
-	err := db.QueryRow(context.Background(), query,
-		idEpi,
-		IdTamanho,
-		configs.NewDataBrPtr(time.Now()),
-		1,
-		1,
-		configs.NewDataBrPtr(time.Now().AddDate(-1, 0, 0)),
-		configs.NewDataBrPtr(time.Now().AddDate(1, 0, 0)),
-		lote,
-		fabricante,
-		decimal.NewFromFloat(23.99),
-		notaFiscal,
-		notaFiscalNumero,
-		iduser,
-	).Scan(&id)
-
-	if err != nil {
-		t.Fatalf("Helper CreateEntradaEpi falhou: %v", err)
-	}
-
-	return id
-}
-
-func CreateEntregaEpi(t *testing.T, db *pgxpool.Pool, idFuncionario, idUser int64) int64 {
+// Versão com quantidade 1 para testes de limite
+func CreateEntradaEpi1(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTipoProtecao, IdTamanho, idUserCriacao, tenantID int64) int64 {
 	var id int64
 	query := `
-		INSERT INTO entrega_epi (IdFuncionario, data_entrega, assinatura, token_validacao,id_usuario_entrega)
-				VALUES ($1, $2, $3, $4, $5)
-					RETURNING id;
+		INSERT INTO entrada_epi (
+			tenant_id, IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
+			data_fabricacao, data_validade, lote, fornecedor, valor_unitario, 
+			nota_fiscal_numero, nota_fiscal_serie, id_usuario_criacao, ativo
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		RETURNING id;
 	`
-	dataEntrega:= configs.NewDataBrPtr(time.Now())
-	assinatura:= randomString("teste")
-	token:= randomString("oq")
 	
-	err:= db.QueryRow(context.Background(), query,
+	lote := randomString("Lote")
+	fornecedor := randomString("Fornecedor")
+	notaFiscalNumero := randomString("NF")
 
-			idFuncionario,
-			dataEntrega,
-			assinatura,
-			token,
-			idUser,
-		).Scan(&id)
-	if err != nil{
+	err := db.QueryRow(context.Background(), query,
+		tenantID,
+		idEpi,
+		IdTamanho,
+		time.Now(),
+		1, // Quantidade 1
+		1, // Quantidade Atual 1
+		time.Now().AddDate(-1, 0, 0),
+		time.Now().AddDate(1, 0, 0),
+		lote,
+		fornecedor,
+		decimal.NewFromFloat(23.99),
+		notaFiscalNumero,
+		"1",
+		idUserCriacao,
+		true,
+	).Scan(&id)
 
-		t.Fatalf("Helper CreateEntregaEpi falhou: %v", err)
-
+	if err != nil {
+		t.Fatalf("Helper CreateEntradaEpi1 falhou: %v", err)
 	}
 	return id
 }
 
-
-func CreateEpiEntregues(t *testing.T, db *pgxpool.Pool,idEntrega, idEntrada, IdEpi,IdTamanho int64) int64 {
-
-
+func CreateEntregaEpi(t *testing.T, db *pgxpool.Pool, idFuncionario, idUserEntrega, tenantID int64) int64 {
 	var id int64
-	query:= `
-		INSERT INTO epis_entregues (IdEntrega, IdEntrada ,IdEpi, IdTamanho, quantidade)
-			VALUES ($1, $2, $3, $4, $5)
-				RETURNING id;
+	// Adicionado token_validacao e id_usuario_entrega
+	query := `
+		INSERT INTO entrega_epi (
+			tenant_id, IdFuncionario, data_entrega, assinatura, 
+			token_validacao, id_usuario_entrega, ativo
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id;
 	`
+	assinatura := randomString("AssinaturaBase64")
+	token := randomString("TokenValidacao")
 
-	quantidade:= 10
+	err := db.QueryRow(context.Background(), query,
+		tenantID,
+		idFuncionario,
+		time.Now(),
+		assinatura,
+		token,
+		idUserEntrega,
+		true,
+	).Scan(&id)
 
-	err:= db.QueryRow(context.Background(), query,
+	if err != nil {
+		t.Fatalf("Helper CreateEntregaEpi falhou: %v", err)
+	}
+	return id
+}
 
+func CreateEpiEntregues(t *testing.T, db *pgxpool.Pool, idEntrega, idEntrada, IdEpi, IdTamanho, tenantID int64) int64 {
+	var id int64
+	query := `
+		INSERT INTO epis_entregues (
+			tenant_id, IdEntrega, IdEntrada, IdEpi, IdTamanho, quantidade, ativo
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id;
+	`
+	quantidade := 10
+
+	err := db.QueryRow(context.Background(), query,
+		tenantID,
 		idEntrega,
 		idEntrada,
 		IdEpi,
 		IdTamanho,
 		quantidade,
+		true,
 	).Scan(&id)
+
 	if err != nil {
-
-		t.Fatalf("erro ao criar CreateEpiEntregues: %v", err)
+		t.Fatalf("Helper CreateEpiEntregues falhou: %v", err)
 	}
-
 	return id
 }
 
-func CreateMotivoDevolucao(t *testing.T, db *pgxpool.Pool, motivo string) int64{
-
+func CreateMotivoDevolucao(t *testing.T, db *pgxpool.Pool, motivo string, tenantID int64) int64 {
 	var id int64
-
-	query:= `	
-		INSERT INTO motivo_devolucao (motivo) 
-			VALUES ($1)
-			returning id;
+	query := `
+		INSERT INTO motivo_devolucao (tenant_id, motivo, ativo) 
+		VALUES ($1, $2, $3)
+		RETURNING id;
 	`
+	err := db.QueryRow(context.Background(), query,
+		tenantID,
+		motivo,
+		true,
+	).Scan(&id)
 
-	err:= db.QueryRow(context.Background(), query,
-			motivo,
-		).Scan(&id)
 	if err != nil {
-
-		t.Fatalf("erro ao criar CreateMotivoDevolucao: %v", err)
+		t.Fatalf("Helper CreateMotivoDevolucao falhou: %v", err)
 	}
-
-	return  id
+	return id
 }

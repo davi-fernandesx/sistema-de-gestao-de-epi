@@ -1,9 +1,10 @@
 -- name: ListarLotesParaConsumo :many
--- O PostgreSQL usa FOR UPDATE para o que o SQL Server chama de UPDLOCK.
+-- O PostgreSQL usa FOR UPDATE para travar apenas as linhas desse cliente específico.
 SELECT id, quantidadeAtual, data_validade, valor_unitario 
 FROM entrada_epi 
-WHERE IdEpi = $1 
-  AND IdTamanho = $2 
+WHERE tenant_id = $1 -- SEGURANÇA: Só busca lotes da empresa logada
+  AND IdEpi = $2 
+  AND IdTamanho = $3 
   AND quantidadeAtual > 0 
   AND data_validade >= CURRENT_DATE
   AND ativo = TRUE
@@ -14,29 +15,35 @@ FOR UPDATE;
 UPDATE entrada_epi 
 SET quantidadeAtual = quantidadeAtual - $1 
 WHERE id = $2 
+  AND tenant_id = $3 -- SEGURANÇA: Garante que o lote pertence à empresa antes de subtrair
   AND ativo = TRUE
   AND quantidadeAtual >= $1;
-
 
 -- name: ReporEstoqueLote :execrows
 UPDATE entrada_epi 
 SET quantidadeAtual = quantidadeAtual + $1 
 WHERE id = $2 
-  AND ativo = TRUE
-  AND quantidadeAtual >= $1;
+  AND tenant_id = $3 -- SEGURANÇA
+  AND ativo = TRUE;
 
 -- name: RegistrarItemEntrega :exec
-INSERT INTO epis_entregues (IdEpi, IdTamanho, quantidade, IdEntrega, IdEntrada) 
-VALUES ($1, $2, $3, $4, $5);
+INSERT INTO epis_entregues (
+    tenant_id, -- Novo campo
+    IdEpi, IdTamanho, quantidade, IdEntrega, IdEntrada
+) 
+VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: DevolverItemAoEstoque :exec
 UPDATE entrada_epi
-SET quantidadeAtual = entrada_epi.quantidadeAtual + $3 -- Use o nome da tabela AQUI
+SET quantidadeAtual = entrada_epi.quantidadeAtual + $4 -- Quantidade é o $4 agora
 WHERE id = (
     SELECT ee.id
     FROM entrada_epi ee
-    WHERE ee.IdEpi = $1 
-      AND ee.IdTamanho = $2
+    WHERE ee.tenant_id = $1 -- SEGURANÇA NA SUBQUERY
+      AND ee.IdEpi = $2 
+      AND ee.IdTamanho = $3
+      AND ee.ativo = TRUE -- Boa prática garantir que não devolve para lote inativo
     ORDER BY ee.data_entrada DESC
     LIMIT 1
-); 
+)
+AND tenant_id = $1; -- SEGURANÇA NO UPDATE

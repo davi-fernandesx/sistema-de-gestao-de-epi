@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	
+
 	"strings"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
@@ -14,15 +14,14 @@ import (
 
 //go:generate mockery --name=DepartamentoRepository --output=../../mocks --outpkg=mocks --with-expecter
 type DepartamentoRepository interface {
-	Adicionar(ctx context.Context, departamento string) error
-	ListarDepartamento(ctx context.Context, id int32) (repository.BuscarDepartamentoRow, error)
-	ListarDepartamentos(ctx context.Context) ([]repository.BuscarTodosDepartamentosRow, error)
-	CancelarDepartamento(ctx context.Context, id int32) (int64, error)
+	Adicionar(ctx context.Context, departamento repository.CriaDepartamentoParams) error
+	ListarDepartamento(ctx context.Context, arg repository.BuscarDepartamentoParams) (repository.BuscarDepartamentoRow, error)
+	ListarDepartamentos(ctx context.Context, tenantId int32)([]repository.BuscarTodosDepartamentosRow, error)
+	CancelarDepartamento(ctx context.Context, arg repository.DeletarDepartamentoParams) (int64, error)
 	AtualizarDepartamento(ctx context.Context, arg repository.UpdateDepartamentoParams) (int64, error)
 }
 
 type DepartamentoService struct {
-
 	repo DepartamentoRepository
 }
 
@@ -30,61 +29,67 @@ func NewDepartamentoService(r DepartamentoRepository) *DepartamentoService {
 	return &DepartamentoService{repo: r}
 }
 
-
-func (d *DepartamentoService) SalvarDepartamento(ctx context.Context, model model.Departamento) error {
+func (d *DepartamentoService) SalvarDepartamento(ctx context.Context, tenantId int32, model model.Departamento) error {
 
 	model.Departamento = strings.TrimSpace(model.Departamento)
 
 	if len(model.Departamento) < 2 {
 
-		return  helper.ErrNomeCurto
+		return helper.ErrNomeCurto
 
 	}
 
-	if err := d.repo.Adicionar(ctx, model.Departamento); err != nil {
+	err := d.repo.Adicionar(ctx, repository.CriaDepartamentoParams{
+		TenantID: tenantId,
+		Nome:     model.Departamento,
+	})
+	if err != nil {
 
-	  if errors.Is(err, helper.ErrDadoDuplicado){
+		if errors.Is(err, helper.ErrDadoDuplicado) {
 
-		return  err
-	  }
+			return err
+		}
 
-	  return err
+		return err
 	}
 
-	return  nil
+	return nil
 }
 
-func (d *DepartamentoService) ListarDepartamento(ctx context.Context, id int32) (model.DepartamentoDto, error) {
-	
+func (d *DepartamentoService) ListarDepartamento(ctx context.Context, id int32, TenantId int32) (model.DepartamentoDto, error) {
+
 	if id <= 0 {
 
-		return model.DepartamentoDto{},helper.ErrId
+		return model.DepartamentoDto{}, helper.ErrId
 	}
 
-	dep, err:= d.repo.ListarDepartamento(ctx, id)
+	dep, err := d.repo.ListarDepartamento(ctx, repository.BuscarDepartamentoParams{
+		ID: id,
+		TenantID: TenantId,
+	})
 	if err != nil {
 
 		if err == pgx.ErrNoRows {
 
-			return model.DepartamentoDto{},helper.ErrNaoEncontrado
+			return model.DepartamentoDto{}, helper.ErrNaoEncontrado
 		}
-		return  model.DepartamentoDto{}, err
+		return model.DepartamentoDto{}, err
 	}
-	
+
 	return model.DepartamentoDto{
 
-		ID: int(dep.ID),
+		ID:           int(dep.ID),
 		Departamento: dep.Nome,
 	}, nil
 
 }
 
-func (d *DepartamentoService) ListarTodosDepartamentos(ctx context.Context) ([]model.DepartamentoDto, error) {
+func (d *DepartamentoService) ListarTodosDepartamentos(ctx context.Context, tenantId int32) ([]model.DepartamentoDto, error) {
 
-	deps, err:= d.repo.ListarDepartamentos(ctx)
+	deps, err := d.repo.ListarDepartamentos(ctx, tenantId)
 	if err != nil {
 
-			return  nil, err
+		return nil, err
 	}
 
 	if deps == nil {
@@ -92,67 +97,69 @@ func (d *DepartamentoService) ListarTodosDepartamentos(ctx context.Context) ([]m
 		return []model.DepartamentoDto{}, nil
 	}
 
-	dto:=make([]model.DepartamentoDto, 0, len(deps))
+	dto := make([]model.DepartamentoDto, 0, len(deps))
 
 	for _, dep := range deps {
 
-		departamento:= model.DepartamentoDto {
-			ID: int(dep.ID),
+		departamento := model.DepartamentoDto{
+			ID:           int(dep.ID),
 			Departamento: dep.Nome,
 		}
-
 
 		dto = append(dto, departamento)
 	}
 
-	return  dto, nil
+	return dto, nil
 }
 
-func (d *DepartamentoService) DeletarDepartamento(ctx context.Context, id int) error {
-	
+func (d *DepartamentoService) DeletarDepartamento(ctx context.Context, id int, tenantId int32) error {
+
 	if id <= 0 {
 
-		return  helper.ErrId
+		return helper.ErrId
 	}
 
-
-	idDep, err := d.repo.CancelarDepartamento(ctx, int32(id))
+	idDep, err := d.repo.CancelarDepartamento(ctx, repository.DeletarDepartamentoParams{
+		ID: int32(id),
+		TenantID: tenantId,
+	})
 	if err != nil {
 
-		return  helper.ErrInternal
+		return helper.ErrInternal
 	}
 
 	if idDep == 0 {
 
-		return  helper.ErrNaoEncontrado
+		return helper.ErrNaoEncontrado
 	}
 
-	return  nil
+	return nil
 }
 
-func (d *DepartamentoService) AtualizarDepartamento(ctx context.Context, id int32, novoNome string) error {
+func (d *DepartamentoService) AtualizarDepartamento(ctx context.Context, id int32, novoNome string, tenantId int32) error {
 
 	novoNome = strings.TrimSpace(novoNome)
 	if len(novoNome) < 2 {
-        return helper.ErrNomeCurto
-    }
+		return helper.ErrNomeCurto
+	}
 
 	arg := repository.UpdateDepartamentoParams{
-        ID:   id,
-        Nome: novoNome,
-    }
+		ID:   id,
+		Nome: novoNome,
+		TenantID: tenantId,
+	}
 
-	 linha,errDep:= d.repo.AtualizarDepartamento(ctx, arg)
-	 if errDep != nil {
+	linha, errDep := d.repo.AtualizarDepartamento(ctx, arg)
+	if errDep != nil {
 
-		return  errDep
-	 }
+		return errDep
+	}
 
-	 if linha == 0 {
+	if linha == 0 {
 
 		return helper.ErrNaoEncontrado
-	 }
+	}
 
-	 return  nil
+	return nil
 
 }

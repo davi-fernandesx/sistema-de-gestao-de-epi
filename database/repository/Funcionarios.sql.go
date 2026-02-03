@@ -10,11 +10,12 @@ import (
 )
 
 const addFuncionario = `-- name: AddFuncionario :exec
-INSERT INTO funcionario (nome, matricula, IdDepartamento, IdFuncao) 
-VALUES ($1, $2, $3, $4)
+INSERT INTO funcionario (tenant_id, nome, matricula, IdDepartamento, IdFuncao) 
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type AddFuncionarioParams struct {
+	TenantID       int32
 	Nome           string
 	Matricula      string
 	Iddepartamento int32
@@ -23,6 +24,7 @@ type AddFuncionarioParams struct {
 
 func (q *Queries) AddFuncionario(ctx context.Context, arg AddFuncionarioParams) error {
 	_, err := q.db.Exec(ctx, addFuncionario,
+		arg.TenantID,
 		arg.Nome,
 		arg.Matricula,
 		arg.Iddepartamento,
@@ -43,8 +45,15 @@ SELECT
 FROM funcionario fn
 INNER JOIN departamento d ON fn.IdDepartamento = d.id
 INNER JOIN funcao f ON fn.IdFuncao = f.id
-WHERE fn.matricula = $1 AND fn.ativo = TRUE
+WHERE fn.matricula = $1 
+  AND fn.tenant_id = $2 -- IMPORTANTE: Matrícula só é única dentro do tenant
+  AND fn.ativo = TRUE
 `
+
+type BuscaFuncionarioParams struct {
+	Matricula string
+	TenantID  int32
+}
 
 type BuscaFuncionarioRow struct {
 	ID               int32
@@ -56,8 +65,8 @@ type BuscaFuncionarioRow struct {
 	FuncaoNome       string
 }
 
-func (q *Queries) BuscaFuncionario(ctx context.Context, matricula string) (BuscaFuncionarioRow, error) {
-	row := q.db.QueryRow(ctx, buscaFuncionario, matricula)
+func (q *Queries) BuscaFuncionario(ctx context.Context, arg BuscaFuncionarioParams) (BuscaFuncionarioRow, error) {
+	row := q.db.QueryRow(ctx, buscaFuncionario, arg.Matricula, arg.TenantID)
 	var i BuscaFuncionarioRow
 	err := row.Scan(
 		&i.ID,
@@ -83,8 +92,15 @@ SELECT
 FROM funcionario fn
 INNER JOIN departamento d ON fn.IdDepartamento = d.id
 INNER JOIN funcao f ON fn.IdFuncao = f.id
-WHERE fn.id = $1 AND fn.ativo = TRUE
+WHERE fn.id = $1 
+  AND fn.tenant_id = $2 -- SEGURANÇA
+  AND fn.ativo = TRUE
 `
+
+type BuscaFuncionarioPorIdParams struct {
+	ID       int32
+	TenantID int32
+}
 
 type BuscaFuncionarioPorIdRow struct {
 	ID               int32
@@ -96,8 +112,8 @@ type BuscaFuncionarioPorIdRow struct {
 	FuncaoNome       string
 }
 
-func (q *Queries) BuscaFuncionarioPorId(ctx context.Context, id int32) (BuscaFuncionarioPorIdRow, error) {
-	row := q.db.QueryRow(ctx, buscaFuncionarioPorId, id)
+func (q *Queries) BuscaFuncionarioPorId(ctx context.Context, arg BuscaFuncionarioPorIdParams) (BuscaFuncionarioPorIdRow, error) {
+	row := q.db.QueryRow(ctx, buscaFuncionarioPorId, arg.ID, arg.TenantID)
 	var i BuscaFuncionarioPorIdRow
 	err := row.Scan(
 		&i.ID,
@@ -123,7 +139,8 @@ SELECT
 FROM funcionario fn
 INNER JOIN departamento d ON fn.IdDepartamento = d.id
 INNER JOIN funcao f ON fn.IdFuncao = f.id
-WHERE fn.ativo = TRUE
+WHERE fn.tenant_id = $1 -- SEGURANÇA: Só lista funcionários da empresa atual
+  AND fn.ativo = TRUE
 `
 
 type BuscarTodosFuncionariosRow struct {
@@ -136,8 +153,8 @@ type BuscarTodosFuncionariosRow struct {
 	FuncaoNome       string
 }
 
-func (q *Queries) BuscarTodosFuncionarios(ctx context.Context) ([]BuscarTodosFuncionariosRow, error) {
-	rows, err := q.db.Query(ctx, buscarTodosFuncionarios)
+func (q *Queries) BuscarTodosFuncionarios(ctx context.Context, tenantID int32) ([]BuscarTodosFuncionariosRow, error) {
+	rows, err := q.db.Query(ctx, buscarTodosFuncionarios, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,11 +185,18 @@ const deletarFuncionario = `-- name: DeletarFuncionario :execrows
 UPDATE funcionario
 SET ativo = FALSE,
     deletado_em = NOW()
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
-func (q *Queries) DeletarFuncionario(ctx context.Context, id int32) (int64, error) {
-	result, err := q.db.Exec(ctx, deletarFuncionario, id)
+type DeletarFuncionarioParams struct {
+	ID       int32
+	TenantID int32
+}
+
+func (q *Queries) DeletarFuncionario(ctx context.Context, arg DeletarFuncionarioParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletarFuncionario, arg.ID, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -182,16 +206,19 @@ func (q *Queries) DeletarFuncionario(ctx context.Context, id int32) (int64, erro
 const updateFuncionarioDepartamento = `-- name: UpdateFuncionarioDepartamento :execrows
 UPDATE funcionario
 SET IdDepartamento = $2
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $3 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
 type UpdateFuncionarioDepartamentoParams struct {
 	ID             int32
 	Iddepartamento int32
+	TenantID       int32
 }
 
 func (q *Queries) UpdateFuncionarioDepartamento(ctx context.Context, arg UpdateFuncionarioDepartamentoParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateFuncionarioDepartamento, arg.ID, arg.Iddepartamento)
+	result, err := q.db.Exec(ctx, updateFuncionarioDepartamento, arg.ID, arg.Iddepartamento, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -201,16 +228,19 @@ func (q *Queries) UpdateFuncionarioDepartamento(ctx context.Context, arg UpdateF
 const updateFuncionarioFuncao = `-- name: UpdateFuncionarioFuncao :execrows
 UPDATE funcionario
 SET IdFuncao = $2
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $3 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
 type UpdateFuncionarioFuncaoParams struct {
 	ID       int32
 	Idfuncao int32
+	TenantID int32
 }
 
 func (q *Queries) UpdateFuncionarioFuncao(ctx context.Context, arg UpdateFuncionarioFuncaoParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateFuncionarioFuncao, arg.ID, arg.Idfuncao)
+	result, err := q.db.Exec(ctx, updateFuncionarioFuncao, arg.ID, arg.Idfuncao, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -220,16 +250,19 @@ func (q *Queries) UpdateFuncionarioFuncao(ctx context.Context, arg UpdateFuncion
 const updateFuncionarioNome = `-- name: UpdateFuncionarioNome :execrows
 UPDATE funcionario
 SET nome = $2
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $3 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
 type UpdateFuncionarioNomeParams struct {
-	ID   int32
-	Nome string
+	ID       int32
+	Nome     string
+	TenantID int32
 }
 
 func (q *Queries) UpdateFuncionarioNome(ctx context.Context, arg UpdateFuncionarioNomeParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateFuncionarioNome, arg.ID, arg.Nome)
+	result, err := q.db.Exec(ctx, updateFuncionarioNome, arg.ID, arg.Nome, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
