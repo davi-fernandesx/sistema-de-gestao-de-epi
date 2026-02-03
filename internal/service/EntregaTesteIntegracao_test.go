@@ -2,15 +2,13 @@ package service
 
 import (
 	"context"
-	"sync"
-
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
-
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
@@ -19,25 +17,32 @@ import (
 func TestEntrega(t *testing.T) {
 
 	db := SetupTestDB(t)
-	var queries *repository.Queries
+	// Correção: Inicializar 'queries' corretamente para uso com transação manual no primeiro teste
+	queries := repository.New(db)
 	defer db.Close()
 	ctx := context.Background()
 
 	repo := repository.NewEntregaRepository(db)
 	serv := NewEntregaService(repo, db)
 
-	iduser := CreateUser(t, db)
-	iddep := CreateDepartamento(t, db)
-	IdFuncao := CreateFuncao(t, db, iddep)
-	idtam := CreateTamanho(t, db)
-	idprotec := CreateProtecao(t, db)
-	idepi := CreateEpi(t, db, idprotec)
-	idfuncionario := CreateFuncionario(t, db, iddep, IdFuncao)
-	idfuncionario2 := CreateFuncionario(t, db, iddep, IdFuncao)
-	_ = CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec, idtam, iduser)
-	_ = CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec, idtam, iduser)
-	entregas := []model.EntregaParaInserir{
+	// 1. CENÁRIO SAAS: CRIAR TENANT
+	idEmpresa := CreateEmpresa(t, db)
 
+	// 2. CRIAR DADOS VINCULADOS AO TENANT
+	iduser := CreateUser(t, db, idEmpresa)
+	iddep := CreateDepartamento(t, db, idEmpresa)
+	IdFuncao := CreateFuncao(t, db, iddep, idEmpresa)
+	idtam := CreateTamanho(t, db, idEmpresa)
+	idprotec := CreateProtecao(t, db, idEmpresa)
+	idepi := CreateEpi(t, db, idprotec, idEmpresa)
+	idfuncionario := CreateFuncionario(t, db, iddep, IdFuncao, idEmpresa)
+	idfuncionario2 := CreateFuncionario(t, db, iddep, IdFuncao, idEmpresa)
+
+	// Estoque inicial (2 entradas de 100 itens cada)
+	_ = CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec, idtam, iduser, idEmpresa)
+	_ = CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec, idtam, iduser, idEmpresa)
+
+	entregas := []model.EntregaParaInserir{
 		{
 			ID_funcionario:     idfuncionario,
 			Id_user:            int(iduser),
@@ -45,29 +50,32 @@ func TestEntrega(t *testing.T) {
 			Assinatura_Digital: "teste.pop",
 			Itens: []model.ItemParaInserir{
 				{
-					ID_epi:         idepi,
-					ID_tamanho:     idtam,
-					Quantidade:     10,
-				
+					ID_epi:     idepi,
+					ID_tamanho: idtam,
+					Quantidade: 10,
 				},
 			},
 		},
 	}
 
-	t.Run("sucesso ao realizar todas as etapas de uma entrega de epi", func(t *testing.T) {
+	t.Run("sucesso ao realizar todas as etapas de uma entrega de epi (Fluxo Manual)", func(t *testing.T) {
 
 		tx, err := db.Begin(ctx)
 		require.NoError(t, err)
+		defer tx.Rollback(ctx) // Segurança caso falhe antes do commit
 
 		qtx := queries.WithTx(tx)
 
+		// Adicionado TenantID nos parâmetros
 		args := repository.AddEntregaEpiParams{
+			TenantID:         int32(idEmpresa),
 			Idfuncionario:    int32(entregas[0].ID_funcionario),
 			DataEntrega:      pgtype.Date{Time: entregas[0].Data_entrega.Time(), Valid: true},
 			Assinatura:       entregas[0].Assinatura_Digital,
-			TokenValidacao:   pgtype.Text{String: "testeToken"},
-			IDUsuarioEntrega: pgtype.Int4{Int32: int32(entregas[0].Id_user)},
+			TokenValidacao:   pgtype.Text{String: "testeToken", Valid: true},
+			IDUsuarioEntrega: pgtype.Int4{Int32: int32(entregas[0].Id_user), Valid: true},
 		}
+
 		identrega, err := repo.AdicionarEntrega(ctx, qtx, args)
 		require.NoError(t, err)
 
@@ -75,135 +83,135 @@ func TestEntrega(t *testing.T) {
 
 			quantidadeNescessaria := item.Quantidade
 
+			// Adicionado TenantID nos parâmetros de busca de lote
 			lotes := repository.ListarLotesParaConsumoParams{
+				TenantID:  int32(idEmpresa),
 				Idepi:     int32(item.ID_epi),
 				Idtamanho: int32(item.ID_tamanho),
 			}
-			/*lista todas as entradas com quantidadeAtual maior que 0 e que tenha os idepie e idtamanhos iguais as passado nos parametros*/
+
 			entradaLotes, err := repo.ListarEntregasDisponiveis(ctx, qtx, lotes)
 			require.NoError(t, err)
 
-			/*percorre todas as entradas achadas*/
 			for _, entradaLote := range entradaLotes {
 
 				if quantidadeNescessaria <= 0 {
 					break
 				}
 
-				//escolhe o menor valor entre esses parametros
 				quantidadeAbater := min(entradaLote.Quantidadeatual, int32(quantidadeNescessaria))
 
+				// Adicionado TenantID ao registrar o item entregue
 				itemAdd := repository.AddItemEntregueParams{
-					Identrega:     identrega,
-					Idepi:         int32(item.ID_epi),
-					Idtamanho:     int32(item.ID_tamanho),
-					Quantidade:    quantidadeAbater,
-					Identrada:     entradaLote.ID,
+					TenantID:   int32(idEmpresa),
+					Identrega:  identrega,
+					Idepi:      int32(item.ID_epi),
+					Idtamanho:  int32(item.ID_tamanho),
+					Quantidade: quantidadeAbater,
+					Identrada:  entradaLote.ID,
 				}
 
+				// Abate no estoque (Valida tenant se sua query pedir, ou apenas ID)
+				// Se sua query AbaterEstoqueLoteParams pedir tenant_id, adicione aqui.
 				_, err = repo.AbaterEstoqueEntrada(ctx, qtx, repository.AbaterEstoqueLoteParams{
 					Quantidadeatual: quantidadeAbater,
 					ID:              entradaLote.ID,
+					 TenantID: int32(idEmpresa), // Descomente se sua query SQL exigir
 				})
-
-				_, err := repo.AdicionarEntregaItem(ctx, qtx, itemAdd)
 				require.NoError(t, err)
+
+				_, err = repo.AdicionarEntregaItem(ctx, qtx, itemAdd)
 				require.NoError(t, err)
 
 				quantidadeNescessaria -= int(quantidadeAbater)
 
 				var quantidadeAtual int32
-
-				query := `select quantidadeAtual from entrada_epi where id = $1`
-				err = tx.QueryRow(ctx, query, entradaLote.ID).Scan(&quantidadeAtual)
+				// Validação Manual com TenantID
+				query := `select quantidadeAtual from entrada_epi where id = $1 AND tenant_id = $2`
+				err = tx.QueryRow(ctx, query, entradaLote.ID, idEmpresa).Scan(&quantidadeAtual)
+				require.NoError(t, err)
 
 				esperado := entradaLote.Quantidadeatual - quantidadeAbater
 				require.Equal(t, esperado, quantidadeAtual)
-				fmt.Println(quantidadeAtual)
 
 				fmt.Printf("Lote ID: %d | Abatido: %d | Sobrou: %d\n", entradaLote.ID, quantidadeAbater, quantidadeAtual)
 			}
-
 		}
 
-		tx.Commit(ctx)
+		err = tx.Commit(ctx)
+		require.NoError(t, err)
 	})
 
 	t.Run("ERRO - tentar entregar mais do que tem no estoque", func(t *testing.T) {
+		// Reutilizando dados do setup principal, pois são do mesmo tenant
 
 		entregaErro := model.EntregaParaInserir{
 			ID_funcionario:     idfuncionario2,
 			Id_user:            int(iduser),
 			Data_entrega:       *configs.NewDataBrPtr(time.Now()),
 			Assinatura_Digital: "teste.pop",
-			IdTroca: nil,
+			IdTroca:            nil,
 			Itens: []model.ItemParaInserir{
 				{
-					ID_epi:         idepi,
-					ID_tamanho:     idtam,
-					Quantidade:     300,
-					
+					ID_epi:     idepi,
+					ID_tamanho: idtam,
+					Quantidade: 300, // Exagero intencional
 				},
 			},
 		}
 
-		err := serv.Salvar(context.Background(), entregaErro)
+		// Passando TenantID (int32)
+		err := serv.Salvar(context.Background(), entregaErro, int32(idEmpresa))
 		require.Error(t, err)
-		//require.True(t, errors.Is(err, helper.ErrEstoqueInsuficiente))
-		fmt.Println(err)
+		fmt.Println("Erro esperado recebido:", err)
 
 		var count int
-		db.QueryRow(ctx, "SELECT count(*) FROM entrega_epi WHERE IdFuncionario = $1", entregaErro.ID_funcionario).Scan(&count)
+		// Validação com TenantID
+		db.QueryRow(ctx, "SELECT count(*) FROM entrega_epi WHERE IdFuncionario = $1 AND tenant_id = $2", entregaErro.ID_funcionario, idEmpresa).Scan(&count)
 		require.Equal(t, 0, count, "A entrega não deveria ter sido salva no banco")
-
 	})
 
 	t.Run("teste de concorrencia (nao deixar 2 usuarios fazer uma entrega do mesmo lote de uma vez)", func(t *testing.T) {
+		// Setup Específico para garantir isolamento deste teste
+		db2 := SetupTestDB(t)
+		defer db2.Close()
 
-		db := SetupTestDB(t)
-		defer db.Close()
-		ctx := context.Background()
+		repo2 := repository.NewEntregaRepository(db2)
+		serv2 := NewEntregaService(repo2, db2)
 
-		repo := repository.NewEntregaRepository(db)
-		serv := NewEntregaService(repo, db)
-
-		iduser := CreateUser(t, db)
-		iddep := CreateDepartamento(t, db)
-		IdFuncao := CreateFuncao(t, db, iddep)
-		idtam := CreateTamanho(t, db)
-		idprotec := CreateProtecao(t, db)
-		idepi := CreateEpi(t, db, idprotec)
-		idfuncionario := CreateFuncionario(t, db, iddep, IdFuncao)
+		idEmpresa2 := CreateEmpresa(t, db2)
+		iduser2 := CreateUser(t, db2, idEmpresa2)
+		iddep2 := CreateDepartamento(t, db2, idEmpresa2)
+		IdFuncao2 := CreateFuncao(t, db2, iddep2, idEmpresa2)
+		idtam2 := CreateTamanho(t, db2, idEmpresa2)
+		idprotec2 := CreateProtecao(t, db2, idEmpresa2)
+		idepi2 := CreateEpi(t, db2, idprotec2, idEmpresa2)
+		idfuncionarioC := CreateFuncionario(t, db2, iddep2, IdFuncao2, idEmpresa2)
 
 		// Criar lote com APENAS 1 unidade
-		// Modifique sua função helper ou faça o insert manual aqui
+		identrada1 := CreateEntradaEpi1(t, db2, idfuncionarioC, idepi2, idprotec2, idtam2, iduser2, idEmpresa2)
 
-		identrada1 := CreateEntradaEpi1(t, db, idfuncionario, idepi, idprotec,
-			idtam, iduser)
-		// 2. PREPARAR AS GOROUTINES
 		var wg sync.WaitGroup
 		numRequisicoes := 2
 		wg.Add(numRequisicoes)
 
-		// Canal para capturar os resultados das goroutines
 		errs := make(chan error, numRequisicoes)
 
 		entrega := model.EntregaParaInserir{
-			ID_funcionario: idfuncionario,
-			Id_user:        int(iduser),
+			ID_funcionario: idfuncionarioC,
+			Id_user:        int(iduser2),
 			Data_entrega:   configs.DataBr(time.Now()),
-			IdTroca: nil,
-
+			IdTroca:        nil,
 			Itens: []model.ItemParaInserir{
-				{ID_epi: idepi, ID_tamanho: idtam, Quantidade: 1},
+				{ID_epi: idepi2, ID_tamanho: idtam2, Quantidade: 1},
 			},
 		}
 
-		// 3. DISPARAR CONCORRÊNCIA
 		for range numRequisicoes {
 			go func() {
 				defer wg.Done()
-				err := serv.Salvar(ctx, entrega)
+				// Passando TenantID
+				err := serv2.Salvar(ctx, entrega, int32(idEmpresa2))
 				if err != nil {
 					fmt.Printf("Falha na goroutine: %v\n", err)
 				} else {
@@ -216,7 +224,6 @@ func TestEntrega(t *testing.T) {
 		wg.Wait()
 		close(errs)
 
-		// 4. VALIDAR RESULTADOS
 		sucessos := 0
 		falhas := 0
 
@@ -225,45 +232,41 @@ func TestEntrega(t *testing.T) {
 				sucessos++
 			} else {
 				falhas++
-				fmt.Printf("Falha esperada detectada: %v\n", err)
 			}
 		}
 
-		// ASSERTIONS:
-		// Em um ambiente concorrente com 1 item, apenas 1 deve conseguir
 		require.Equal(t, 1, sucessos, "Apenas uma entrega deveria ter tido sucesso")
 		require.Equal(t, 1, falhas, "Uma entrega deveria ter falhado por falta de estoque")
 
-		// Verificar se o estoque não ficou negativo (deve estar em 0)
 		var qtdFinal int32
-		db.QueryRow(ctx, "SELECT quantidadeAtual FROM entrada_epi WHERE id = $1", identrada1).Scan(&qtdFinal)
-		fmt.Println(qtdFinal)
+		db2.QueryRow(ctx, "SELECT quantidadeAtual FROM entrada_epi WHERE id = $1 AND tenant_id = $2", identrada1, idEmpresa2).Scan(&qtdFinal)
 		require.Equal(t, int32(0), qtdFinal, "O estoque final deve ser zero e nunca negativo")
 	})
 
 	t.Run("testando sucesso ao cancelar uma entrega de epi", func(t *testing.T) {
 
+		// 1. SETUP (Banco, Services, Helpers)
 		db := SetupTestDB(t)
 		defer db.Close()
 		ctx := context.Background()
-
+		empresa:= CreateEmpresa(t, db)
 		repo := repository.NewEntregaRepository(db)
 		serv := NewEntregaService(repo, db)
 
-		iduser := CreateUser(t, db)
-		iddep := CreateDepartamento(t, db)
-		IdFuncao := CreateFuncao(t, db, iddep)
-		idtam := CreateTamanho(t, db)
-		idprotec := CreateProtecao(t, db)
-		idepi := CreateEpi(t, db, idprotec)
-		idfuncionario := CreateFuncionario(t, db, iddep, IdFuncao)
+		iduser := CreateUser(t, db, empresa)
+		iddep := CreateDepartamento(t, db,empresa)
+		IdFuncao := CreateFuncao(t, db, iddep,empresa)
+		idtam := CreateTamanho(t, db,empresa)
+		idprotec := CreateProtecao(t, db,empresa)
+		idepi := CreateEpi(t, db, idprotec,empresa)
+		idfuncionario := CreateFuncionario(t, db, iddep, IdFuncao,empresa)
 
 		idEntrada2 := CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec,
-			idtam, iduser)
+			idtam, iduser,empresa)
 
 		for i := range 4 {
 
-			err := serv.Salvar(ctx, entregas[0])
+			err := serv.Salvar(ctx, entregas[0], int32(empresa))
 			require.NoError(t, err, "A entrega %d deveria ter funcionado", i+1)
 		}
 
@@ -280,7 +283,7 @@ func TestEntrega(t *testing.T) {
 
 		for y := range 4 {
 
-			err := serv.CancelarEntrega(ctx, y+1, int(iduser))
+			err := serv.CancelarEntrega(ctx, int(empresa), y+1,int(iduser))
 			require.NoError(t, err, "o cancelamento %d deveria ter funcionado", y+1)
 
 		}
@@ -292,5 +295,5 @@ func TestEntrega(t *testing.T) {
 
 		fmt.Printf("Estoque atual do lote depois de cancelar as entregas %d: %d\n", idEntrada2, q1)
 
-	})
+		})
 }

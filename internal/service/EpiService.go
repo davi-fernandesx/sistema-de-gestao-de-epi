@@ -17,9 +17,9 @@ import (
 
 type EpiRepository interface {
 	Adicionar(ctx context.Context, qtx *repository.Queries, epi repository.AddEpiParams) (int32, error)
-	ListarEpi(ctx context.Context, id int) (repository.BuscarEpiRow, error)
-	ListarEpis(ctx context.Context, pagina, ItemPorPagina int32) ([]repository.BuscarTodosEpisPaginadoRow, error)
-	CancelarEpi(ctx context.Context, qtx *repository.Queries ,id int) (int64, error)
+	ListarEpi(ctx context.Context, arg repository.BuscarEpiParams) (repository.BuscarEpiRow, error)
+	ListarEpis(ctx context.Context, pagina, ItemPorPagina,tenatId int32) ([]repository.BuscarTodosEpisPaginadoRow, error)
+	CancelarEpi(ctx context.Context, qtx *repository.Queries ,arg repository.DeletarEpiParams)(int64, error)
 	AtualizaEpi(ctx context.Context, epi repository.UpdateEpiCampoParams) (int64, error)
 }
 
@@ -37,7 +37,7 @@ func NewEpiService(repo EpiRepository, db *pgxpool.Pool) *EpiService {
 	}
 }
 
-func (e *EpiService) Salvar(ctx context.Context, model model.EpiInserir) error {
+func (e *EpiService) Salvar(ctx context.Context, model model.EpiInserir, tenantID int32) error {
 
 	tx, err := e.db.Begin(ctx)
 	if err != nil {
@@ -60,6 +60,7 @@ func (e *EpiService) Salvar(ctx context.Context, model model.EpiInserir) error {
 		ValidadeCa:     pgtype.Date{Time: model.DataValidadeCa.Time(), Valid: true},
 		Idtipoprotecao: int32(model.IDprotecao),
 		AlertaMinimo:   int32(model.AlertaMinimo),
+		TenantID: tenantID,
 	})
 	if err != nil {
 
@@ -70,6 +71,7 @@ func (e *EpiService) Salvar(ctx context.Context, model model.EpiInserir) error {
 		err := qtx.AddEpiTamanho(ctx, repository.AddEpiTamanhoParams{
 			Idepi:     epiId,
 			Idtamanho: int32(tamanhoId),
+			TenantID: tenantID,
 		})
 		if err != nil {
 			return err
@@ -90,10 +92,10 @@ type EpiPaginado struct {
 	PaginaFinal int32
 }
 
-func (e *EpiService) ListarEpis(ctx context.Context, pagina, limite int32) (EpiPaginado, error) {
+func (e *EpiService) ListarEpis(ctx context.Context, pagina,limite,tenantId int32) (EpiPaginado, error) {
 
 
-	epis, err:= e.repo.ListarEpis(ctx,pagina, limite)
+	epis, err:= e.repo.ListarEpis(ctx,pagina, limite, tenantId)
 	if err != nil {
 		return EpiPaginado{},err
 	}
@@ -102,7 +104,7 @@ func (e *EpiService) ListarEpis(ctx context.Context, pagina, limite int32) (EpiP
 		return EpiPaginado{Epis: []model.EpiDto{{}}, Pagina: pagina}, nil
 	}
 
-	todosTamanhos, err:= e.queries.BuscarTodosTamanhosAgrupados(ctx)
+	todosTamanhos, err:= e.queries.BuscarTodosTamanhosAgrupados(ctx, tenantId)
 	if err != nil {
 
 		return EpiPaginado{Epis: []model.EpiDto{{}}, Pagina: pagina}, err
@@ -160,20 +162,26 @@ func (e *EpiService) ListarEpis(ctx context.Context, pagina, limite int32) (EpiP
 }
 
 
-func (e *EpiService) ListarEpi(ctx context.Context, id int)(model.EpiDto, error){
+func (e *EpiService) ListarEpi(ctx context.Context, id int, tenantid int32)(model.EpiDto, error){
 
 	if id <= 0 {
 
 		return model.EpiDto{},helper.ErrId
 	}
 
-	epi, err:= e.repo.ListarEpi(ctx, id)
+	epi, err:= e.repo.ListarEpi(ctx,repository.BuscarEpiParams{
+		ID: int32(id),
+		TenantID: tenantid,
+	})
 	if err != nil {
 
 		return model.EpiDto{}, err
 	}
 
-	tamanhoId, err:= e.queries.BuscarTamanhosPorIdEpi(ctx, epi.ID)
+	tamanhoId, err:= e.queries.BuscarTamanhosPorIdEpi(ctx, repository.BuscarTamanhosPorIdEpiParams{
+		Idepi: epi.ID,
+		TenantID: tenantid,
+	})
 	if err != nil {
 		return model.EpiDto{}, err
 	}
@@ -205,7 +213,7 @@ func (e *EpiService) ListarEpi(ctx context.Context, id int)(model.EpiDto, error)
 	}, nil
 }
 
-func (e *EpiService) CancelarEpi(ctx context.Context, id int) (int64, error){
+func (e *EpiService) CancelarEpi(ctx context.Context, id int, tenantid int32) (int64, error){
 
 	if id <= 0 {
 
@@ -221,7 +229,10 @@ func (e *EpiService) CancelarEpi(ctx context.Context, id int) (int64, error){
 	defer tx.Rollback(ctx)
 	qtx:= e.queries.WithTx(tx)
 
-	linhasAfetadas, err:= e.repo.CancelarEpi(ctx,qtx,id)
+	linhasAfetadas, err:= e.repo.CancelarEpi(ctx,qtx,repository.DeletarEpiParams{
+		ID: int32(id),
+		TenantID: tenantid,
+	})
 	if err != nil {
 		return 0, err
 	}
@@ -231,7 +242,10 @@ func (e *EpiService) CancelarEpi(ctx context.Context, id int) (int64, error){
 		return 0, helper.ErrNaoEncontrado
 	}
 
-	linhasTamanhaosId,err := qtx.DeletarTamanhosPorEpi(ctx, int32(id))
+	linhasTamanhaosId,err := qtx.DeletarTamanhosPorEpi(ctx, repository.DeletarTamanhosPorEpiParams{
+		Idepi: int32(id),
+		TenantID: tenantid,
+	})
 	if err != nil {
 		return 0, err
 	}
@@ -250,7 +264,7 @@ func (e *EpiService) CancelarEpi(ctx context.Context, id int) (int64, error){
 	return linhasAfetadas, nil
 }
 
-func (e *EpiService) AtualizaEpi(ctx context.Context, model model.UpdateEpiInput) (error){
+func (e *EpiService) AtualizaEpi(ctx context.Context, model model.UpdateEpiInput, tenantId int32) (error){
 
 	tx,err:= e.db.Begin(ctx)
 	if err != nil {
@@ -262,12 +276,13 @@ func (e *EpiService) AtualizaEpi(ctx context.Context, model model.UpdateEpiInput
 	qtx := e.queries.WithTx(tx)
 
 	u:= repository.UpdateEpiCampoParams{
-		ID: pgtype.Int4{Int32: model.ID},
+		ID: model.ID,
 		Nome: pgtype.Text{String: *model.Nome},
 		Fabricante: pgtype.Text{String: *model.Fabricante},
 		Ca: pgtype.Text{String: *model.CA},
 		Descricao: pgtype.Text{String: *model.Descricao},
 		ValidadeCa: pgtype.Date{Time: model.ValidadeCa.Time()},
+		TenantID: tenantId,
 	}
 
 	linhasAfetadas, err := qtx.UpdateEpiCampo(ctx, u)
@@ -283,7 +298,10 @@ func (e *EpiService) AtualizaEpi(ctx context.Context, model model.UpdateEpiInput
 
 	if model.Tamanhos != nil {
 
-		_,err = qtx.DeletarTamanhosPorEpi(ctx, model.ID)
+		_,err = qtx.DeletarTamanhosPorEpi(ctx, repository.DeletarTamanhosPorEpiParams{
+			Idepi: model.ID,
+			TenantID: tenantId,
+		})
 		if err != nil {
 
 			return err
@@ -294,6 +312,7 @@ func (e *EpiService) AtualizaEpi(ctx context.Context, model model.UpdateEpiInput
 			err:= qtx.AddEpiTamanho(ctx, repository.AddEpiTamanhoParams{
 				Idepi: model.ID,
 				Idtamanho: tamId,
+				TenantID: tenantId,
 			})
 
 			if err != nil {

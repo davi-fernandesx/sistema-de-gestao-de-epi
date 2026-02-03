@@ -19,7 +19,7 @@ type EntradaRepository interface {
 	Adicionar(ctx context.Context, args repository.AddEntradaEpiParams) error
 	ListarEntradas(ctx context.Context, args repository.ListarEntradasParams) ([]repository.ListarEntradasRow, error)
 	CancelarEntrada(ctx context.Context, args repository.CancelarEntradaParams) (int64, error)
-	TotalEntradas(ctx context.Context, args repository.ContarEntradasParams) (int64, error)
+	TotalEntradas(ctx context.Context, args repository.ContarEntradasFiltradasParams) (int64, error)
 }
 
 type EntradaService struct {
@@ -31,7 +31,7 @@ func NewEntradaService(e EntradaRepository) *EntradaService {
 	return &EntradaService{repo: e}
 }
 
-func (e *EntradaService) Adicionar(ctx context.Context, model model.EntradaEpiInserir) error {
+func (e *EntradaService) Adicionar(ctx context.Context, model model.EntradaEpiInserir, tenantID int32) error {
 
 	//data de entrada menor que a atual
 	hoje := time.Now().Truncate(24 * time.Hour)
@@ -74,6 +74,7 @@ func (e *EntradaService) Adicionar(ctx context.Context, model model.EntradaEpiIn
 		NotaFiscalNumero: model.Nota_fiscal_numero,
 		NotaFiscalSerie:  pgtype.Text{String: model.Nota_fiscal_serie},
 		IDUsuarioCriacao: pgtype.Int4{Int32: int32(model.Id_user), Valid: true},
+		TenantID: tenantID,
 	})
 
 	return nil
@@ -97,7 +98,7 @@ type EntradaPaginada struct {
 	PaginaFinal int32                 `json:"pagina_final"`
 }
 
-func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas) (EntradaPaginada, error) {
+func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas, tenatId int32) (EntradaPaginada, error) {
 
 	limit := f.Quantidade
 	if limit <= 0 {
@@ -118,6 +119,7 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas) (
 		NotaFiscal: pgtype.Text{String: f.NotaFiscal, Valid: f.NotaFiscal != ""},
 		Limit:      limit,
 		Offset:     offset,
+		TenantID: tenatId,
 	}
 
 	entradas, err := e.repo.ListarEntradas(ctx, filtro)
@@ -174,13 +176,14 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas) (
 		dto = append(dto, e)
 	}
 
-	total, err := e.repo.TotalEntradas(ctx, repository.ContarEntradasParams{
+	total, err := e.repo.TotalEntradas(ctx, repository.ContarEntradasFiltradasParams{
 		Canceladas: filtro.Canceladas,
 		IDEpi:      filtro.IDEpi,
 		IDEntrada:  filtro.IDEntrada,
 		DataInicio: filtro.DataInicio,
 		DataFim:    filtro.DataFim,
 		NotaFiscal: filtro.NotaFiscal,
+		TenantID: tenatId,
 	})
 	if err != nil {
 		return EntradaPaginada{}, err
@@ -196,7 +199,7 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas) (
 	}, nil
 }
 
-func (e *EntradaService) CancelarEntrada(ctx context.Context, id int, idUser int) (int64, error) {
+func (e *EntradaService) CancelarEntrada(ctx context.Context, id,idUser,tenantid int) (int64, error) {
 
 	if id <= 0 {
 
@@ -206,6 +209,7 @@ func (e *EntradaService) CancelarEntrada(ctx context.Context, id int, idUser int
 	arg:= repository.CancelarEntradaParams{
 		ID: int32(id),
 		IDUsuarioCriacaoCancelamento: pgtype.Int4{Int32: int32(idUser)},
+		TenantID: int32(tenantid),
 	}
 	linhasAfetadas, err := e.repo.CancelarEntrada(ctx, arg)
 	if err != nil {
