@@ -1,7 +1,7 @@
 package model
 
 type Funcao struct {
-	Funcao string`json:"funcao"  binding:"required,min=2,max=50"`
+	Funcao string`json:"funcao"  binding:"required,max=50"`
 	IdDepartamento int `json:"id_departamento" binding:"required,min=1"`
 }
 

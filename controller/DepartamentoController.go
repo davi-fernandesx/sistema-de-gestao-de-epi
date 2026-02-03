@@ -8,15 +8,16 @@ import (
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 type DepartamentoService interface {
-	SalvarDepartamento(ctx context.Context, model model.Departamento) error
-	ListarDepartamento(ctx context.Context, id int32) (model.DepartamentoDto, error)
-	ListarTodosDepartamentos(ctx context.Context) ([]model.DepartamentoDto, error)
-	DeletarDepartamento(ctx context.Context, id int) error
-	AtualizarDepartamento(ctx context.Context, id int32, novoNome string) error
+	SalvarDepartamento(ctx context.Context, tenantId int32, model model.Departamento) error
+	ListarDepartamento(ctx context.Context, id int32, TenantId int32) (model.DepartamentoDto, error)
+	ListarTodosDepartamentos(ctx context.Context, tenantId int32) ([]model.DepartamentoDto, error)
+	DeletarDepartamento(ctx context.Context, id int, tenantId int32) error
+	AtualizarDepartamento(ctx context.Context, id int32, novoNome string, tenantId int32) error
 }
 
 type DepartamentoController struct {
@@ -58,8 +59,13 @@ func (d *DepartamentoController) RegistraDepartamento() gin.HandlerFunc {
 		novoDep := model.Departamento{
 			Departamento: input.Departamento,
 		}
+		tenantID, ok := middleware.GetTenantID(c)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Erro interno de tenant"})
+			return
+		}
 
-		err := d.service.SalvarDepartamento(c, novoDep)
+		err := d.service.SalvarDepartamento(c, tenantID, novoDep)
 		if err != nil {
 
 			if errors.Is(err, helper.ErrDadoDuplicado) {
@@ -96,7 +102,13 @@ func (d *DepartamentoController) ListarDepartamentos() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
 
-		deps, err := d.service.ListarTodosDepartamentos(ctx.Request.Context())
+		tenantID, ok := middleware.GetTenantID(ctx)
+		if !ok {
+			ctx.JSON(500, gin.H{"error": "Erro interno de tenant"})
+			return
+		}
+
+		deps, err := d.service.ListarTodosDepartamentos(ctx.Request.Context(), tenantID)
 		if err != nil {
 
 			ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -136,7 +148,13 @@ func (d *DepartamentoController) ListarDepartamentoId() gin.HandlerFunc {
 			return
 		}
 
-		dep, err := d.service.ListarDepartamento(ctx, int32(id))
+		tenantID, ok := middleware.GetTenantID(ctx)
+		if !ok {
+			ctx.JSON(500, gin.H{"error": "Erro interno de tenant"})
+			return
+		}
+
+		dep, err := d.service.ListarDepartamento(ctx, int32(id), tenantID)
 		if err != nil {
 
 			if errors.Is(err, helper.ErrNaoEncontrado) {
@@ -187,7 +205,12 @@ func (d *DepartamentoController) DeletarDepartamento() gin.HandlerFunc {
 			return
 		}
 
-		err = d.service.DeletarDepartamento(ctx, id)
+		tenantID, ok := middleware.GetTenantID(ctx)
+		if !ok {
+			ctx.JSON(500, gin.H{"error": "Erro interno de tenant"})
+			return
+		}
+		err = d.service.DeletarDepartamento(ctx, id, tenantID)
 		if err != nil {
 
 			if errors.Is(err, helper.ErrNaoEncontrado) {
@@ -238,6 +261,11 @@ func (d *DepartamentoController) AtualizarDepartamento() gin.HandlerFunc {
 			return
 		}
 
+		tenantID, ok := middleware.GetTenantID(ctx)
+		if !ok {
+			ctx.JSON(500, gin.H{"error": "Erro interno de tenant"})
+			return
+		}
 		var input model.Departamento
 
 		if err := ctx.ShouldBindJSON(&input); err != nil {
@@ -249,7 +277,7 @@ func (d *DepartamentoController) AtualizarDepartamento() gin.HandlerFunc {
 			return
 		}
 
-		err = d.service.AtualizarDepartamento(ctx, int32(id), input.Departamento)
+		err = d.service.AtualizarDepartamento(ctx, int32(id), input.Departamento, tenantID)
 		if err != nil {
 
 			if errors.Is(err, helper.ErrNomeCurto) {

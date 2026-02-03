@@ -3,20 +3,20 @@ package controller
 import (
 	"context"
 	"errors"
-	
+
 	"net/http"
-	
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 type LoginService interface {
-	Registrar(ctx context.Context, model model.Usuario) error
-	FazerLogin(ctx context.Context, email, senha string) (string, repository.BuscarUsuarioPorEmailRow, error)
-	BuscarPorId(ctx context.Context, id uint) (model.RecuperaUser, error)
+	Registrar(ctx context.Context, model model.Usuario, tenantId int32) error
+	FazerLogin(ctx context.Context, email, senha string, tenantId int32) (string, repository.BuscarUsuarioPorEmailRow, error)
+	BuscarPorId(ctx context.Context, id uint, tenantId int32) (model.RecuperaUser, error)
 }
 
 type LoginController struct {
@@ -51,7 +51,12 @@ func (l *LoginController) Registrar() gin.HandlerFunc {
 			Senha: input.Senha,
 		}
 
-		err := l.service.Registrar(ctx, novoUsuario)
+		tenantID, ok := middleware.GetTenantID(ctx)
+		if !ok {
+			ctx.JSON(500, gin.H{"error": "Erro interno de tenant"})
+			return
+		}
+		err := l.service.Registrar(ctx, novoUsuario, tenantID)
 		if err != nil {
 
 			if errors.Is(err, helper.ErrDadoDuplicado) {
@@ -93,7 +98,12 @@ func (l *LoginController) Login() gin.HandlerFunc {
 			return
 		}
 
-		token, user, err := l.service.FazerLogin(c, input.Email, input.Senha)
+		tenantID, ok := middleware.GetTenantID(c)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Erro interno de tenant"})
+			return
+		}
+		token, user, err := l.service.FazerLogin(c, input.Email, input.Senha, tenantID)
 		if err != nil {
 
 			if err.Error() == "email ou senha inválidos" {
@@ -136,9 +146,13 @@ func (l *LoginController) VerPerfil() gin.HandlerFunc {
 
 			return
 		}
+		tenantID, ok := middleware.GetTenantID(c)
+		if !ok {
+			c.JSON(500, gin.H{"error": "Erro interno de tenant"})
+			return
+		}
 
-
-		usuario, err := l.service.BuscarPorId(c, id.(uint))
+		usuario, err := l.service.BuscarPorId(c, id.(uint), tenantID)
 		if err != nil {
 
 			c.JSON(404, gin.H{"error": "Usuário não encontrado"})
