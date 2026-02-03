@@ -101,6 +101,15 @@ func (f *FuncaoController) RegistraFuncao() gin.HandlerFunc {
 	}
 }
 
+// ListarFuncoes godoc
+// @Summary      Listar todos
+// @Description  Retorna uma lista com todos os funcoes
+// @Tags         Funcoes
+// @Produce      json
+// @Success      200  {array}   model.funcaoDto
+// @Failure      500  {object}  helper.HTTPError "Erro interno"
+// @Router       /funcoes [get]
+// @Security     BearerAuth
 func (f *FuncaoController) ListarFuncoes() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
@@ -124,6 +133,18 @@ func (f *FuncaoController) ListarFuncoes() gin.HandlerFunc {
 	}
 }
 
+// ListarFuncaoPorId godoc
+// @Summary      Buscar por ID
+// @Description  Retorna os detalhes de uma unica funcao
+// @Tags         funcao
+// @Produce      json
+// @Param        id   path      int  true  "ID da funcao"
+// @Success      200  {object}  model.funcaoDto
+// @Failure      400  {object}  helper.HTTPError "ID inválido"
+// @Failure      404  {object}  helper.HTTPError "Não encontrado"
+// @Failure      500  {object}  helper.HTTPError "Erro interno"
+// @Router       /funcao/{id} [get]
+// @Security     BearerAuth
 func (f *FuncaoController) ListarFuncaoId() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
@@ -168,6 +189,17 @@ func (f *FuncaoController) ListarFuncaoId() gin.HandlerFunc {
 	}
 }
 
+// DeletarFuncao godoc
+// @Summary      Deletar funcao
+// @Description  Remove (ou inativa) uma funcao pelo ID
+// @Tags         funcao
+// @Param        id   path      int  true  "ID da funcao"
+// @Success      204  "Sem Conteúdo (Sucesso)"
+// @Failure      400  {object}  helper.HTTPError "ID inválido"
+// @Failure      404  {object}  helper.HTTPError "Não encontrado"
+// @Failure      500  {object}  helper.HTTPError "Erro interno"
+// @Router       /funcao/{id} [delete]
+// @Security     BearerAuth
 func (f *FuncaoController) DeletarFuncao() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
@@ -213,6 +245,19 @@ func (f *FuncaoController) DeletarFuncao() gin.HandlerFunc {
 	}
 }
 
+// UpdateFuncao godoc
+// @Summary      Atualizar funcao
+// @Description  Atualiza o nome de uma funcao e seu departamento existente
+// @Tags         funcaao
+// @Accept       json
+// @Produce      json
+// @Param        id   path      int                      true  "ID da funcao"
+// @Param        body body      model.funcao true  "Novo nome"
+// @Success      200  {object}  map[string]string "Sucesso"
+// @Failure      400  {object}  helper.HTTPError "Erro de validação (ID ou Nome curto)"
+// @Failure      404  {object}  helper.HTTPError "Não encontrado"
+// @Failure      500  {object}  helper.HTTPError "Erro interno"
+// @Router       /funcao/{id} [put]
 func (f *FuncaoController) AtualizarFuncao() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
