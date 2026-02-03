@@ -10,29 +10,41 @@ import (
 )
 
 const addTamanho = `-- name: AddTamanho :exec
-INSERT INTO tamanho (tamanho) 
-VALUES ($1)
+INSERT INTO tamanho (tenant_id, tamanho) 
+VALUES ($1, $2)
 `
 
-func (q *Queries) AddTamanho(ctx context.Context, tamanho string) error {
-	_, err := q.db.Exec(ctx, addTamanho, tamanho)
+type AddTamanhoParams struct {
+	TenantID int32
+	Tamanho  string
+}
+
+func (q *Queries) AddTamanho(ctx context.Context, arg AddTamanhoParams) error {
+	_, err := q.db.Exec(ctx, addTamanho, arg.TenantID, arg.Tamanho)
 	return err
 }
 
 const buscarTamanho = `-- name: BuscarTamanho :one
 SELECT id, tamanho 
 FROM tamanho 
-WHERE id = $1 AND ativo = TRUE 
+WHERE id = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE 
 LIMIT 1
 `
+
+type BuscarTamanhoParams struct {
+	ID       int32
+	TenantID int32
+}
 
 type BuscarTamanhoRow struct {
 	ID      int32
 	Tamanho string
 }
 
-func (q *Queries) BuscarTamanho(ctx context.Context, id int32) (BuscarTamanhoRow, error) {
-	row := q.db.QueryRow(ctx, buscarTamanho, id)
+func (q *Queries) BuscarTamanho(ctx context.Context, arg BuscarTamanhoParams) (BuscarTamanhoRow, error) {
+	row := q.db.QueryRow(ctx, buscarTamanho, arg.ID, arg.TenantID)
 	var i BuscarTamanhoRow
 	err := row.Scan(&i.ID, &i.Tamanho)
 	return i, err
@@ -42,16 +54,23 @@ const buscarTamanhosPorIdEpi = `-- name: BuscarTamanhosPorIdEpi :many
 SELECT t.id, t.tamanho
 FROM tamanho t
 INNER JOIN tamanhos_epis te ON t.id = te.IdTamanho
-WHERE te.IdEpi = $1 AND te.ativo = TRUE
+WHERE te.IdEpi = $1 
+  AND te.tenant_id = $2 -- SEGURANÇA: Garante que a relação é desta empresa
+  AND te.ativo = TRUE
 `
+
+type BuscarTamanhosPorIdEpiParams struct {
+	Idepi    int32
+	TenantID int32
+}
 
 type BuscarTamanhosPorIdEpiRow struct {
 	ID      int32
 	Tamanho string
 }
 
-func (q *Queries) BuscarTamanhosPorIdEpi(ctx context.Context, idepi int32) ([]BuscarTamanhosPorIdEpiRow, error) {
-	rows, err := q.db.Query(ctx, buscarTamanhosPorIdEpi, idepi)
+func (q *Queries) BuscarTamanhosPorIdEpi(ctx context.Context, arg BuscarTamanhosPorIdEpiParams) ([]BuscarTamanhosPorIdEpiRow, error) {
+	rows, err := q.db.Query(ctx, buscarTamanhosPorIdEpi, arg.Idepi, arg.TenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +92,8 @@ func (q *Queries) BuscarTamanhosPorIdEpi(ctx context.Context, idepi int32) ([]Bu
 const buscarTodosTamanhos = `-- name: BuscarTodosTamanhos :many
 SELECT id, tamanho 
 FROM tamanho 
-WHERE ativo = TRUE
+WHERE tenant_id = $1 -- SEGURANÇA: Lista apenas tamanhos desta empresa
+  AND ativo = TRUE
 ORDER BY tamanho ASC
 `
 
@@ -82,8 +102,8 @@ type BuscarTodosTamanhosRow struct {
 	Tamanho string
 }
 
-func (q *Queries) BuscarTodosTamanhos(ctx context.Context) ([]BuscarTodosTamanhosRow, error) {
-	rows, err := q.db.Query(ctx, buscarTodosTamanhos)
+func (q *Queries) BuscarTodosTamanhos(ctx context.Context, tenantID int32) ([]BuscarTodosTamanhosRow, error) {
+	rows, err := q.db.Query(ctx, buscarTodosTamanhos, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,11 +126,18 @@ const deletarTamanho = `-- name: DeletarTamanho :execrows
 UPDATE tamanho
 SET ativo = FALSE,
     deletado_em = NOW()
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
-func (q *Queries) DeletarTamanho(ctx context.Context, id int32) (int64, error) {
-	result, err := q.db.Exec(ctx, deletarTamanho, id)
+type DeletarTamanhoParams struct {
+	ID       int32
+	TenantID int32
+}
+
+func (q *Queries) DeletarTamanho(ctx context.Context, arg DeletarTamanhoParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletarTamanho, arg.ID, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -120,17 +147,20 @@ func (q *Queries) DeletarTamanho(ctx context.Context, id int32) (int64, error) {
 const updateEpiNosTamanhos = `-- name: UpdateEpiNosTamanhos :execrows
 UPDATE tamanhos_epis
 SET IdEpi = $2
-WHERE IdEpi = $1 AND ativo = TRUE
+WHERE IdEpi = $1 
+  AND tenant_id = $3 -- SEGURANÇA: Obrigatório
+  AND ativo = TRUE
 `
 
 type UpdateEpiNosTamanhosParams struct {
-	Idepi   int32
-	Idepi_2 int32
+	Idepi    int32
+	Idepi_2  int32
+	TenantID int32
 }
 
 // Esta query atualiza a associação na tabela muitos-para-muitos
 func (q *Queries) UpdateEpiNosTamanhos(ctx context.Context, arg UpdateEpiNosTamanhosParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateEpiNosTamanhos, arg.Idepi, arg.Idepi_2)
+	result, err := q.db.Exec(ctx, updateEpiNosTamanhos, arg.Idepi, arg.Idepi_2, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}

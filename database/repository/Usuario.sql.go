@@ -14,9 +14,16 @@ import (
 const buscarPorIdUsuario = `-- name: BuscarPorIdUsuario :one
 SELECT id, nome, email, ativo
 FROM usuarios
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE
 LIMIT 1
 `
+
+type BuscarPorIdUsuarioParams struct {
+	ID       int32
+	TenantID int32
+}
 
 type BuscarPorIdUsuarioRow struct {
 	ID    int32
@@ -25,8 +32,8 @@ type BuscarPorIdUsuarioRow struct {
 	Ativo pgtype.Bool
 }
 
-func (q *Queries) BuscarPorIdUsuario(ctx context.Context, id int32) (BuscarPorIdUsuarioRow, error) {
-	row := q.db.QueryRow(ctx, buscarPorIdUsuario, id)
+func (q *Queries) BuscarPorIdUsuario(ctx context.Context, arg BuscarPorIdUsuarioParams) (BuscarPorIdUsuarioRow, error) {
+	row := q.db.QueryRow(ctx, buscarPorIdUsuario, arg.ID, arg.TenantID)
 	var i BuscarPorIdUsuarioRow
 	err := row.Scan(
 		&i.ID,
@@ -40,7 +47,8 @@ func (q *Queries) BuscarPorIdUsuario(ctx context.Context, id int32) (BuscarPorId
 const buscarTodosUsuarios = `-- name: BuscarTodosUsuarios :many
 SELECT id, nome, email, ativo
 FROM usuarios
-WHERE ativo = TRUE
+WHERE tenant_id = $1 -- SEGURANÇA: Lista apenas usuários desta empresa
+  AND ativo = TRUE
 `
 
 type BuscarTodosUsuariosRow struct {
@@ -50,8 +58,8 @@ type BuscarTodosUsuariosRow struct {
 	Ativo pgtype.Bool
 }
 
-func (q *Queries) BuscarTodosUsuarios(ctx context.Context) ([]BuscarTodosUsuariosRow, error) {
-	rows, err := q.db.Query(ctx, buscarTodosUsuarios)
+func (q *Queries) BuscarTodosUsuarios(ctx context.Context, tenantID int32) ([]BuscarTodosUsuariosRow, error) {
+	rows, err := q.db.Query(ctx, buscarTodosUsuarios, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -76,54 +84,78 @@ func (q *Queries) BuscarTodosUsuarios(ctx context.Context) ([]BuscarTodosUsuario
 }
 
 const buscarUsuarioPorEmail = `-- name: BuscarUsuarioPorEmail :one
-SELECT id,nome, email, senha_hash
+SELECT id, nome, email, senha_hash, tenant_id
 FROM usuarios
-WHERE email = $1 AND ativo = TRUE
+WHERE email = $1 
+  AND tenant_id = $2 
+  AND ativo = TRUE
 LIMIT 1
 `
+
+type BuscarUsuarioPorEmailParams struct {
+	Email    string
+	TenantID int32
+}
 
 type BuscarUsuarioPorEmailRow struct {
 	ID        int32
 	Nome      string
 	Email     string
 	SenhaHash string
+	TenantID  int32
 }
 
-func (q *Queries) BuscarUsuarioPorEmail(ctx context.Context, email string) (BuscarUsuarioPorEmailRow, error) {
-	row := q.db.QueryRow(ctx, buscarUsuarioPorEmail, email)
+// Atenção: Se o email puder se repetir entre empresas, o tenant_id é OBRIGATÓRIO aqui.
+func (q *Queries) BuscarUsuarioPorEmail(ctx context.Context, arg BuscarUsuarioPorEmailParams) (BuscarUsuarioPorEmailRow, error) {
+	row := q.db.QueryRow(ctx, buscarUsuarioPorEmail, arg.Email, arg.TenantID)
 	var i BuscarUsuarioPorEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Nome,
 		&i.Email,
 		&i.SenhaHash,
+		&i.TenantID,
 	)
 	return i, err
 }
 
 const createUser = `-- name: CreateUser :exec
-insert into usuarios (nome, email, senha_hash) values ($1, $2, $3)
+INSERT INTO usuarios (tenant_id, nome, email, senha_hash) 
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateUserParams struct {
+	TenantID  int32
 	Nome      string
 	Email     string
 	SenhaHash string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.Exec(ctx, createUser, arg.Nome, arg.Email, arg.SenhaHash)
+	_, err := q.db.Exec(ctx, createUser,
+		arg.TenantID,
+		arg.Nome,
+		arg.Email,
+		arg.SenhaHash,
+	)
 	return err
 }
 
 const deletarUsuario = `-- name: DeletarUsuario :execrows
 UPDATE usuarios
 SET ativo = FALSE
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
-func (q *Queries) DeletarUsuario(ctx context.Context, id int32) (int64, error) {
-	result, err := q.db.Exec(ctx, deletarUsuario, id)
+type DeletarUsuarioParams struct {
+	ID       int32
+	TenantID int32
+}
+
+func (q *Queries) DeletarUsuario(ctx context.Context, arg DeletarUsuarioParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletarUsuario, arg.ID, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}

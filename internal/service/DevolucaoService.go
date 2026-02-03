@@ -15,9 +15,9 @@ import (
 )
 
 type DevolucaoRepository interface {
-	AdicionarDevolucao(ctx context.Context, qtx *repository.Queries, args repository.AddDevolucaoSimplesParams) error
-	AdicionarTroca(ctx context.Context, qtx *repository.Queries, arg repository.AddTrocaEpiParams) (int32, error)
-	EntregaVinculada(ctx context.Context, qtx *repository.Queries, arg repository.AddEntregaVinculadaParams) (int32, error)
+	AdicionarDevolucao(ctx context.Context,qtx *repository.Queries ,args repository.AddDevolucaoSimplesParams ) error
+	AdicionarTroca(ctx context.Context,qtx *repository.Queries  ,arg repository.AddTrocaEpiParams) (int32, error)
+	EntregaVinculada(ctx context.Context, qtx *repository.Queries ,arg repository.AddEntregaVinculadaParams) (int32, error)
 	Cancelar(ctx context.Context, qtx *repository.Queries, arg repository.CancelarDevolucaoParams) (int32, error)
 	Listar(ctx context.Context, args repository.ListarDevolucoesParams) ([]repository.ListarDevolucoesRow, error)
 }
@@ -40,7 +40,7 @@ func NewDevolucaoService(d DevolucaoRepository, db *pgxpool.Pool, repoEntregaEpi
 	}
 }
 
-func (d *DevolucaoService) SalvarDevolucao(ctx context.Context, modelDevolucao model.DevolucaoInserir) error {
+func (d *DevolucaoService) SalvarDevolucao(ctx context.Context, modelDevolucao model.DevolucaoInserir, tenantId int32) error {
 
 	//iniciao da transação
 	tx, err := d.db.Begin(ctx)
@@ -51,7 +51,10 @@ func (d *DevolucaoService) SalvarDevolucao(ctx context.Context, modelDevolucao m
 	defer tx.Rollback(ctx)
 	qtx := d.queries.WithTx(tx)
 
-	funcionario, err := d.queries.BuscaFuncionarioPorId(ctx, int32(modelDevolucao.IdFuncionario))
+	funcionario, err := d.queries.BuscaFuncionarioPorId(ctx, repository.BuscaFuncionarioPorIdParams{
+		ID: int32(modelDevolucao.IdFuncionario),
+		TenantID: tenantId,
+	})
 	if err != nil {
 
 		return err
@@ -84,6 +87,7 @@ func (d *DevolucaoService) SalvarDevolucao(ctx context.Context, modelDevolucao m
 			Idepi:           int32(modelDevolucao.IdEpi),
 			Idtamanho:       int32(modelDevolucao.IdTamanho),
 			Quantidadeatual: int32(modelDevolucao.QuantidadeADevolver),
+			TenantID: tenantId,
 		})
 		if err != nil {
 			return err
@@ -91,6 +95,7 @@ func (d *DevolucaoService) SalvarDevolucao(ctx context.Context, modelDevolucao m
 	}
 
 	arg := repository.AddTrocaEpiParams{
+		TenantID: tenantId,
 		Idfuncionario:         int32(modelDevolucao.IdFuncionario),
 		Idepi:                 int32(modelDevolucao.IdEpi),
 		Idmotivo:              int32(modelDevolucao.IdMotivo),
@@ -130,7 +135,7 @@ func (d *DevolucaoService) SalvarDevolucao(ctx context.Context, modelDevolucao m
 				},
 			},
 		}
-		err := d.repoEntrega.RegistrarEntrega(ctx, qtx, modelentrega)
+		err := d.repoEntrega.RegistrarEntrega(ctx, qtx, modelentrega, tenantId)
 		if err != nil {
 
 			return err
@@ -158,7 +163,7 @@ type DevolucaoPaginada struct {
 	PaginaFinal int32                `json:"pagina_final"`
 }
 
-func (d *DevolucaoService) ListarDevolucoes(ctx context.Context, f FiltroDevolucao) (DevolucaoPaginada, error) {
+func (d *DevolucaoService) ListarDevolucoes(ctx context.Context, f FiltroDevolucao,tenantId int32) (DevolucaoPaginada, error) {
 
 	limit := f.Quantidade
 	if limit <= 0 {
@@ -179,6 +184,7 @@ func (d *DevolucaoService) ListarDevolucoes(ctx context.Context, f FiltroDevoluc
 		Matricula:  pgtype.Text{String: f.MatriculaFuncionario, Valid: f.MatriculaFuncionario != ""},
 		DataInicio: pgtype.Date{Time: f.DataInicio.Time(), Valid: !f.DataInicio.IsZero()},
 		DataFim:    pgtype.Date{Time: f.DataFim.Time(), Valid: !f.DataFim.IsZero()},
+		TenantID: tenantId,
 	}
 
 	devolucoes, err := d.repo.Listar(ctx, filtro)
@@ -274,7 +280,7 @@ func (d *DevolucaoService) ListarDevolucoes(ctx context.Context, f FiltroDevoluc
 	}, nil
 }
 
-func (d *DevolucaoService) CancelarDevolucao(ctx context.Context, id, iduser int) error {
+func (d *DevolucaoService) CancelarDevolucao(ctx context.Context, id, iduser, tenatId int) error {
 
 	if id <= 0 {
 		return helper.ErrId
@@ -291,6 +297,7 @@ func (d *DevolucaoService) CancelarDevolucao(ctx context.Context, id, iduser int
 	arg := repository.CancelarDevolucaoParams{
 		ID:                             int32(id),
 		IDUsuarioDevolucaoCancelamento: pgtype.Int4{Int32: int32(iduser), Valid: true},
+		TenantID: int32(tenatId),
 	}
 
 	qtx := d.queries.WithTx(tx)
@@ -303,12 +310,16 @@ func (d *DevolucaoService) CancelarDevolucao(ctx context.Context, id, iduser int
 	idEntrega, err := qtx.CancelaEntregaPorIdTroca(ctx, repository.CancelaEntregaPorIdTrocaParams{
 		Idtroca:                      pgtype.Int4{Int32: int32(iddevolucao), Valid: true},
 		IDUsuarioEntregaCancelamento: arg.IDUsuarioDevolucaoCancelamento,
+		TenantID: arg.TenantID,
 	})
 
 	if err == nil {
 		/*cancelo os itens, por meio do id da entrega,
 		que me retorna o id da entrada desses item e sua quantidade (por enquanto a devolucao e feita 1 para 1) */
-		itensCancelados, err := qtx.CancelaItemEntregue(ctx, idEntrega)
+		itensCancelados, err := qtx.CancelaItemEntregue(ctx, repository.CancelaItemEntregueParams{
+			Identrega: idEntrega,
+			TenantID: arg.TenantID,
+		})
 		if err != nil {
 			return err
 		}
@@ -319,6 +330,7 @@ func (d *DevolucaoService) CancelarDevolucao(ctx context.Context, id, iduser int
 			linhasAfetadas, err := qtx.ReporEstoqueLote(ctx, repository.ReporEstoqueLoteParams{
 				Quantidadeatual: item.Quantidade,
 				ID:              item.Identrada,
+				TenantID: arg.TenantID,
 			})
 			if err != nil {
 				return err

@@ -29,9 +29,9 @@ func (e *EpiRepository) Adicionar(ctx context.Context,qtx *Queries, epi AddEpiPa
 	return id, nil
 }
 
-func (e *EpiRepository) ListarEpi(ctx context.Context, id int) (BuscarEpiRow, error){
+func (e *EpiRepository) ListarEpi(ctx context.Context, arg BuscarEpiParams) (BuscarEpiRow, error){
 
-	epi, err:= e.q.BuscarEpi(ctx, int32(id))
+	epi, err:= e.q.BuscarEpi(ctx, arg)
 	if err != nil {
 
 		return BuscarEpiRow{},helper.TraduzErroPostgres(err)
@@ -40,12 +40,12 @@ func (e *EpiRepository) ListarEpi(ctx context.Context, id int) (BuscarEpiRow, er
 	return epi, nil
 }
 
-func (e *EpiRepository) ListarEpis(ctx context.Context, pagina, ItemPorPagina int32) ([]BuscarTodosEpisPaginadoRow, error){
+func (e *EpiRepository) ListarEpis(ctx context.Context, pagina, ItemPorPagina,tenatId int32) ([]BuscarTodosEpisPaginadoRow, error){
 
 	if pagina < 1 {pagina = 1}
 
 	offset := (pagina -1 ) * ItemPorPagina
-	epis, err:= e.q.BuscarTodosEpisPaginado(ctx, BuscarTodosEpisPaginadoParams{Limit: ItemPorPagina, Offset: offset})
+	epis, err:= e.q.BuscarTodosEpisPaginado(ctx, BuscarTodosEpisPaginadoParams{Limit: ItemPorPagina, Offset: offset, TenantID: tenatId})
 	if err != nil {
 
 		return []BuscarTodosEpisPaginadoRow{},helper.TraduzErroPostgres(err)
@@ -54,9 +54,9 @@ func (e *EpiRepository) ListarEpis(ctx context.Context, pagina, ItemPorPagina in
 	return epis, nil
 }
 
-func (e *EpiRepository) CancelarEpi(ctx context.Context, qtx *Queries ,id int)(int64, error){
+func (e *EpiRepository) CancelarEpi(ctx context.Context, qtx *Queries ,arg DeletarEpiParams)(int64, error){
 
-	linhasAfetadas, err:= qtx.DeletarEpi(ctx, int32(id))
+	linhasAfetadas, err:= qtx.DeletarEpi(ctx, arg)
 	if err != nil {
 
 		return 0, helper.TraduzErroPostgres(err)

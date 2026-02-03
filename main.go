@@ -50,7 +50,7 @@ func main(){
 
 	container:= routers.NewContainer(db)
 
-	routers.ConfigurarRotas(router, container)
+	routers.ConfigurarRotas(router, container, db)
 
 	router.Run(":8080")
 

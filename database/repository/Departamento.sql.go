@@ -12,17 +12,24 @@ import (
 const buscarDepartamento = `-- name: BuscarDepartamento :one
 SELECT id, nome 
 FROM departamento 
-WHERE id = $1 AND ativo = TRUE 
+WHERE id = $1 
+  AND tenant_id = $2 
+  AND ativo = TRUE 
 LIMIT 1
 `
+
+type BuscarDepartamentoParams struct {
+	ID       int32
+	TenantID int32
+}
 
 type BuscarDepartamentoRow struct {
 	ID   int32
 	Nome string
 }
 
-func (q *Queries) BuscarDepartamento(ctx context.Context, id int32) (BuscarDepartamentoRow, error) {
-	row := q.db.QueryRow(ctx, buscarDepartamento, id)
+func (q *Queries) BuscarDepartamento(ctx context.Context, arg BuscarDepartamentoParams) (BuscarDepartamentoRow, error) {
+	row := q.db.QueryRow(ctx, buscarDepartamento, arg.ID, arg.TenantID)
 	var i BuscarDepartamentoRow
 	err := row.Scan(&i.ID, &i.Nome)
 	return i, err
@@ -31,7 +38,8 @@ func (q *Queries) BuscarDepartamento(ctx context.Context, id int32) (BuscarDepar
 const buscarTodosDepartamentos = `-- name: BuscarTodosDepartamentos :many
 SELECT id, nome 
 FROM departamento 
-WHERE ativo = TRUE
+WHERE tenant_id = $1 
+  AND ativo = TRUE
 `
 
 type BuscarTodosDepartamentosRow struct {
@@ -39,8 +47,8 @@ type BuscarTodosDepartamentosRow struct {
 	Nome string
 }
 
-func (q *Queries) BuscarTodosDepartamentos(ctx context.Context) ([]BuscarTodosDepartamentosRow, error) {
-	rows, err := q.db.Query(ctx, buscarTodosDepartamentos)
+func (q *Queries) BuscarTodosDepartamentos(ctx context.Context, tenantID int32) ([]BuscarTodosDepartamentosRow, error) {
+	rows, err := q.db.Query(ctx, buscarTodosDepartamentos, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -60,12 +68,17 @@ func (q *Queries) BuscarTodosDepartamentos(ctx context.Context) ([]BuscarTodosDe
 }
 
 const criaDepartamento = `-- name: CriaDepartamento :exec
-insert into departamento (nome) 
-values ($1)
+INSERT INTO departamento (tenant_id, nome) 
+VALUES ($1, $2)
 `
 
-func (q *Queries) CriaDepartamento(ctx context.Context, nome string) error {
-	_, err := q.db.Exec(ctx, criaDepartamento, nome)
+type CriaDepartamentoParams struct {
+	TenantID int32
+	Nome     string
+}
+
+func (q *Queries) CriaDepartamento(ctx context.Context, arg CriaDepartamentoParams) error {
+	_, err := q.db.Exec(ctx, criaDepartamento, arg.TenantID, arg.Nome)
 	return err
 }
 
@@ -73,11 +86,18 @@ const deletarDepartamento = `-- name: DeletarDepartamento :execrows
 UPDATE departamento
 SET ativo = FALSE,
     deletado_em = NOW()
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $2 
+  AND ativo = TRUE
 `
 
-func (q *Queries) DeletarDepartamento(ctx context.Context, id int32) (int64, error) {
-	result, err := q.db.Exec(ctx, deletarDepartamento, id)
+type DeletarDepartamentoParams struct {
+	ID       int32
+	TenantID int32
+}
+
+func (q *Queries) DeletarDepartamento(ctx context.Context, arg DeletarDepartamentoParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletarDepartamento, arg.ID, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -87,16 +107,19 @@ func (q *Queries) DeletarDepartamento(ctx context.Context, id int32) (int64, err
 const updateDepartamento = `-- name: UpdateDepartamento :execrows
 UPDATE departamento
 SET nome = $2
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $3 
+  AND ativo = TRUE
 `
 
 type UpdateDepartamentoParams struct {
-	ID   int32
-	Nome string
+	ID       int32
+	Nome     string
+	TenantID int32
 }
 
 func (q *Queries) UpdateDepartamento(ctx context.Context, arg UpdateDepartamentoParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateDepartamento, arg.ID, arg.Nome)
+	result, err := q.db.Exec(ctx, updateDepartamento, arg.ID, arg.Nome, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}

@@ -13,12 +13,13 @@ import (
 
 const addDevolucaoSimples = `-- name: AddDevolucaoSimples :exec
 INSERT INTO devolucao (
-    IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
-    quantidadeAdevolver, assinatura_digital,id_usuario_cancelamento,token_validacao
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    tenant_id, IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
+    quantidadeAdevolver, assinatura_digital, id_usuario_cancelamento, token_validacao
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
 type AddDevolucaoSimplesParams struct {
+	TenantID              int32
 	Idfuncionario         int32
 	Idepi                 int32
 	Idmotivo              int32
@@ -32,6 +33,7 @@ type AddDevolucaoSimplesParams struct {
 
 func (q *Queries) AddDevolucaoSimples(ctx context.Context, arg AddDevolucaoSimplesParams) error {
 	_, err := q.db.Exec(ctx, addDevolucaoSimples,
+		arg.TenantID,
 		arg.Idfuncionario,
 		arg.Idepi,
 		arg.Idmotivo,
@@ -46,12 +48,13 @@ func (q *Queries) AddDevolucaoSimples(ctx context.Context, arg AddDevolucaoSimpl
 }
 
 const addEntregaVinculada = `-- name: AddEntregaVinculada :one
-INSERT INTO entrega_epi (IdFuncionario, data_entrega, assinatura, IdTroca)
-VALUES ($1, $2, $3, $4)
+INSERT INTO entrega_epi (tenant_id, IdFuncionario, data_entrega, assinatura, IdTroca)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id
 `
 
 type AddEntregaVinculadaParams struct {
+	TenantID      int32
 	Idfuncionario int32
 	DataEntrega   pgtype.Date
 	Assinatura    string
@@ -60,6 +63,7 @@ type AddEntregaVinculadaParams struct {
 
 func (q *Queries) AddEntregaVinculada(ctx context.Context, arg AddEntregaVinculadaParams) (int32, error) {
 	row := q.db.QueryRow(ctx, addEntregaVinculada,
+		arg.TenantID,
 		arg.Idfuncionario,
 		arg.DataEntrega,
 		arg.Assinatura,
@@ -72,13 +76,14 @@ func (q *Queries) AddEntregaVinculada(ctx context.Context, arg AddEntregaVincula
 
 const addTrocaEpi = `-- name: AddTrocaEpi :one
 INSERT INTO devolucao (
-    IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
-    quantidadeAdevolver, IdEpiNovo, IdTamanhoNovo, quantidadeNova, assinatura_digital,id_usuario_cancelamento,token_validacao
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    tenant_id, IdFuncionario, IdEpi, IdMotivo, data_devolucao, IdTamanho, 
+    quantidadeAdevolver, IdEpiNovo, IdTamanhoNovo, quantidadeNova, assinatura_digital, id_usuario_cancelamento, token_validacao
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 RETURNING id
 `
 
 type AddTrocaEpiParams struct {
+	TenantID              int32
 	Idfuncionario         int32
 	Idepi                 int32
 	Idmotivo              int32
@@ -95,6 +100,7 @@ type AddTrocaEpiParams struct {
 
 func (q *Queries) AddTrocaEpi(ctx context.Context, arg AddTrocaEpiParams) (int32, error) {
 	row := q.db.QueryRow(ctx, addTrocaEpi,
+		arg.TenantID,
 		arg.Idfuncionario,
 		arg.Idepi,
 		arg.Idmotivo,
@@ -118,17 +124,20 @@ UPDATE devolucao
 SET cancelada_em = NOW(),
     ativo = FALSE,
     id_usuario_devolucao_cancelamento = $2
-WHERE id = $1 AND cancelada_em IS NULL
+WHERE id = $1 
+  AND tenant_id = $3 -- SEGURANÇA: Só cancela se pertencer à empresa correta
+  AND cancelada_em IS NULL
 RETURNING id
 `
 
 type CancelarDevolucaoParams struct {
 	ID                             int32
 	IDUsuarioDevolucaoCancelamento pgtype.Int4
+	TenantID                       int32
 }
 
 func (q *Queries) CancelarDevolucao(ctx context.Context, arg CancelarDevolucaoParams) (int32, error) {
-	row := q.db.QueryRow(ctx, cancelarDevolucao, arg.ID, arg.IDUsuarioDevolucaoCancelamento)
+	row := q.db.QueryRow(ctx, cancelarDevolucao, arg.ID, arg.IDUsuarioDevolucaoCancelamento, arg.TenantID)
 	var id int32
 	err := row.Scan(&id)
 	return id, err
@@ -140,41 +149,42 @@ SELECT
     f.IdDepartamento, dd.nome as dep_nome,
     f.IdFuncao, ff.nome as funcao_nome,
     d.IdEpi, e.nome as epi_antigo_nome, e.fabricante as epi_antigo_fab, e.CA as epi_antigo_ca,
-    d.IdTamanho as tam_antigo_id, t.tamanho as tam_antigo_nome,e.descricao as desc_antiga,
-    e.validade_CA as validade_ca_antiga,e.IdTipoProtecao as idprotecaoAntigo,tp.nome as tipo_protecao_nomeAntigo,
+    d.IdTamanho as tam_antigo_id, t.tamanho as tam_antigo_nome, e.descricao as desc_antiga,
+    e.validade_CA as validade_ca_antiga, e.IdTipoProtecao as idprotecaoAntigo, tp.nome as tipo_protecao_nomeAntigo,
     d.quantidadeAdevolver, d.IdMotivo, m.motivo as motivo_nome,
     d.IdEpiNovo, 
     en.nome as epi_novo_nome, en.fabricante as epi_novo_fab, en.CA as epi_novo_ca,
-    d.quantidadeNova, d.IdTamanhoNovo, tn.tamanho as tam_novo_nome,en.descricao as desc_nova,
-    en.validade_CA as validade_ca_nova,en.IdTipoProtecao as idprotecaoNovo,tpn.nome as tipo_protecao_nomeNovo,
+    d.quantidadeNova, d.IdTamanhoNovo, tn.tamanho as tam_novo_nome, en.descricao as desc_nova,
+    en.validade_CA as validade_ca_nova, en.IdTipoProtecao as idprotecaoNovo, tpn.nome as tipo_protecao_nomeNovo,
     d.assinatura_digital, d.data_devolucao, d.id_usuario_cancelamento,
     COUNT(*) OVER() as total_geral
 FROM devolucao d
 INNER JOIN epi e ON d.IdEpi = e.id
-INNER JOIN funcionario f ON d.IdFuncionario = f.id	
+INNER JOIN funcionario f ON d.IdFuncionario = f.id  
 INNER JOIN departamento dd ON f.IdDepartamento = dd.id
 INNER JOIN funcao ff ON f.IdFuncao = ff.id
 INNER JOIN tamanho t ON d.IdTamanho = t.id
 INNER JOIN motivo_devolucao m ON d.IdMotivo = m.id
-inner join tipo_protecao tp on e.IdTipoProtecao = tp.id
+INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
 LEFT JOIN epi en ON d.IdEpiNovo = en.id
 LEFT JOIN tamanho tn ON d.IdTamanhoNovo = tn.id
-left join tipo_protecao tpn on en.IdTipoProtecao = tpn.id
-
+LEFT JOIN tipo_protecao tpn ON en.IdTipoProtecao = tpn.id
 WHERE 
-    (($3::boolean IS FALSE AND d.cancelada_em IS NULL) OR
-     ($3::boolean IS TRUE AND d.cancelada_em IS NOT NULL))
-AND ($4::int IS NULL OR d.id = $4)
-AND ($5::text IS NULL OR f.matricula = $5)
-AND($6::date IS NULL OR d.data_devolucao >= $6)
-and ($7::date IS NULL OR d.data_devolucao <= $7)
+    d.tenant_id = $3 -- SEGURANÇA: Filtro obrigatório do tenant
+    AND (($4::boolean IS FALSE AND d.cancelada_em IS NULL) OR
+         ($4::boolean IS TRUE AND d.cancelada_em IS NOT NULL))
+    AND ($5::int IS NULL OR d.id = $5)
+    AND ($6::text IS NULL OR f.matricula = $6)
+    AND ($7::date IS NULL OR d.data_devolucao >= $7)
+    AND ($8::date IS NULL OR d.data_devolucao <= $8)
 ORDER BY d.data_devolucao DESC 
-limit $1 offset $2
+LIMIT $1 OFFSET $2
 `
 
 type ListarDevolucoesParams struct {
 	Limit      int32
 	Offset     int32
+	TenantID   int32
 	Canceladas bool
 	ID         pgtype.Int4
 	Matricula  pgtype.Text
@@ -225,6 +235,7 @@ func (q *Queries) ListarDevolucoes(ctx context.Context, arg ListarDevolucoesPara
 	rows, err := q.db.Query(ctx, listarDevolucoes,
 		arg.Limit,
 		arg.Offset,
+		arg.TenantID,
 		arg.Canceladas,
 		arg.ID,
 		arg.Matricula,

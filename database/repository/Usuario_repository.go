@@ -30,9 +30,9 @@ func (u *UsuarioRepository) Cadastrar(ctx context.Context, user CreateUserParams
 	return nil
 }
 
-func (u *UsuarioRepository) Listar(ctx context.Context) ([]BuscarTodosUsuariosRow, error){
+func (u *UsuarioRepository) Listar(ctx context.Context, tenantId int32) ([]BuscarTodosUsuariosRow, error){
 
-	usuarios, err:= u.q.BuscarTodosUsuarios(ctx)
+	usuarios, err:= u.q.BuscarTodosUsuarios(ctx, tenantId)
 	if err != nil {
 		return []BuscarTodosUsuariosRow{}, helper.TraduzErroPostgres(err)
 	}
@@ -40,7 +40,7 @@ func (u *UsuarioRepository) Listar(ctx context.Context) ([]BuscarTodosUsuariosRo
 	return usuarios, err
 }
 
-func(u *UsuarioRepository) BuscarPorEmail(ctx context.Context, email string) (BuscarUsuarioPorEmailRow, error){
+func(u *UsuarioRepository) BuscarPorEmail(ctx context.Context, email BuscarUsuarioPorEmailParams) (BuscarUsuarioPorEmailRow, error){
 
 	usuario, err:= u.q.BuscarUsuarioPorEmail(ctx, email)
 	if err != nil {
@@ -50,9 +50,9 @@ func(u *UsuarioRepository) BuscarPorEmail(ctx context.Context, email string) (Bu
 	return usuario, nil
 }
 
-func (u *UsuarioRepository) BuscarPoId(ctx context.Context, id int) (BuscarPorIdUsuarioRow, error){
+func (u *UsuarioRepository) BuscarPoId(ctx context.Context, arg BuscarPorIdUsuarioParams) (BuscarPorIdUsuarioRow, error){
 
-	usuario, err:= u.q.BuscarPorIdUsuario(ctx, int32(id))
+	usuario, err:= u.q.BuscarPorIdUsuario(ctx, arg)
 	if err != nil {
 
 		return  BuscarPorIdUsuarioRow{}, helper.TraduzErroPostgres(err)
