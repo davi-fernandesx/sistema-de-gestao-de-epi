@@ -10,17 +10,18 @@ import (
 )
 
 const addFuncao = `-- name: AddFuncao :exec
-INSERT INTO funcao (nome, IdDepartamento) 
-VALUES ($1, $2)
+INSERT INTO funcao (tenant_id, nome, IdDepartamento) 
+VALUES ($1, $2, $3)
 `
 
 type AddFuncaoParams struct {
+	TenantID       int32
 	Nome           string
 	Iddepartamento int32
 }
 
 func (q *Queries) AddFuncao(ctx context.Context, arg AddFuncaoParams) error {
-	_, err := q.db.Exec(ctx, addFuncao, arg.Nome, arg.Iddepartamento)
+	_, err := q.db.Exec(ctx, addFuncao, arg.TenantID, arg.Nome, arg.Iddepartamento)
 	return err
 }
 
@@ -32,8 +33,15 @@ SELECT
     d.nome as departamento_nome
 FROM funcao f
 INNER JOIN departamento d ON f.IdDepartamento = d.id
-WHERE f.id = $1 AND f.ativo = TRUE
+WHERE f.id = $1 
+  AND f.tenant_id = $2 -- SEGURANÇA
+  AND f.ativo = TRUE
 `
+
+type BuscarFuncaoParams struct {
+	ID       int32
+	TenantID int32
+}
 
 type BuscarFuncaoRow struct {
 	ID               int32
@@ -42,8 +50,8 @@ type BuscarFuncaoRow struct {
 	DepartamentoNome string
 }
 
-func (q *Queries) BuscarFuncao(ctx context.Context, id int32) (BuscarFuncaoRow, error) {
-	row := q.db.QueryRow(ctx, buscarFuncao, id)
+func (q *Queries) BuscarFuncao(ctx context.Context, arg BuscarFuncaoParams) (BuscarFuncaoRow, error) {
+	row := q.db.QueryRow(ctx, buscarFuncao, arg.ID, arg.TenantID)
 	var i BuscarFuncaoRow
 	err := row.Scan(
 		&i.ID,
@@ -62,7 +70,8 @@ SELECT
     d.nome as departamento_nome
 FROM funcao f
 INNER JOIN departamento d ON f.IdDepartamento = d.id
-WHERE f.ativo = TRUE
+WHERE f.tenant_id = $1 -- SEGURANÇA: Lista apenas funções da empresa logada
+  AND f.ativo = TRUE
 `
 
 type BuscarTodasFuncoesRow struct {
@@ -72,8 +81,8 @@ type BuscarTodasFuncoesRow struct {
 	DepartamentoNome string
 }
 
-func (q *Queries) BuscarTodasFuncoes(ctx context.Context) ([]BuscarTodasFuncoesRow, error) {
-	rows, err := q.db.Query(ctx, buscarTodasFuncoes)
+func (q *Queries) BuscarTodasFuncoes(ctx context.Context, tenantID int32) ([]BuscarTodasFuncoesRow, error) {
+	rows, err := q.db.Query(ctx, buscarTodasFuncoes, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -101,11 +110,18 @@ const deletarFuncao = `-- name: DeletarFuncao :execrows
 UPDATE funcao
 SET ativo = FALSE,
     deletado_em = NOW()
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
-func (q *Queries) DeletarFuncao(ctx context.Context, id int32) (int64, error) {
-	result, err := q.db.Exec(ctx, deletarFuncao, id)
+type DeletarFuncaoParams struct {
+	ID       int32
+	TenantID int32
+}
+
+func (q *Queries) DeletarFuncao(ctx context.Context, arg DeletarFuncaoParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletarFuncao, arg.ID, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -115,12 +131,19 @@ func (q *Queries) DeletarFuncao(ctx context.Context, id int32) (int64, error) {
 const possuiFuncionariosVinculados = `-- name: PossuiFuncionariosVinculados :one
 SELECT EXISTS (
     SELECT 1 FROM funcionario 
-    WHERE IdFuncao = $1 AND ativo = TRUE
+    WHERE IdFuncao = $1 
+      AND tenant_id = $2 -- SEGURANÇA
+      AND ativo = TRUE
 )
 `
 
-func (q *Queries) PossuiFuncionariosVinculados(ctx context.Context, idfuncao int32) (bool, error) {
-	row := q.db.QueryRow(ctx, possuiFuncionariosVinculados, idfuncao)
+type PossuiFuncionariosVinculadosParams struct {
+	Idfuncao int32
+	TenantID int32
+}
+
+func (q *Queries) PossuiFuncionariosVinculados(ctx context.Context, arg PossuiFuncionariosVinculadosParams) (bool, error) {
+	row := q.db.QueryRow(ctx, possuiFuncionariosVinculados, arg.Idfuncao, arg.TenantID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -129,16 +152,19 @@ func (q *Queries) PossuiFuncionariosVinculados(ctx context.Context, idfuncao int
 const updateFuncao = `-- name: UpdateFuncao :execrows
 UPDATE funcao
 SET nome = $2
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $3 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
 type UpdateFuncaoParams struct {
-	ID   int32
-	Nome string
+	ID       int32
+	Nome     string
+	TenantID int32
 }
 
 func (q *Queries) UpdateFuncao(ctx context.Context, arg UpdateFuncaoParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateFuncao, arg.ID, arg.Nome)
+	result, err := q.db.Exec(ctx, updateFuncao, arg.ID, arg.Nome, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}

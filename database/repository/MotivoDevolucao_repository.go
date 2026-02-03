@@ -22,7 +22,7 @@ func NewMotivoDevolucaoRepository(pool *pgxpool.Pool) *MotivoDevolucaoRepository
 	}
 }
 
-func (m *MotivoDevolucaoRepository) Adicionar(ctx context.Context, motivo string) error {
+func (m *MotivoDevolucaoRepository) Adicionar(ctx context.Context, motivo AddMotivoDevolucaoParams) error {
 
 	err := m.q.AddMotivoDevolucao(ctx, motivo)
 	if err != nil {
@@ -33,9 +33,9 @@ func (m *MotivoDevolucaoRepository) Adicionar(ctx context.Context, motivo string
 	return nil
 }
 
-func (m *MotivoDevolucaoRepository) ListarMotivo(ctx context.Context, id int) (BuscaMotivoDevolucaoRow, error){
+func (m *MotivoDevolucaoRepository) ListarMotivo(ctx context.Context, arg BuscaMotivoDevolucaoParams) (BuscaMotivoDevolucaoRow, error){
 
-	motivo, err:= m.q.BuscaMotivoDevolucao(ctx, int32(id))
+	motivo, err:= m.q.BuscaMotivoDevolucao(ctx, arg)
 	if err != nil {
 
 		 return BuscaMotivoDevolucaoRow{},helper.TraduzErroPostgres(err)
@@ -44,9 +44,9 @@ func (m *MotivoDevolucaoRepository) ListarMotivo(ctx context.Context, id int) (B
 	return  motivo, err
 }
 
-func (m *MotivoDevolucaoRepository) ListarMotivos(ctx context.Context) ([]BuscaTodosMotivosDevolucaoRow, error){
+func (m *MotivoDevolucaoRepository) ListarMotivos(ctx context.Context, tenantId int32) ([]BuscaTodosMotivosDevolucaoRow, error){
 
-	motivos, err:= m.q.BuscaTodosMotivosDevolucao(ctx)
+	motivos, err:= m.q.BuscaTodosMotivosDevolucao(ctx, tenantId)
 	if err != nil {
 
 		 return []BuscaTodosMotivosDevolucaoRow{},helper.TraduzErroPostgres(err)
@@ -55,9 +55,9 @@ func (m *MotivoDevolucaoRepository) ListarMotivos(ctx context.Context) ([]BuscaT
 	return  motivos, err
 }
 
-func (m *MotivoDevolucaoRepository) CancelarMotivoDevolucao(ctx context.Context, id int) (int64, error) {
+func (m *MotivoDevolucaoRepository) CancelarMotivoDevolucao(ctx context.Context, arg DeleteMotivoDevolucaoParams) (int64, error) {
 
-	linhasAfetadas,err:= m.q.DeleteMotivoDevolucao(ctx, int32(id))
+	linhasAfetadas,err:= m.q.DeleteMotivoDevolucao(ctx, arg)
 	if err != nil {
 
 		return 0,helper.TraduzErroPostgres(err)

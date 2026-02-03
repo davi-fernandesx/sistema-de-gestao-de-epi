@@ -34,9 +34,9 @@ func (f *FuncionarioRepository) Adicionar(ctx context.Context, args AddFuncionar
 	return nil	
 }
 
-func(f *FuncionarioRepository) ListarFuncionario(ctx context.Context, matricula string) (BuscaFuncionarioRow, error){
+func(f *FuncionarioRepository) ListarFuncionario(ctx context.Context, arg BuscaFuncionarioParams) (BuscaFuncionarioRow, error){
 
-	funcionario, err:= f.q.BuscaFuncionario(ctx, matricula)
+	funcionario, err:= f.q.BuscaFuncionario(ctx, arg)
 	if err != nil {
 
 		return  BuscaFuncionarioRow{},helper.TraduzErroPostgres(err)
@@ -45,9 +45,9 @@ func(f *FuncionarioRepository) ListarFuncionario(ctx context.Context, matricula 
 	return funcionario, nil
 }
 
-func (f *FuncionarioRepository) ListarFuncionarios(ctx context.Context)([]BuscarTodosFuncionariosRow, error) {
+func (f *FuncionarioRepository) ListarFuncionarios(ctx context.Context, tenantId int32)([]BuscarTodosFuncionariosRow, error) {
 
-	funcs, err:= f.q.BuscarTodosFuncionarios(ctx)
+	funcs, err:= f.q.BuscarTodosFuncionarios(ctx, tenantId)
 	if err != nil {
 
 		return []BuscarTodosFuncionariosRow{}, helper.TraduzErroPostgres(err)
@@ -56,9 +56,9 @@ func (f *FuncionarioRepository) ListarFuncionarios(ctx context.Context)([]Buscar
 	return  funcs, nil
 }
 
-func (f *FuncionarioRepository) CancelarFuncionario(ctx context.Context, id int32) (int64, error){
+func (f *FuncionarioRepository) CancelarFuncionario(ctx context.Context, arg DeletarFuncionarioParams) (int64, error){
 
-	linhasAfetadas,err:= f.q.DeletarFuncionario(ctx, id)
+	linhasAfetadas,err:= f.q.DeletarFuncionario(ctx, arg)
 	if err != nil {
 
 		return 0, helper.TraduzErroPostgres(err)

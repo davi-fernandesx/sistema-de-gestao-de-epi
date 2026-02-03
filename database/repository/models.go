@@ -10,6 +10,7 @@ import (
 
 type Departamento struct {
 	ID         int32
+	TenantID   int32
 	Nome       string
 	Ativo      bool
 	DeletadoEm pgtype.Timestamp
@@ -17,6 +18,7 @@ type Departamento struct {
 
 type Devolucao struct {
 	ID                             int32
+	TenantID                       int32
 	Idepi                          int32
 	Idfuncionario                  int32
 	Idmotivo                       int32
@@ -34,8 +36,19 @@ type Devolucao struct {
 	TokenValidacao                 pgtype.Text
 }
 
+type Empresa struct {
+	ID           int32
+	NomeFantasia string
+	RazaoSocial  string
+	Cnpj         string
+	Subdominio   string
+	Ativo        bool
+	CriadoEm     pgtype.Timestamp
+}
+
 type EntradaEpi struct {
 	ID                           int32
+	TenantID                     int32
 	Idepi                        int32
 	Idtamanho                    int32
 	DataEntrada                  pgtype.Date
@@ -56,6 +69,7 @@ type EntradaEpi struct {
 
 type EntregaEpi struct {
 	ID                           int32
+	TenantID                     int32
 	Idfuncionario                int32
 	DataEntrega                  pgtype.Date
 	Assinatura                   string
@@ -69,6 +83,7 @@ type EntregaEpi struct {
 
 type Epi struct {
 	ID             int32
+	TenantID       int32
 	Nome           string
 	Fabricante     string
 	Ca             string
@@ -82,6 +97,7 @@ type Epi struct {
 
 type EpisEntregue struct {
 	ID         int32
+	TenantID   int32
 	Identrega  int32
 	Identrada  int32
 	Idepi      int32
@@ -93,6 +109,7 @@ type EpisEntregue struct {
 
 type Funcao struct {
 	ID             int32
+	TenantID       int32
 	Nome           string
 	Iddepartamento int32
 	Ativo          bool
@@ -101,6 +118,7 @@ type Funcao struct {
 
 type Funcionario struct {
 	ID             int32
+	TenantID       int32
 	Nome           string
 	Matricula      string
 	Idfuncao       int32
@@ -111,6 +129,7 @@ type Funcionario struct {
 
 type MotivoDevolucao struct {
 	ID         int32
+	TenantID   int32
 	Motivo     string
 	Ativo      bool
 	DeletadoEm pgtype.Timestamp
@@ -118,6 +137,7 @@ type MotivoDevolucao struct {
 
 type Tamanho struct {
 	ID         int32
+	TenantID   int32
 	Tamanho    string
 	Ativo      bool
 	DeletadoEm pgtype.Timestamp
@@ -125,6 +145,7 @@ type Tamanho struct {
 
 type TamanhosEpi struct {
 	ID         int32
+	TenantID   int32
 	Idepi      int32
 	Idtamanho  int32
 	Ativo      bool
@@ -133,6 +154,7 @@ type TamanhosEpi struct {
 
 type TipoProtecao struct {
 	ID         int32
+	TenantID   int32
 	Nome       string
 	Ativo      bool
 	DeletadoEm pgtype.Timestamp
@@ -140,6 +162,7 @@ type TipoProtecao struct {
 
 type Usuario struct {
 	ID        int32
+	TenantID  int32
 	Nome      string
 	Email     string
 	SenhaHash string

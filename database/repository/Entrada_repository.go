@@ -59,9 +59,9 @@ func (e *EntradaRepository) CancelarEntrada(ctx context.Context, args CancelarEn
 	return linhasAfetadas, nil
 }
 
-func (e *EntradaRepository) TotalEntradas(ctx context.Context, args ContarEntradasParams) (int64, error){
+func (e *EntradaRepository) TotalEntradas(ctx context.Context, args ContarEntradasFiltradasParams) (int64, error){
 
-	total, err:= e.q.ContarEntradas(ctx, args)
+	total, err:= e.q.ContarEntradasFiltradas(ctx,args )
 	if err != nil {
 		return 0, helper.TraduzErroPostgres(err)
 	}

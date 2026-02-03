@@ -22,7 +22,7 @@ func NewDepartamentoRepository(pool *pgxpool.Pool) *DepartamentoRepository {
 	}
 }
 
-func (d *DepartamentoRepository) Adicionar(ctx context.Context, departamento string) error{
+func (d *DepartamentoRepository) Adicionar(ctx context.Context, departamento CriaDepartamentoParams) error{
 	
 	err :=d.q.CriaDepartamento(ctx, departamento)
 	if err != nil {
@@ -33,19 +33,19 @@ func (d *DepartamentoRepository) Adicionar(ctx context.Context, departamento str
 	return nil
 }
 
-func (d *DepartamentoRepository) ListarDepartamento(ctx context.Context, id int32 ) (BuscarDepartamentoRow, error){
+func (d *DepartamentoRepository) ListarDepartamento(ctx context.Context, arg BuscarDepartamentoParams) (BuscarDepartamentoRow, error){
 
-	return d.q.BuscarDepartamento(ctx, id)
+	return d.q.BuscarDepartamento(ctx, arg)
 }
 
-func (d *DepartamentoRepository) ListarDepartamentos(ctx context.Context)([]BuscarTodosDepartamentosRow, error){
+func (d *DepartamentoRepository) ListarDepartamentos(ctx context.Context, tenantId int32)([]BuscarTodosDepartamentosRow, error){
 
-	return  d.q.BuscarTodosDepartamentos(ctx)
+	return  d.q.BuscarTodosDepartamentos(ctx, tenantId)
 }
 
-func (d *DepartamentoRepository) CancelarDepartamento(ctx context.Context, id int32) (int64, error){
+func (d *DepartamentoRepository) CancelarDepartamento(ctx context.Context, arg DeletarDepartamentoParams) (int64, error){
 
-	linhasAfetadas, err:= d.q.DeletarDepartamento(ctx, id)
+	linhasAfetadas, err:= d.q.DeletarDepartamento(ctx, arg)
 
 	if err != nil {
 

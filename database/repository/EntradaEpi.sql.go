@@ -13,12 +13,14 @@ import (
 
 const addEntradaEpi = `-- name: AddEntradaEpi :exec
 INSERT INTO entrada_epi (
+    tenant_id, -- Novo campo obrigatório
     IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-    data_fabricacao, data_validade, lote, fornecedor, valor_unitario,nota_fiscal_numero, nota_fiscal_serie,id_usuario_criacao
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    data_fabricacao, data_validade, lote, fornecedor, valor_unitario, nota_fiscal_numero, nota_fiscal_serie, id_usuario_criacao
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 
 type AddEntradaEpiParams struct {
+	TenantID         int32
 	Idepi            int32
 	Idtamanho        int32
 	DataEntrada      pgtype.Date
@@ -36,6 +38,7 @@ type AddEntradaEpiParams struct {
 
 func (q *Queries) AddEntradaEpi(ctx context.Context, arg AddEntradaEpiParams) error {
 	_, err := q.db.Exec(ctx, addEntradaEpi,
+		arg.TenantID,
 		arg.Idepi,
 		arg.Idtamanho,
 		arg.DataEntrada,
@@ -60,6 +63,7 @@ SET
     ativo = FALSE,
     id_usuario_criacao_cancelamento = $2
 WHERE id = $1 
+  AND tenant_id = $3 -- SEGURANÇA: Só cancela se for do mesmo tenant
   AND cancelada_em IS NULL 
   AND quantidadeAtual = quantidade
 `
@@ -67,33 +71,35 @@ WHERE id = $1
 type CancelarEntradaParams struct {
 	ID                           int32
 	IDUsuarioCriacaoCancelamento pgtype.Int4
+	TenantID                     int32
 }
 
 func (q *Queries) CancelarEntrada(ctx context.Context, arg CancelarEntradaParams) (int64, error) {
-	result, err := q.db.Exec(ctx, cancelarEntrada, arg.ID, arg.IDUsuarioCriacaoCancelamento)
+	result, err := q.db.Exec(ctx, cancelarEntrada, arg.ID, arg.IDUsuarioCriacaoCancelamento, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
 }
 
-const contarEntradas = `-- name: ContarEntradas :one
-
+const contarEntradasFiltradas = `-- name: ContarEntradasFiltradas :one
 SELECT COUNT(*) 
 FROM entrada_epi ee
 WHERE 
-    (
-        ($1::boolean IS FALSE AND ee.cancelada_em IS NULL) OR
-        ($1::boolean IS TRUE AND ee.cancelada_em IS NOT NULL)
+    ee.tenant_id = $1 -- SEGURANÇA: Filtro de Tenant
+    AND (
+        ($2::boolean IS FALSE AND ee.cancelada_em IS NULL) OR
+        ($2::boolean IS TRUE AND ee.cancelada_em IS NOT NULL)
     )
-    AND ($2::int IS NULL OR ee.IdEpi = $2)
-    AND ($3::int IS NULL OR ee.id = $3)
-    AND ($4::date IS NULL OR ee.data_entrada >= $4)
-    AND ($5::date IS NULL OR ee.data_entrada <= $5)
-    AND ($6::text IS NULL OR ee.nota_fiscal_numero ILIKE '%' || $6 || '%')
+    AND ($3::int IS NULL OR ee.IdEpi = $3)
+    AND ($4::int IS NULL OR ee.id = $4)
+    AND ($5::date IS NULL OR ee.data_entrada >= $5)
+    AND ($6::date IS NULL OR ee.data_entrada <= $6)
+    AND ($7::text IS NULL OR ee.nota_fiscal_numero ILIKE '%' || $7 || '%')
 `
 
-type ContarEntradasParams struct {
+type ContarEntradasFiltradasParams struct {
+	TenantID   int32
 	Canceladas bool
 	IDEpi      pgtype.Int4
 	IDEntrada  pgtype.Int4
@@ -102,9 +108,9 @@ type ContarEntradasParams struct {
 	NotaFiscal pgtype.Text
 }
 
-// Garante que nada foi usado
-func (q *Queries) ContarEntradas(ctx context.Context, arg ContarEntradasParams) (int64, error) {
-	row := q.db.QueryRow(ctx, contarEntradas,
+func (q *Queries) ContarEntradasFiltradas(ctx context.Context, arg ContarEntradasFiltradasParams) (int64, error) {
+	row := q.db.QueryRow(ctx, contarEntradasFiltradas,
+		arg.TenantID,
 		arg.Canceladas,
 		arg.IDEpi,
 		arg.IDEntrada,
@@ -130,15 +136,16 @@ INNER JOIN epi e ON ee.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
 INNER JOIN tamanho t ON ee.IdTamanho = t.id
 WHERE 
-    (
-        ($3::boolean IS FALSE AND ee.cancelada_em IS NULL) OR
-        ($3::boolean IS TRUE AND ee.cancelada_em IS NOT NULL)
+    ee.tenant_id = $3 -- SEGURANÇA: Filtro de Tenant
+    AND (
+        ($4::boolean IS FALSE AND ee.cancelada_em IS NULL) OR
+        ($4::boolean IS TRUE AND ee.cancelada_em IS NOT NULL)
     )
-    AND ($4::int IS NULL OR ee.IdEpi = $4)
-    AND ($5::int IS NULL OR ee.id = $5)
-    AND ($6::date IS NULL OR ee.data_entrada >= $6)
-    AND ($7::date IS NULL OR ee.data_entrada <= $7)
-    AND ($8::text IS NULL OR ee.nota_fiscal_numero ILIKE '%' || $8 || '%') -- Busca por NF
+    AND ($5::int IS NULL OR ee.IdEpi = $5)
+    AND ($6::int IS NULL OR ee.id = $6)
+    AND ($7::date IS NULL OR ee.data_entrada >= $7)
+    AND ($8::date IS NULL OR ee.data_entrada <= $8)
+    AND ($9::text IS NULL OR ee.nota_fiscal_numero ILIKE '%' || $9 || '%')
 ORDER BY ee.data_entrada DESC
 LIMIT $1 OFFSET $2
 `
@@ -146,6 +153,7 @@ LIMIT $1 OFFSET $2
 type ListarEntradasParams struct {
 	Limit      int32
 	Offset     int32
+	TenantID   int32
 	Canceladas bool
 	IDEpi      pgtype.Int4
 	IDEntrada  pgtype.Int4
@@ -183,6 +191,7 @@ func (q *Queries) ListarEntradas(ctx context.Context, arg ListarEntradasParams) 
 	rows, err := q.db.Query(ctx, listarEntradas,
 		arg.Limit,
 		arg.Offset,
+		arg.TenantID,
 		arg.Canceladas,
 		arg.IDEpi,
 		arg.IDEntrada,

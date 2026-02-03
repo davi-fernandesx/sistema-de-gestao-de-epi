@@ -10,14 +10,14 @@ import (
 )
 
 type TamanhoRepository interface {
-	Adicionar(ctx context.Context, tamanho string) error
-	ListarTamanho(ctx context.Context, id int32) (repository.BuscarTamanhoRow, error)
-	ListarTamanhos(ctx context.Context) ([]repository.BuscarTodosTamanhosRow, error)
-	CancelarTamanho(ctx context.Context, id int) (int64, error)
+	Adicionar(ctx context.Context, tamanho repository.AddTamanhoParams) error
+	ListarTamanho(ctx context.Context, arg repository.BuscarTamanhoParams) (repository.BuscarTamanhoRow, error)
+	ListarTamanhos(ctx context.Context, tenantId int32) ([]repository.BuscarTodosTamanhosRow, error)
+	CancelarTamanho(ctx context.Context, arg repository.DeletarTamanhoParams) (int64, error)
+	
 }
 
 type TamanhoService struct {
-
 	repo TamanhoRepository
 }
 
@@ -26,51 +26,57 @@ func NewTamanhoService(t TamanhoRepository) *TamanhoService {
 	return &TamanhoService{repo: t}
 }
 
-func (t *TamanhoService) SalvarTamanho(ctx context.Context, model model.Tamanhos) error {
+func (t *TamanhoService) SalvarTamanho(ctx context.Context, model model.Tamanhos, tenantId int32) error {
 
 	model.Tamanho = strings.TrimSpace(model.Tamanho)
 
-	if err:=t.repo.Adicionar(ctx, model.Tamanho); err != nil {
+	if err := t.repo.Adicionar(ctx, repository.AddTamanhoParams{
+		Tamanho: model.Tamanho,
+		TenantID: tenantId,
+	}); err != nil {
 
 		return err
 	}
 
-	return  nil
+	return nil
 }
 
-func (t *TamanhoService) ListarTamanho(ctx context.Context, id int)(model.TamanhoDto, error) {
+func (t *TamanhoService) ListarTamanho(ctx context.Context, id int, tenantId int32) (model.TamanhoDto, error) {
 
 	if id <= 0 {
-		return  model.TamanhoDto{},helper.ErrId
+		return model.TamanhoDto{}, helper.ErrId
 	}
 
-	tamanho, err:= t.repo.ListarTamanho(ctx, int32(id))
+	tamanho, err := t.repo.ListarTamanho(ctx, repository.BuscarTamanhoParams{
+		ID: int32(id),
+		TenantID: tenantId,
+	})
 	if err != nil {
 
 		return model.TamanhoDto{}, err
 	}
 
 	return model.TamanhoDto{
-		
-		ID: int(tamanho.ID),
+
+		ID:      int(tamanho.ID),
 		Tamanho: tamanho.Tamanho,
 	}, nil
 }
 
-func (t *TamanhoService) ListarTodosTamanhos(ctx context.Context) ([]model.TamanhoDto, error){
+func (t *TamanhoService) ListarTodosTamanhos(ctx context.Context, tenantId int32) ([]model.TamanhoDto, error) {
 
-	tamanhos, err:= t.repo.ListarTamanhos(ctx)
+	tamanhos, err := t.repo.ListarTamanhos(ctx, tenantId)
 	if err != nil {
 
-		return  []model.TamanhoDto{},err
+		return []model.TamanhoDto{}, err
 	}
 
-	tamDto:= make([]model.TamanhoDto, 0, len(tamanhos))
+	tamDto := make([]model.TamanhoDto, 0, len(tamanhos))
 
-	for _, tamanho:= range tamanhos {
+	for _, tamanho := range tamanhos {
 
-		tam:= model.TamanhoDto{
-			ID: int(tamanho.ID),
+		tam := model.TamanhoDto{
+			ID:      int(tamanho.ID),
 			Tamanho: tamanho.Tamanho,
 		}
 
@@ -82,13 +88,16 @@ func (t *TamanhoService) ListarTodosTamanhos(ctx context.Context) ([]model.Taman
 		return []model.TamanhoDto{}, nil
 	}
 
-	return  tamDto, nil
+	return tamDto, nil
 }
 
+func (t *TamanhoService) CancelarTamanho(ctx context.Context, id int, tenantId int32) error {
 
-func (t *TamanhoService) CancelarTamanho(ctx context.Context, id int) error {
+	linhas, err := t.repo.CancelarTamanho(ctx, repository.DeletarTamanhoParams{
+		ID: int32(id),
+		TenantID: tenantId,
+	})
 
-	linhas, err := t.repo.CancelarTamanho(ctx, id)
 	if err != nil {
 
 		return err
@@ -99,5 +108,5 @@ func (t *TamanhoService) CancelarTamanho(ctx context.Context, id int) error {
 		return helper.ErrNaoEncontrado
 	}
 
-	return  nil
+	return nil
 }

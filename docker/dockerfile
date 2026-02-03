@@ -1,30 +1,22 @@
-# Usa apenas uma imagem base para tudo
-FROM golang:1.25.5-alpine
+# 1. Ajuste a versão para uma existente (1.23 ou 1.22)
+FROM golang:1.25-alpine
 
-# Define o diretório de trabalho
 WORKDIR /app
 
-# Instala dependências de sistema (Certificados e Timezone)
-# Como essa imagem do Go é baseada em Alpine, usamos o 'apk'
+# Instala dependências
 RUN apk --no-cache add ca-certificates tzdata
 
-# Define o timezone (opcional)
 ENV TZ=America/Sao_Paulo
 
-# Copia os arquivos de dependência
 COPY go.mod go.sum ./
-
-# Baixa as dependências do Go
 RUN go mod download
 
-# Copia todo o código fonte para dentro do container
 COPY . .
 
-# Compila o binário
-RUN go build -o main main.go
+# 2. O PULO DO GATO AQUI:
+# Forçamos o build para Linux e arquitetura correta, ignorando o que veio do seu PC
+RUN CGO_ENABLED=0 GOOS=linux go build -o main main.go
 
-# Expõe a porta
 EXPOSE 8080
 
-# Roda o binário que acabamos de compilar
 CMD ["./main"]
