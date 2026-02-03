@@ -34,20 +34,14 @@ func (f *FuncaoRepository) Adicionar(ctx context.Context, args AddFuncaoParams) 
 	return nil	
 }
 
-func(f *FuncaoRepository) ListarFuncao(ctx context.Context, id int32) (BuscarFuncaoRow, error){
+func(f *FuncaoRepository) ListarFuncao(ctx context.Context, agr BuscarFuncaoParams) (BuscarFuncaoRow, error){
 
-	funcao, err:= f.q.BuscarFuncao(ctx, id)
-	if err != nil {
-
-		return  BuscarFuncaoRow{},helper.TraduzErroPostgres(err)
-	}
-
-	return funcao, nil
+	return f.q.BuscarFuncao(ctx, agr)
 }
 
-func (f *FuncaoRepository) ListarFuncoes(ctx context.Context)([]BuscarTodasFuncoesRow, error) {
+func (f *FuncaoRepository) ListarFuncoes(ctx context.Context, tenantId int32)([]BuscarTodasFuncoesRow, error) {
 
-	funcoes, err:= f.q.BuscarTodasFuncoes(ctx)
+	funcoes, err:= f.q.BuscarTodasFuncoes(ctx, tenantId)
 	if err != nil {
 
 		return []BuscarTodasFuncoesRow{}, helper.TraduzErroPostgres(err)
@@ -56,9 +50,9 @@ func (f *FuncaoRepository) ListarFuncoes(ctx context.Context)([]BuscarTodasFunco
 	return  funcoes, nil
 }
 
-func (f *FuncaoRepository) CancelarFuncao(ctx context.Context, id int32) (int64, error){
+func (f *FuncaoRepository) CancelarFuncao(ctx context.Context, arg DeletarFuncaoParams) (int64, error){
 
-	linhasAfetadas,err:= f.q.DeletarFuncao(ctx, id)
+	linhasAfetadas,err:= f.q.DeletarFuncao(ctx, arg)
 	if err != nil {
 
 		return 0, helper.TraduzErroPostgres(err)

@@ -22,7 +22,7 @@ func NewProtecaoRepository(pool *pgxpool.Pool) *ProtecaoRepository {
 	}
 }
 
-func (p *ProtecaoRepository) Adicionar(ctx context.Context, nome string) error {
+func (p *ProtecaoRepository) Adicionar(ctx context.Context, nome AddProtecaoParams) error {
 
 	err := p.q.AddProtecao(ctx, nome)
 	if err != nil {
@@ -32,9 +32,9 @@ func (p *ProtecaoRepository) Adicionar(ctx context.Context, nome string) error {
 	return  nil
 }
 
-func (p *ProtecaoRepository) ListarProtecao(ctx context.Context, id int32) (BuscarProtecaoRow, error){
+func (p *ProtecaoRepository) ListarProtecao(ctx context.Context, arg BuscarProtecaoParams) (BuscarProtecaoRow, error){
 
-	protc, err:= p.q.BuscarProtecao(ctx, id)
+	protc, err:= p.q.BuscarProtecao(ctx, arg)
 	if err != nil {
 
 		return BuscarProtecaoRow{}, helper.TraduzErroPostgres(err)
@@ -43,9 +43,9 @@ func (p *ProtecaoRepository) ListarProtecao(ctx context.Context, id int32) (Busc
 	return protc, nil
 }
 
-func (p *ProtecaoRepository) ListarProtecoes(ctx context.Context) ([]BuscarTodasProtecoesRow, error){
+func (p *ProtecaoRepository) ListarProtecoes(ctx context.Context, tenantId int32) ([]BuscarTodasProtecoesRow, error){
 
-	protc, err:= p.q.BuscarTodasProtecoes(ctx)
+	protc, err:= p.q.BuscarTodasProtecoes(ctx, tenantId)
 	if err != nil {
 
 		return []BuscarTodasProtecoesRow{}, helper.TraduzErroPostgres(err)
@@ -54,9 +54,9 @@ func (p *ProtecaoRepository) ListarProtecoes(ctx context.Context) ([]BuscarTodas
 	return protc, nil
 }
 
-func (p *ProtecaoRepository) CancelarProtecao(ctx context.Context, id int32) (int64, error){
+func (p *ProtecaoRepository) CancelarProtecao(ctx context.Context, arg DeletarProtecaoParams) (int64, error){
 
-	linhasAfetadas,err:= p.q.DeletarProtecao(ctx, id)
+	linhasAfetadas,err:= p.q.DeletarProtecao(ctx, arg)
 	if err != nil {
 
 		return 0, helper.TraduzErroPostgres(err)

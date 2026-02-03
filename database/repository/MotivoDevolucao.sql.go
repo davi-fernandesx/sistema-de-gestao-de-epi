@@ -10,29 +10,41 @@ import (
 )
 
 const addMotivoDevolucao = `-- name: AddMotivoDevolucao :exec
-INSERT INTO motivo_devolucao (motivo) 
-VALUES ($1)
+INSERT INTO motivo_devolucao (tenant_id, motivo) 
+VALUES ($1, $2)
 `
 
-func (q *Queries) AddMotivoDevolucao(ctx context.Context, motivo string) error {
-	_, err := q.db.Exec(ctx, addMotivoDevolucao, motivo)
+type AddMotivoDevolucaoParams struct {
+	TenantID int32
+	Motivo   string
+}
+
+func (q *Queries) AddMotivoDevolucao(ctx context.Context, arg AddMotivoDevolucaoParams) error {
+	_, err := q.db.Exec(ctx, addMotivoDevolucao, arg.TenantID, arg.Motivo)
 	return err
 }
 
 const buscaMotivoDevolucao = `-- name: BuscaMotivoDevolucao :one
 SELECT id, motivo 
 FROM motivo_devolucao 
-WHERE id = $1 AND ativo = TRUE 
+WHERE id = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE 
 LIMIT 1
 `
+
+type BuscaMotivoDevolucaoParams struct {
+	ID       int32
+	TenantID int32
+}
 
 type BuscaMotivoDevolucaoRow struct {
 	ID     int32
 	Motivo string
 }
 
-func (q *Queries) BuscaMotivoDevolucao(ctx context.Context, id int32) (BuscaMotivoDevolucaoRow, error) {
-	row := q.db.QueryRow(ctx, buscaMotivoDevolucao, id)
+func (q *Queries) BuscaMotivoDevolucao(ctx context.Context, arg BuscaMotivoDevolucaoParams) (BuscaMotivoDevolucaoRow, error) {
+	row := q.db.QueryRow(ctx, buscaMotivoDevolucao, arg.ID, arg.TenantID)
 	var i BuscaMotivoDevolucaoRow
 	err := row.Scan(&i.ID, &i.Motivo)
 	return i, err
@@ -41,7 +53,8 @@ func (q *Queries) BuscaMotivoDevolucao(ctx context.Context, id int32) (BuscaMoti
 const buscaTodosMotivosDevolucao = `-- name: BuscaTodosMotivosDevolucao :many
 SELECT id, motivo 
 FROM motivo_devolucao 
-WHERE ativo = TRUE
+WHERE tenant_id = $1 -- SEGURANÇA: Lista apenas os motivos desta empresa
+  AND ativo = TRUE
 ORDER BY motivo ASC
 `
 
@@ -50,8 +63,8 @@ type BuscaTodosMotivosDevolucaoRow struct {
 	Motivo string
 }
 
-func (q *Queries) BuscaTodosMotivosDevolucao(ctx context.Context) ([]BuscaTodosMotivosDevolucaoRow, error) {
-	rows, err := q.db.Query(ctx, buscaTodosMotivosDevolucao)
+func (q *Queries) BuscaTodosMotivosDevolucao(ctx context.Context, tenantID int32) ([]BuscaTodosMotivosDevolucaoRow, error) {
+	rows, err := q.db.Query(ctx, buscaTodosMotivosDevolucao, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,11 +87,18 @@ const deleteMotivoDevolucao = `-- name: DeleteMotivoDevolucao :execrows
 UPDATE motivo_devolucao
 SET ativo = FALSE,
     deletado_em = NOW()
-WHERE id = $1 AND ativo = TRUE
+WHERE id = $1 
+  AND tenant_id = $2 -- SEGURANÇA
+  AND ativo = TRUE
 `
 
-func (q *Queries) DeleteMotivoDevolucao(ctx context.Context, id int32) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteMotivoDevolucao, id)
+type DeleteMotivoDevolucaoParams struct {
+	ID       int32
+	TenantID int32
+}
+
+func (q *Queries) DeleteMotivoDevolucao(ctx context.Context, arg DeleteMotivoDevolucaoParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMotivoDevolucao, arg.ID, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}

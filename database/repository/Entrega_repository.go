@@ -37,15 +37,17 @@ func (e *EntregaRepository) AdicionarEntrega(ctx context.Context, qtx *Queries ,
 }
 
 func (e *EntregaRepository) AdicionarEntregaItem(ctx context.Context, qtx *Queries, arg AddItemEntregueParams) (AddItemEntregueRow, error) {
+    
 
+    ids, err := qtx.AddItemEntregue(ctx, arg)
+    
+    // LOG 2: Verificar o resultado do banco
+    if err != nil {
+      
+        return AddItemEntregueRow{}, helper.TraduzErroPostgres(err)
+    }
 
-	ids,err:= qtx.AddItemEntregue(ctx, arg)
-	if err != nil {
-
-		return  AddItemEntregueRow{},helper.TraduzErroPostgres(err)
-	}
-
-	return  ids, nil
+    return ids, nil
 }
 
 func (e *EntregaRepository) ListarEntregas(ctx context.Context, args ListarEntregasParams) ([]ListarEntregasRow, error){
@@ -68,9 +70,9 @@ func (e *EntregaRepository) Cancelar(ctx context.Context,qtx *Queries,args Cance
 	return id, nil
 }
 
-func (e *EntregaRepository) CancelarEntregaItem(ctx context.Context, qtx *Queries,id int32) ([]CancelaItemEntregueRow, error) {
+func (e *EntregaRepository) CancelarEntregaItem(ctx context.Context, qtx *Queries,arg CancelaItemEntregueParams) ([]CancelaItemEntregueRow, error) {
 
-	itemsCancelados, err:= qtx.CancelaItemEntregue(ctx, id)
+	itemsCancelados, err:= qtx.CancelaItemEntregue(ctx, arg)
 	if err != nil {
 
 		return []CancelaItemEntregueRow{},helper.TraduzErroPostgres(err)
@@ -111,9 +113,9 @@ func (e *EntregaRepository) ListarEntregasDisponiveis(ctx context.Context, qtx *
 	return  lotes, nil
 }
 
-func (e *EntregaRepository) ListarEpisEntreguesCancelados(ctx context.Context,qtx *Queries ,id int32) ([]ListarItensEntregueCanceladosRow, error){
+func (e *EntregaRepository) ListarEpisEntreguesCancelados(ctx context.Context,qtx *Queries ,arg ListarItensEntregueCanceladosParams) ([]ListarItensEntregueCanceladosRow, error){
 
-	cancelados, err:= qtx.ListarItensEntregueCancelados(ctx, id)
+	cancelados, err:= qtx.ListarItensEntregueCancelados(ctx, arg)
 	if err != nil {
 
 		return []ListarItensEntregueCanceladosRow{}, err
