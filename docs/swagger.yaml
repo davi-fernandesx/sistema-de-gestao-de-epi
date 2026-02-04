@@ -27,7 +27,6 @@ definitions:
     properties:
       funcao:
         maxLength: 50
-        minLength: 2
         type: string
       id_departamento:
         minimum: 1
@@ -35,6 +34,15 @@ definitions:
     required:
     - funcao
     - id_departamento
+    type: object
+  model.FuncaoDto:
+    properties:
+      cargo:
+        type: string
+      departamento:
+        $ref: '#/definitions/model.DepartamentoDto'
+      id:
+        type: integer
     type: object
 host: localhost:8080
 info:
@@ -249,6 +257,128 @@ paths:
       summary: Atualizar departamento
       tags:
       - Departamentos
+  /funcao/{id}:
+    delete:
+      description: Remove (ou inativa) uma funcao pelo ID
+      parameters:
+      - description: ID da funcao
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Sem Conteúdo (Sucesso)
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "404":
+          description: Não encontrado
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Deletar funcao
+      tags:
+      - funcao
+    get:
+      description: Retorna os detalhes de uma unica funcao
+      parameters:
+      - description: ID da funcao
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.FuncaoDto'
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "404":
+          description: Não encontrado
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Buscar por ID
+      tags:
+      - funcao
+    put:
+      consumes:
+      - application/json
+      description: Atualiza o nome de uma funcao e seu departamento existente
+      parameters:
+      - description: ID da funcao
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Novo nome
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.Funcao'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sucesso
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Erro de validação (ID ou Nome curto)
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "404":
+          description: Não encontrado
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      summary: Atualizar funcao
+      tags:
+      - funcao
+  /funcoes:
+    get:
+      description: Retorna uma lista com todos os funcoes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.FuncaoDto'
+            type: array
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Listar todos
+      tags:
+      - Funcao
 securityDefinitions:
   BearerAuth:
     in: header
