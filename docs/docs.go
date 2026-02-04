@@ -335,6 +335,196 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/funcao/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retorna os detalhes de uma unica funcao",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "funcao"
+                ],
+                "summary": "Buscar por ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID da funcao",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.FuncaoDto"
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Atualiza o nome de uma funcao e seu departamento existente",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "funcao"
+                ],
+                "summary": "Atualizar funcao",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID da funcao",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Novo nome",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Funcao"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sucesso",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erro de validação (ID ou Nome curto)",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove (ou inativa) uma funcao pelo ID",
+                "tags": [
+                    "funcao"
+                ],
+                "summary": "Deletar funcao",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID da funcao",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sem Conteúdo (Sucesso)"
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/funcoes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retorna uma lista com todos os funcoes",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Funcao"
+                ],
+                "summary": "Listar todos",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.FuncaoDto"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -382,12 +572,25 @@ const docTemplate = `{
             "properties": {
                 "funcao": {
                     "type": "string",
-                    "maxLength": 50,
-                    "minLength": 2
+                    "maxLength": 50
                 },
                 "id_departamento": {
                     "type": "integer",
                     "minimum": 1
+                }
+            }
+        },
+        "model.FuncaoDto": {
+            "type": "object",
+            "properties": {
+                "cargo": {
+                    "type": "string"
+                },
+                "departamento": {
+                    "$ref": "#/definitions/model.DepartamentoDto"
+                },
+                "id": {
+                    "type": "integer"
                 }
             }
         }
