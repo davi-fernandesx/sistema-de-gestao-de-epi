@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -42,7 +43,19 @@ func (f *FuncionarioService) SalvarFuncionario(ctx context.Context, model model.
 	err := f.repo.Adicionar(ctx, args)
 	if err != nil {
 
+		if errors.Is(err, helper.ErrConflitoIntegridade){
+
+			return fmt.Errorf("departamento ou função nao encontrado")
+
+		}
+
+		if errors.Is(err, helper.ErrDadoDuplicado) {
+
+			return fmt.Errorf("matricula ja cadastrada")
+		}
+
 		return err
+
 	}
 
 	return nil
