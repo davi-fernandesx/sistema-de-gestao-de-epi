@@ -16,6 +16,7 @@ type Container struct {
 	Usuario      controller.LoginController
 	Departamento controller.DepartamentoController
 	Funcao       controller.FuncaoController
+	Funcionario  controller.FuncionarioController
 }
 
 func NewContainer(db *pgxpool.Pool) *Container {
@@ -23,15 +24,18 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	repoUsuario := repository.NewUsuarioRepository(db)
 	repoDepartamento := repository.NewDepartamentoRepository(db)
 	repoFuncao := repository.NewFuncaoRepository(db)
+	repoFuncionario := repository.NewFuncionarioRepository(db)
 
 	serviceUsuario := service.NewUsuarioService(repoUsuario)
 	departamentoService := service.NewDepartamentoService(repoDepartamento)
 	funcaoService := service.NewFuncaoService(repoFuncao)
+	funcionarioService := service.NewFuncionarioService(repoFuncionario)
 
 	return &Container{
 		Usuario:      *controller.NewLoginController(serviceUsuario),
 		Departamento: *controller.NewDepartamentoController(departamentoService),
 		Funcao:       *controller.NewFuncaoController(funcaoService),
+		Funcionario:  *controller.NewFuncionarioController(funcionarioService),
 	}
 }
 func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
@@ -66,12 +70,15 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 		api.PUT("/departamento/:id", c.Departamento.AtualizarDepartamento())
 
 		//funcao
-
 		api.POST("cadastro-funcao", c.Funcao.RegistraFuncao())
-		api.GET("/funcoes",c.Funcao.ListarFuncoes())
+		api.GET("/funcoes", c.Funcao.ListarFuncoes())
 		api.GET("/funcao/:id", c.Funcao.ListarFuncaoId())
 		api.DELETE("/funcao/:id", c.Funcao.DeletarFuncao())
 		api.PUT("/funcao/:id", c.Funcao.AtualizarFuncao())
+
+		//funcionario
+		api.POST("/cadastro-funcionario", c.Funcionario.Adicionar())
+		api.GET("/funcionarios", c.Funcionario.ListarFuncionarios())
 	}
 
 }
