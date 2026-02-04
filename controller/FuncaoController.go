@@ -39,7 +39,7 @@ func NewFuncaoController(service FuncaoService) *FuncaoController {
 // @Success      201  {object}  map[string]string
 // @Failure      400  {object}  helper.HTTPError "Dados inválidos"
 // @Failure      409  {object}  helper.HTTPError "funcao já existe"
-// @Failure      409  {object}  helper.HTTPError "id de departamento nao existe no sistema"
+// @Failure      409  {object}  helper.HTTPError "id de departamento nao existe no sistema" 
 // @Failure      500  {object}  helper.HTTPError "Erro interno"
 // @Router       /cadastro-funcao [post]
 // @Security     BearerAuth
@@ -104,9 +104,9 @@ func (f *FuncaoController) RegistraFuncao() gin.HandlerFunc {
 // ListarFuncoes godoc
 // @Summary      Listar todos
 // @Description  Retorna uma lista com todos os funcoes
-// @Tags         Funcoes
+// @Tags         funcao
 // @Produce      json
-// @Success      200  {array}   model.funcaoDto
+// @Success      200  {array}   model.FuncaoDto
 // @Failure      500  {object}  helper.HTTPError "Erro interno"
 // @Router       /funcoes [get]
 // @Security     BearerAuth
@@ -139,7 +139,7 @@ func (f *FuncaoController) ListarFuncoes() gin.HandlerFunc {
 // @Tags         funcao
 // @Produce      json
 // @Param        id   path      int  true  "ID da funcao"
-// @Success      200  {object}  model.funcaoDto
+// @Success      200  {object}  model.FuncaoDto
 // @Failure      400  {object}  helper.HTTPError "ID inválido"
 // @Failure      404  {object}  helper.HTTPError "Não encontrado"
 // @Failure      500  {object}  helper.HTTPError "Erro interno"
@@ -248,11 +248,11 @@ func (f *FuncaoController) DeletarFuncao() gin.HandlerFunc {
 // UpdateFuncao godoc
 // @Summary      Atualizar funcao
 // @Description  Atualiza o nome de uma funcao e seu departamento existente
-// @Tags         funcaao
+// @Tags         funcao
 // @Accept       json
 // @Produce      json
 // @Param        id   path      int                      true  "ID da funcao"
-// @Param        body body      model.funcao true  "Novo nome"
+// @Param        body body      model.Funcao true  "Novo nome"
 // @Success      200  {object}  map[string]string "Sucesso"
 // @Failure      400  {object}  helper.HTTPError "Erro de validação (ID ou Nome curto)"
 // @Failure      404  {object}  helper.HTTPError "Não encontrado"
