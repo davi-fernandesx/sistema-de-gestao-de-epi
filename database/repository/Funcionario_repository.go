@@ -15,9 +15,9 @@ type FuncionarioRepository struct {
 	db *pgxpool.Pool
 }
 
-func NewFuncionarioRepository(pool *pgxpool.Pool) *FuncaoRepository {
+func NewFuncionarioRepository(pool *pgxpool.Pool) *FuncionarioRepository {
 
-	return &FuncaoRepository{
+	return &FuncionarioRepository{
 		q: New(pool),
 		db: pool,
 	}
