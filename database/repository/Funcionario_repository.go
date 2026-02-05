@@ -36,13 +36,8 @@ func (f *FuncionarioRepository) Adicionar(ctx context.Context, args AddFuncionar
 
 func(f *FuncionarioRepository) ListarFuncionario(ctx context.Context, arg BuscaFuncionarioParams) (BuscaFuncionarioRow, error){
 
-	funcionario, err:= f.q.BuscaFuncionario(ctx, arg)
-	if err != nil {
 
-		return  BuscaFuncionarioRow{},helper.TraduzErroPostgres(err)
-	}
-
-	return funcionario, nil
+	return f.q.BuscaFuncionario(ctx, arg)
 }
 
 func (f *FuncionarioRepository) ListarFuncionarios(ctx context.Context, tenantId int32)([]BuscarTodosFuncionariosRow, error) {
@@ -67,9 +62,9 @@ func (f *FuncionarioRepository) CancelarFuncionario(ctx context.Context, arg Del
 	return linhasAfetadas, nil
 }
 
-func (f *FuncionarioRepository) AtualizarFuncionarioNome(ctx context.Context, arg UpdateFuncionarioNomeParams) (int64, error){
+func (f *FuncionarioRepository) AtualizarFuncionarioNome(ctx context.Context, arg UpdateFuncionarioNomeParams, qtx *Queries) (int64, error){
 
-	linhasAfetadas,err:= f.q.UpdateFuncionarioNome(ctx, arg)
+	linhasAfetadas,err:= qtx.UpdateFuncionarioNome(ctx, arg)
 	if err != nil {
 
 		return 0, helper.TraduzErroPostgres(err)
@@ -78,9 +73,9 @@ func (f *FuncionarioRepository) AtualizarFuncionarioNome(ctx context.Context, ar
 	return linhasAfetadas, nil
 }
 
-func (f *FuncionarioRepository) AtualizarFuncionarioDepartamento(ctx context.Context, arg UpdateFuncionarioDepartamentoParams) (int64, error){
+func (f *FuncionarioRepository) AtualizarFuncionarioDepartamento(ctx context.Context, arg UpdateFuncionarioDepartamentoParams, qtx *Queries) (int64, error){
 
-	linhasAfetadas,err:= f.q.UpdateFuncionarioDepartamento(ctx, arg)
+	linhasAfetadas,err:= qtx.UpdateFuncionarioDepartamento(ctx, arg)
 	if err != nil {
 
 		return 0, helper.TraduzErroPostgres(err)
@@ -89,9 +84,9 @@ func (f *FuncionarioRepository) AtualizarFuncionarioDepartamento(ctx context.Con
 	return linhasAfetadas, nil
 }
 
-func (f *FuncionarioRepository) AtualizarFuncionarioFuncao(ctx context.Context, arg UpdateFuncionarioFuncaoParams) (int64, error){
+func (f *FuncionarioRepository) AtualizarFuncionarioFuncao(ctx context.Context, arg UpdateFuncionarioFuncaoParams, qtx *Queries) (int64, error){
 
-	linhasAfetadas,err:= f.q.UpdateFuncionarioFuncao(ctx, arg)
+	linhasAfetadas,err:= qtx.UpdateFuncionarioFuncao(ctx, arg)
 	if err != nil {
 
 		return 0, helper.TraduzErroPostgres(err)
