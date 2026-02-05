@@ -13,3 +13,9 @@ type Funcionario_Dto struct {
 	Matricula    string             `json:"matricula"`
 	Funcao       FuncaoDto       `json:"funcao"`
 }
+
+type UpdateFuncionarioRequest struct {
+    Nome           *string `json:"nome"`            // Ponteiro! Se for nil, não atualiza
+    IdDepartamento *int    `json:"id_departamento"` // Ponteiro!
+    IdFuncao       *int    `json:"id_funcao"`       // Ponteiro!
+}
