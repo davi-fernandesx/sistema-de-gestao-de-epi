@@ -9,6 +9,8 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type FuncionarioRepository interface {
@@ -16,17 +18,19 @@ type FuncionarioRepository interface {
 	ListarFuncionario(ctx context.Context, arg repository.BuscaFuncionarioParams) (repository.BuscaFuncionarioRow, error)
 	ListarFuncionarios(ctx context.Context, tenantId int32) ([]repository.BuscarTodosFuncionariosRow, error)
 	CancelarFuncionario(ctx context.Context, arg repository.DeletarFuncionarioParams) (int64, error)
-	AtualizarFuncionarioNome(ctx context.Context, arg repository.UpdateFuncionarioNomeParams) (int64, error)
-	AtualizarFuncionarioDepartamento(ctx context.Context, arg repository.UpdateFuncionarioDepartamentoParams) (int64, error)
-	AtualizarFuncionarioFuncao(ctx context.Context, arg repository.UpdateFuncionarioFuncaoParams) (int64, error)
+	AtualizarFuncionarioNome(ctx context.Context, arg repository.UpdateFuncionarioNomeParams, qtx *repository.Queries) (int64, error)
+	AtualizarFuncionarioDepartamento(ctx context.Context, arg repository.UpdateFuncionarioDepartamentoParams, qtx *repository.Queries) (int64, error)
+	AtualizarFuncionarioFuncao(ctx context.Context, arg repository.UpdateFuncionarioFuncaoParams, qtx *repository.Queries) (int64, error)
 }
 
 type FuncionarioService struct {
-	repo FuncionarioRepository
+	repo    FuncionarioRepository
+	db      *pgxpool.Pool
+	queries *repository.Queries
 }
 
-func NewFuncionarioService(f FuncionarioRepository) *FuncionarioService {
-	return &FuncionarioService{repo: f}
+func NewFuncionarioService(f FuncionarioRepository, pool *pgxpool.Pool) *FuncionarioService {
+	return &FuncionarioService{repo: f, db: pool, queries: repository.New(pool)}
 }
 
 func (f *FuncionarioService) SalvarFuncionario(ctx context.Context, model model.FuncionarioINserir, tenantId int32) error {
@@ -43,7 +47,7 @@ func (f *FuncionarioService) SalvarFuncionario(ctx context.Context, model model.
 	err := f.repo.Adicionar(ctx, args)
 	if err != nil {
 
-		if errors.Is(err, helper.ErrConflitoIntegridade){
+		if errors.Is(err, helper.ErrConflitoIntegridade) {
 
 			return fmt.Errorf("departamento ou função nao encontrado")
 
@@ -73,6 +77,10 @@ func (f *FuncionarioService) ListarFuncionario(ctx context.Context, matricula st
 	})
 	if err != nil {
 
+		if errors.Is(err, pgx.ErrNoRows) {
+
+			return model.Funcionario_Dto{}, helper.ErrNaoEncontrado
+		}
 		return model.Funcionario_Dto{}, err
 	}
 
@@ -153,7 +161,7 @@ func (f *FuncionarioService) DeletarFuncionario(ctx context.Context, id int, ten
 
 }
 
-func (f *FuncionarioService) AtualizaNomeFuncionario(ctx context.Context, id int, nome string, tenantId int32) error {
+func (f *FuncionarioService) AtualizaNomeFuncionario(ctx context.Context, id int, nome string, tenantId int32, qtx *repository.Queries) error {
 
 	if id <= 0 {
 		return helper.ErrId
@@ -171,7 +179,7 @@ func (f *FuncionarioService) AtualizaNomeFuncionario(ctx context.Context, id int
 		TenantID: tenantId,
 	}
 
-	linha, err := f.repo.AtualizarFuncionarioNome(ctx, args)
+	linha, err := f.repo.AtualizarFuncionarioNome(ctx, args, qtx)
 	if err != nil {
 
 		return fmt.Errorf("erro tecnico ao realizar o update: %w", err)
@@ -184,7 +192,7 @@ func (f *FuncionarioService) AtualizaNomeFuncionario(ctx context.Context, id int
 	return nil
 }
 
-func (f *FuncionarioService) AtualizaDepartamentoFuncionario(ctx context.Context, id, iddepartamento, tenantId int) error {
+func (f *FuncionarioService) AtualizaDepartamentoFuncionario(ctx context.Context, id, iddepartamento, tenantId int, qtx *repository.Queries) error {
 
 	if id <= 0 {
 		return helper.ErrId
@@ -196,7 +204,7 @@ func (f *FuncionarioService) AtualizaDepartamentoFuncionario(ctx context.Context
 		TenantID:       int32(tenantId),
 	}
 
-	linha, err := f.repo.AtualizarFuncionarioDepartamento(ctx, args)
+	linha, err := f.repo.AtualizarFuncionarioDepartamento(ctx, args, qtx)
 	if err != nil {
 
 		return fmt.Errorf("erro tecnico ao realizar o update: %w", err)
@@ -209,7 +217,7 @@ func (f *FuncionarioService) AtualizaDepartamentoFuncionario(ctx context.Context
 	return nil
 }
 
-func (f *FuncionarioService) AtualizaFuncaoFuncionario(ctx context.Context, id, idfuncao,tenantID int) error {
+func (f *FuncionarioService) AtualizaFuncaoFuncionario(ctx context.Context, id, idfuncao, tenantID int, qtx *repository.Queries) error {
 
 	if id <= 0 {
 		return helper.ErrId
@@ -220,7 +228,7 @@ func (f *FuncionarioService) AtualizaFuncaoFuncionario(ctx context.Context, id, 
 		Idfuncao: int32(idfuncao),
 		TenantID: int32(tenantID),
 	}
-	linha, err := f.repo.AtualizarFuncionarioFuncao(ctx, args)
+	linha, err := f.repo.AtualizarFuncionarioFuncao(ctx, args, qtx)
 	if err != nil {
 
 		return fmt.Errorf("erro tecnico ao realizar o update: %w", err)
@@ -231,4 +239,45 @@ func (f *FuncionarioService) AtualizaFuncaoFuncionario(ctx context.Context, id, 
 	}
 
 	return nil
+}
+
+func (f *FuncionarioService) AtualizarFuncionarioCompleto(ctx context.Context, id int, req model.UpdateFuncionarioRequest, tenantId int) error {
+
+	// Validação básica de ID acontece uma vez só
+	if id <= 0 {
+		return helper.ErrId
+	}
+	tx, err := f.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := f.queries.WithTx(tx)
+	// 1. Atualiza Nome (se foi enviado)
+	if req.Nome != nil {
+		// Reutiliza sua lógica existente que já valida tamanho, trim, etc.
+		err := f.AtualizaNomeFuncionario(ctx, id, *req.Nome, int32(tenantId), qtx)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 2. Atualiza Departamento (se foi enviado)
+	if req.IdDepartamento != nil {
+		err := f.AtualizaDepartamentoFuncionario(ctx, id, *req.IdDepartamento, tenantId, qtx)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 3. Atualiza Função (se foi enviado)
+	if req.IdFuncao != nil {
+		err := f.AtualizaFuncaoFuncionario(ctx, id, *req.IdFuncao, tenantId, qtx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
