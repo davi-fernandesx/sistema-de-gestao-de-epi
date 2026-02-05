@@ -29,7 +29,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	serviceUsuario := service.NewUsuarioService(repoUsuario)
 	departamentoService := service.NewDepartamentoService(repoDepartamento)
 	funcaoService := service.NewFuncaoService(repoFuncao)
-	funcionarioService := service.NewFuncionarioService(repoFuncionario)
+	funcionarioService := service.NewFuncionarioService(repoFuncionario, db)
 
 	return &Container{
 		Usuario:      *controller.NewLoginController(serviceUsuario),
@@ -79,6 +79,9 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 		//funcionario
 		api.POST("/cadastro-funcionario", c.Funcionario.Adicionar())
 		api.GET("/funcionarios", c.Funcionario.ListarFuncionarios())
+		api.GET("/funcionario/:matricula", c.Funcionario.ListarFuncionarioPorMatricula())
+		api.DELETE("/funcionario/:id", c.Funcionario.DeletarFuncionaioId())
+		api.PATCH("/funcionario/:id", c.Funcionario.AtualizaFuncionario())
 	}
 
 }
