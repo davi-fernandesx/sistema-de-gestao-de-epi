@@ -144,6 +144,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/cadastro-funcionario": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cadastra um novo funcionario no sistema",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "funcionarios"
+                ],
+                "summary": "Cadastrar novo funcionarios",
+                "parameters": [
+                    {
+                        "description": "Dados do funcionario",
+                        "name": "funcionario",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.FuncionarioINserir"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Dados inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "409": {
+                        "description": "Departamento já existe",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/departamento/{id}": {
             "delete": {
                 "security": [
@@ -492,6 +552,198 @@ const docTemplate = `{
                 }
             }
         },
+        "/funcionario/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove (ou inativa) um funcionario pelo ID",
+                "tags": [
+                    "funcionarios"
+                ],
+                "summary": "Deletar funcionario",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID do funcionario",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sem Conteúdo (Sucesso)"
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Atualiza os dados de um funcionario existente",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "funcionarios"
+                ],
+                "summary": "Atualizar funcionario",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID do funcionario",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "funcionario novos dados",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateFuncionarioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sucesso",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erro de validação (ID ou Nome curto)",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/funcionario/{matricula}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retorna os detalhes de um único funcionario",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "funcionarios"
+                ],
+                "summary": "Buscar por matricula",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "matricula do funcionario",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Funcionario_Dto"
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "404": {
+                        "description": "Não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/funcionarios": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retorna uma lista com todos os funcionarios",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "funcionarios"
+                ],
+                "summary": "Listar todos",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Funcionario_Dto"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "$ref": "#/definitions/helper.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/funcoes": {
             "get": {
                 "security": [
@@ -504,7 +756,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Funcao"
+                    "funcao"
                 ],
                 "summary": "Listar todos",
                 "responses": {
@@ -591,6 +843,69 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                }
+            }
+        },
+        "model.FuncionarioINserir": {
+            "type": "object",
+            "required": [
+                "id_departamento",
+                "id_funcao",
+                "matricula",
+                "nome"
+            ],
+            "properties": {
+                "id_departamento": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "id_funcao": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "matricula": {
+                    "type": "string",
+                    "maxLength": 7,
+                    "minLength": 7
+                },
+                "nome": {
+                    "type": "string",
+                    "maxLength": 150,
+                    "minLength": 3
+                }
+            }
+        },
+        "model.Funcionario_Dto": {
+            "type": "object",
+            "properties": {
+                "funcao": {
+                    "$ref": "#/definitions/model.FuncaoDto"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "matricula": {
+                    "type": "string"
+                },
+                "nome": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateFuncionarioRequest": {
+            "type": "object",
+            "properties": {
+                "id_departamento": {
+                    "description": "Ponteiro!",
+                    "type": "integer"
+                },
+                "id_funcao": {
+                    "description": "Ponteiro!",
+                    "type": "integer"
+                },
+                "nome": {
+                    "description": "Ponteiro! Se for nil, não atualiza",
+                    "type": "string"
                 }
             }
         }

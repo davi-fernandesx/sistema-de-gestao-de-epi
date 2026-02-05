@@ -44,6 +44,51 @@ definitions:
       id:
         type: integer
     type: object
+  model.Funcionario_Dto:
+    properties:
+      funcao:
+        $ref: '#/definitions/model.FuncaoDto'
+      id:
+        type: integer
+      matricula:
+        type: string
+      nome:
+        type: string
+    type: object
+  model.FuncionarioINserir:
+    properties:
+      id_departamento:
+        minimum: 1
+        type: integer
+      id_funcao:
+        minimum: 1
+        type: integer
+      matricula:
+        maxLength: 7
+        minLength: 7
+        type: string
+      nome:
+        maxLength: 150
+        minLength: 3
+        type: string
+    required:
+    - id_departamento
+    - id_funcao
+    - matricula
+    - nome
+    type: object
+  model.UpdateFuncionarioRequest:
+    properties:
+      id_departamento:
+        description: Ponteiro!
+        type: integer
+      id_funcao:
+        description: Ponteiro!
+        type: integer
+      nome:
+        description: Ponteiro! Se for nil, não atualiza
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -134,6 +179,44 @@ paths:
       summary: Criar uma funcao
       tags:
       - funcao
+  /cadastro-funcionario:
+    post:
+      consumes:
+      - application/json
+      description: Cadastra um novo funcionario no sistema
+      parameters:
+      - description: Dados do funcionario
+        in: body
+        name: funcionario
+        required: true
+        schema:
+          $ref: '#/definitions/model.FuncionarioINserir'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Dados inválidos
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "409":
+          description: Departamento já existe
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Cadastrar novo funcionarios
+      tags:
+      - funcionarios
   /departamento/{id}:
     delete:
       description: Remove (ou inativa) um departamento pelo ID
@@ -358,6 +441,129 @@ paths:
       summary: Atualizar funcao
       tags:
       - funcao
+  /funcionario/{id}:
+    delete:
+      description: Remove (ou inativa) um funcionario pelo ID
+      parameters:
+      - description: ID do funcionario
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: Sem Conteúdo (Sucesso)
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "404":
+          description: Não encontrado
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Deletar funcionario
+      tags:
+      - funcionarios
+    patch:
+      consumes:
+      - application/json
+      description: Atualiza os dados de um funcionario existente
+      parameters:
+      - description: ID do funcionario
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: funcionario novos dados
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateFuncionarioRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sucesso
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Erro de validação (ID ou Nome curto)
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "404":
+          description: Não encontrado
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      summary: Atualizar funcionario
+      tags:
+      - funcionarios
+  /funcionario/{matricula}:
+    get:
+      description: Retorna os detalhes de um único funcionario
+      parameters:
+      - description: matricula do funcionario
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Funcionario_Dto'
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "404":
+          description: Não encontrado
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Buscar por matricula
+      tags:
+      - funcionarios
+  /funcionarios:
+    get:
+      description: Retorna uma lista com todos os funcionarios
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Funcionario_Dto'
+            type: array
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/helper.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Listar todos
+      tags:
+      - funcionarios
   /funcoes:
     get:
       description: Retorna uma lista com todos os funcoes
@@ -378,7 +584,7 @@ paths:
       - BearerAuth: []
       summary: Listar todos
       tags:
-      - Funcao
+      - funcao
 securityDefinitions:
   BearerAuth:
     in: header
