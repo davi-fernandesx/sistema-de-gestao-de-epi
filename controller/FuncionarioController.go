@@ -76,7 +76,7 @@ func (f *FuncionarioController) Adicionar() gin.HandlerFunc {
 			if errors.Is(err, helper.ErrDadoDuplicado) {
 				ctx.JSON(http.StatusConflict, gin.H{
 
-					"error": "matricula ja cadastrada",
+					"error":err.Error(),
 				})
 				return
 			}
