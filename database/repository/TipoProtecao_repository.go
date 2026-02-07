@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
+	
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -34,13 +35,8 @@ func (p *ProtecaoRepository) Adicionar(ctx context.Context, nome AddProtecaoPara
 
 func (p *ProtecaoRepository) ListarProtecao(ctx context.Context, arg BuscarProtecaoParams) (BuscarProtecaoRow, error){
 
-	protc, err:= p.q.BuscarProtecao(ctx, arg)
-	if err != nil {
 
-		return BuscarProtecaoRow{}, helper.TraduzErroPostgres(err)
-	}
-
-	return protc, nil
+	return p.q.BuscarProtecao(ctx, arg)
 }
 
 func (p *ProtecaoRepository) ListarProtecoes(ctx context.Context, tenantId int32) ([]BuscarTodasProtecoesRow, error){
@@ -64,3 +60,4 @@ func (p *ProtecaoRepository) CancelarProtecao(ctx context.Context, arg DeletarPr
 
 	return linhasAfetadas, nil
 }
+

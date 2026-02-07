@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
+	"github.com/jackc/pgx/v5"
 )
 
 
@@ -57,7 +59,9 @@ func (p *ProtecaoService) ListarProtecao(ctx context.Context, id int, tenatId in
 	})
 	if err != nil {
 
-		return model.TipoProtecaoDto{}, err
+		if errors.Is(err, pgx.ErrNoRows){
+			return model.TipoProtecaoDto{}, helper.ErrNaoEncontrado
+		}
 	}
 
 	return model.TipoProtecaoDto{
@@ -76,13 +80,12 @@ func (p *ProtecaoService) ListarProtecoes(ctx context.Context, tenantId int32) (
 
 	protecDto := make([]model.TipoProtecaoDto, 0, len(protec))
 
-	for _, prot := range protecDto {
+	for _, prot := range protec {
 
 		pro := model.TipoProtecaoDto{
-			ID: prot.ID,
+			ID: int64(prot.ID),
 			Nome: prot.Nome,
 		}
-
 		protecDto = append(protecDto, pro)
 
 	}
