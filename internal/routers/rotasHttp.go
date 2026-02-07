@@ -17,6 +17,8 @@ type Container struct {
 	Departamento controller.DepartamentoController
 	Funcao       controller.FuncaoController
 	Funcionario  controller.FuncionarioController
+	Tamanho      controller.TamanhoController
+	Protecao     controller.TipoProtecaoController
 }
 
 func NewContainer(db *pgxpool.Pool) *Container {
@@ -25,17 +27,23 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	repoDepartamento := repository.NewDepartamentoRepository(db)
 	repoFuncao := repository.NewFuncaoRepository(db)
 	repoFuncionario := repository.NewFuncionarioRepository(db)
+	repoTamanho := repository.NewTamanhoRepository(db)
+	repoTipoProtecao := repository.NewProtecaoRepository(db)
 
 	serviceUsuario := service.NewUsuarioService(repoUsuario)
 	departamentoService := service.NewDepartamentoService(repoDepartamento)
 	funcaoService := service.NewFuncaoService(repoFuncao)
 	funcionarioService := service.NewFuncionarioService(repoFuncionario, db)
+	tamanhoService := service.NewTamanhoService(repoTamanho)
+	TipoProtecaoService := service.NewProtecaoService(repoTipoProtecao)
 
 	return &Container{
 		Usuario:      *controller.NewLoginController(serviceUsuario),
 		Departamento: *controller.NewDepartamentoController(departamentoService),
 		Funcao:       *controller.NewFuncaoController(funcaoService),
 		Funcionario:  *controller.NewFuncionarioController(funcionarioService),
+		Tamanho:      *controller.NewTamanhoControle(tamanhoService),
+		Protecao:     *controller.NewTipoProtecaoController(TipoProtecaoService),
 	}
 }
 func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
@@ -82,6 +90,18 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 		api.GET("/funcionario/:matricula", c.Funcionario.ListarFuncionarioPorMatricula())
 		api.DELETE("/funcionario/:id", c.Funcionario.DeletarFuncionaioId())
 		api.PATCH("/funcionario/:id", c.Funcionario.AtualizaFuncionario())
+
+		//tamanhos disponiveis para vincular a um epi
+		api.POST("/cadastro-tamanho", c.Tamanho.Adicionar())
+		api.GET("/tamanhos", c.Tamanho.ListarTodosTamanhos())
+		api.GET("/tamanho/:id", c.Tamanho.ListarTamanhoPorId())
+		api.DELETE("/tamanho/:id", c.Tamanho.DeletarTamanho())
+
+		//proteções dedicada a cada epi
+		api.POST("/cadastro-protecao", c.Protecao.AdicionarProtecao())
+		api.GET("/protecoes",c.Protecao.ListarProtecoes())
+		api.GET("/protecao/:id", c.Protecao.ListarProtecaoPorId())
+		api.DELETE("/protecao/:id",c.Protecao.DeletarProtecao())
 	}
 
 }
