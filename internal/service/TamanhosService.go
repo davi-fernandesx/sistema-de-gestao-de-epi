@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
+
 	"strings"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
+	"github.com/jackc/pgx/v5"
 )
 
 type TamanhoRepository interface {
@@ -35,7 +38,10 @@ func (t *TamanhoService) SalvarTamanho(ctx context.Context, model model.Tamanhos
 		TenantID: tenantId,
 	}); err != nil {
 
-		return err
+		if errors.Is(err, helper.ErrDadoDuplicado){
+
+			return err
+		}
 	}
 
 	return nil
@@ -53,6 +59,9 @@ func (t *TamanhoService) ListarTamanho(ctx context.Context, id int, tenantId int
 	})
 	if err != nil {
 
+		if errors.Is(err, pgx.ErrNoRows){
+			return model.TamanhoDto{}, helper.ErrNaoEncontrado
+		}
 		return model.TamanhoDto{}, err
 	}
 

@@ -32,13 +32,8 @@ func (t *TamanhosRepository) Adicionar(ctx context.Context, tamanho AddTamanhoPa
 
 func (t *TamanhosRepository) ListarTamanho(ctx context.Context, arg BuscarTamanhoParams) (BuscarTamanhoRow, error){
 
-	tamanho, err:= t.q.BuscarTamanho(ctx, arg)
-	if err != nil {
 
-		return  BuscarTamanhoRow{}, helper.TraduzErroPostgres(err)
-	}
-
-	return tamanho, nil
+	return  t.q.BuscarTamanho(ctx, arg)
 
 }
 
