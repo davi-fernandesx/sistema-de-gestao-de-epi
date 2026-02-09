@@ -25,7 +25,6 @@ type EpiDto struct {
 }
 
 type UpdateEpiInput struct {
-	ID         int32           `json:"id"`
 	Nome       *string         `json:"nome"`
 	Fabricante *string         `json:"fabricante"`
 	CA         *string         `json:"ca"`
