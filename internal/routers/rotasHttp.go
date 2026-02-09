@@ -19,6 +19,7 @@ type Container struct {
 	Funcionario  controller.FuncionarioController
 	Tamanho      controller.TamanhoController
 	Protecao     controller.TipoProtecaoController
+	Epi          controller.EpiController
 }
 
 func NewContainer(db *pgxpool.Pool) *Container {
@@ -29,6 +30,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	repoFuncionario := repository.NewFuncionarioRepository(db)
 	repoTamanho := repository.NewTamanhoRepository(db)
 	repoTipoProtecao := repository.NewProtecaoRepository(db)
+	repoEpi := repository.NewEpiRepository(db)
 
 	serviceUsuario := service.NewUsuarioService(repoUsuario)
 	departamentoService := service.NewDepartamentoService(repoDepartamento)
@@ -36,6 +38,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	funcionarioService := service.NewFuncionarioService(repoFuncionario, db)
 	tamanhoService := service.NewTamanhoService(repoTamanho)
 	TipoProtecaoService := service.NewProtecaoService(repoTipoProtecao)
+	epiService := service.NewEpiService(repoEpi, db)
 
 	return &Container{
 		Usuario:      *controller.NewLoginController(serviceUsuario),
@@ -44,6 +47,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 		Funcionario:  *controller.NewFuncionarioController(funcionarioService),
 		Tamanho:      *controller.NewTamanhoControle(tamanhoService),
 		Protecao:     *controller.NewTipoProtecaoController(TipoProtecaoService),
+		Epi:          *controller.NewEpiController(epiService),
 	}
 }
 func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
@@ -99,9 +103,16 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 
 		//proteções dedicada a cada epi
 		api.POST("/cadastro-protecao", c.Protecao.AdicionarProtecao())
-		api.GET("/protecoes",c.Protecao.ListarProtecoes())
+		api.GET("/protecoes", c.Protecao.ListarProtecoes())
 		api.GET("/protecao/:id", c.Protecao.ListarProtecaoPorId())
-		api.DELETE("/protecao/:id",c.Protecao.DeletarProtecao())
+		api.DELETE("/protecao/:id", c.Protecao.DeletarProtecao())
+
+		//Epi´s
+		api.POST("/cadastro-epi", c.Epi.AdicionarEpi())
+		api.GET("/epis", c.Epi.ListarEpis())
+		api.GET("/epi/:id", c.Epi.ListarEpiPorId())
+		api.DELETE("/epi/:id", c.Epi.DeletarEpi())
+		api.PATCH("/epi/:id", c.Epi.AtualizaEpi())
 	}
 
 }
