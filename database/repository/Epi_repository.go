@@ -34,7 +34,7 @@ func (e *EpiRepository) ListarEpi(ctx context.Context, arg BuscarEpiParams) (Bus
 	epi, err:= e.q.BuscarEpi(ctx, arg)
 	if err != nil {
 
-		return BuscarEpiRow{},helper.TraduzErroPostgres(err)
+		return BuscarEpiRow{},err
 	}
 
 	return epi, nil
