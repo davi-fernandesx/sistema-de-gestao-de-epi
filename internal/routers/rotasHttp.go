@@ -20,6 +20,7 @@ type Container struct {
 	Tamanho      controller.TamanhoController
 	Protecao     controller.TipoProtecaoController
 	Epi          controller.EpiController
+	Entrada      controller.EntradaController
 }
 
 func NewContainer(db *pgxpool.Pool) *Container {
@@ -31,6 +32,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	repoTamanho := repository.NewTamanhoRepository(db)
 	repoTipoProtecao := repository.NewProtecaoRepository(db)
 	repoEpi := repository.NewEpiRepository(db)
+	repoEntrada := repository.NewEntradaRepository(db)
 
 	serviceUsuario := service.NewUsuarioService(repoUsuario)
 	departamentoService := service.NewDepartamentoService(repoDepartamento)
@@ -39,6 +41,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	tamanhoService := service.NewTamanhoService(repoTamanho)
 	TipoProtecaoService := service.NewProtecaoService(repoTipoProtecao)
 	epiService := service.NewEpiService(repoEpi, db)
+	entradaService := service.NewEntradaService(repoEntrada)
 
 	return &Container{
 		Usuario:      *controller.NewLoginController(serviceUsuario),
@@ -48,6 +51,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 		Tamanho:      *controller.NewTamanhoControle(tamanhoService),
 		Protecao:     *controller.NewTipoProtecaoController(TipoProtecaoService),
 		Epi:          *controller.NewEpiController(epiService),
+		Entrada:      *controller.NewEntradaController(entradaService),
 	}
 }
 func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
@@ -113,6 +117,11 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 		api.GET("/epi/:id", c.Epi.ListarEpiPorId())
 		api.DELETE("/epi/:id", c.Epi.DeletarEpi())
 		api.PATCH("/epi/:id", c.Epi.AtualizaEpi())
+
+		//entradas
+		api.POST("/cadastrar-entrada", c.Entrada.AdicionarEntrada())
+		api.GET("/entradas", c.Entrada.ListarEntradas())
+		api.DELETE("/entrada/:id", c.Entrada.CancelarEntrada())
 	}
 
 }
