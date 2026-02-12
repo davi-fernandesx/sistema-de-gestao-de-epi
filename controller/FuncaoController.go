@@ -72,7 +72,7 @@ func (f *FuncaoController) RegistraFuncao() gin.HandlerFunc {
 		if err != nil {
 
 			if errors.Is(err, helper.ErrDadoDuplicado) {
-				ctx.JSON(http.StatusConflict, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error": err.Error(),
 				})
@@ -226,7 +226,7 @@ func (f *FuncaoController) DeletarFuncao() gin.HandlerFunc {
 
 			if errors.Is(err, helper.ErrNaoEncontrado) {
 
-				ctx.JSON(http.StatusNotFound, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error": "funcao nao encontrada",
 				})
@@ -295,7 +295,7 @@ func (f *FuncaoController) AtualizarFuncao() gin.HandlerFunc {
 			
 			if errors.Is(err, helper.ErrNomeCurto) {
 
-				ctx.JSON(http.StatusNotFound, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error": "nome da funcao tem que possui 2 ou mais letras",
 				})

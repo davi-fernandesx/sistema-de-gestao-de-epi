@@ -83,7 +83,7 @@ func (f *FuncionarioController) Adicionar() gin.HandlerFunc {
 
 			if errors.Is(err, helper.ErrConflitoIntegridade) {
 
-				ctx.JSON(http.StatusNotFound, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error": "departamento ou funcao nao encontrado",
 				})
@@ -307,7 +307,7 @@ func (f *FuncionarioController) AtualizaFuncionario() gin.HandlerFunc {
 
 			if errors.Is(err, helper.ErrConflitoIntegridade) {
 
-				ctx.JSON(http.StatusNotFound, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error": "departamento ou funcao nao encontrado",
 				})
