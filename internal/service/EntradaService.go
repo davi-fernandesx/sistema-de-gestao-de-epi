@@ -72,23 +72,27 @@ func (e *EntradaService) Adicionar(ctx context.Context, model model.EntradaEpiIn
 		Lote:             model.Lote,
 		ValorUnitario:    vm,
 		NotaFiscalNumero: model.Nota_fiscal_numero,
-		NotaFiscalSerie:  pgtype.Text{String: model.Nota_fiscal_serie},
+		NotaFiscalSerie:  pgtype.Text{String: model.Nota_fiscal_serie, Valid: true},
 		IDUsuarioCriacao: pgtype.Int4{Int32: int32(model.Id_user), Valid: true},
-		TenantID: tenantID,
+		TenantID:         tenantID,
 	})
+	if err != nil {
+
+		return err
+	}
 
 	return nil
 }
 
 type FiltroEntradas struct {
-	Canceladas bool
-	EpiID      int32
-	EntradaID  int32
-	DataInicio configs.DataBr
-	DataFim    configs.DataBr
-	NotaFiscal string
-	Pagina     int32
-	Quantidade int32
+	Canceladas bool           `form:"canceladas"`
+	EpiID      int32          `form:"epi_id"`
+	EntradaID  int32          `form:"entrada_id"`
+	DataInicio configs.DataBr `form:"data_inicio"` // O Gin tentará converter a string para seu tipo Custom
+	DataFim    configs.DataBr `form:"data_fim"`
+	NotaFiscal string         `form:"nota_fiscal"`
+	Pagina     int32          `form:"pagina"`
+	Quantidade int32          `form:"quantidade"`
 }
 
 type EntradaPaginada struct {
@@ -119,7 +123,7 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas, t
 		NotaFiscal: pgtype.Text{String: f.NotaFiscal, Valid: f.NotaFiscal != ""},
 		Limit:      limit,
 		Offset:     offset,
-		TenantID: tenatId,
+		TenantID:   tenatId,
 	}
 
 	entradas, err := e.repo.ListarEntradas(ctx, filtro)
@@ -136,12 +140,33 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas, t
 		if fVal, err := entrada.ValorUnitario.Float64Value(); err == nil {
 			valorDecimal = decimal.NewFromFloat(fVal.Float64)
 		}
+
 		var idUsuario int
 		if entrada.IDUsuarioCriacao.Valid {
 			idUsuario = int(entrada.IDUsuarioCriacao.Int32)
 		} else {
 			idUsuario = 0 // ou algum valor padrão
 		}
+
+		var idUsuarioCancelamento int
+		if entrada.IDUsuarioCriacaoCancelamento.Valid {
+			idUsuarioCancelamento = int(entrada.IDUsuarioCriacaoCancelamento.Int32)
+		}else {
+			idUsuarioCancelamento = 0
+		}
+
+
+		nomeCriacao := "" // Valor padrão se vier nulo do banco
+		if entrada.UsuarioCriacaoNome.Valid {
+			nomeCriacao = entrada.UsuarioCriacaoNome.String
+		}
+
+		// 2. Tratamento para Usuario de Cancelamento (se houver essa coluna)
+		nomeCancelamento := ""
+		if entrada.UsuarioCancelamentoNome.Valid {
+			nomeCancelamento = entrada.UsuarioCancelamentoNome.String
+		}
+
 		e := model.EntradaEpiDto{
 			ID: int(entrada.ID),
 			Epi: model.EpiDto{
@@ -170,7 +195,14 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas, t
 			Nota_fiscal_serie:  entrada.NotaFiscalSerie.String,
 			Nota_fiscal_numero: entrada.NotaFiscalNumero,
 			ValorUnitario:      valorDecimal,
-			Id_user:            idUsuario,
+			UsuarioEntrada: model.RecuperaUserEntrada{
+				Id:   idUsuario,
+				Nome: nomeCriacao,
+			},
+			UsuarioEntradaCancelamento: model.RecuperaUserEntrada{
+				Id: idUsuarioCancelamento,
+				Nome: nomeCancelamento,
+			},
 		}
 
 		dto = append(dto, e)
@@ -183,7 +215,7 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas, t
 		DataInicio: filtro.DataInicio,
 		DataFim:    filtro.DataFim,
 		NotaFiscal: filtro.NotaFiscal,
-		TenantID: tenatId,
+		TenantID:   tenatId,
 	})
 	if err != nil {
 		return EntradaPaginada{}, err
@@ -199,17 +231,17 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas, t
 	}, nil
 }
 
-func (e *EntradaService) CancelarEntrada(ctx context.Context, id,idUser,tenantid int) (int64, error) {
+func (e *EntradaService) CancelarEntrada(ctx context.Context, id, idUser, tenantid int) (int64, error) {
 
 	if id <= 0 {
 
 		return 0, helper.ErrId
 	}
 
-	arg:= repository.CancelarEntradaParams{
-		ID: int32(id),
-		IDUsuarioCriacaoCancelamento: pgtype.Int4{Int32: int32(idUser)},
-		TenantID: int32(tenantid),
+	arg := repository.CancelarEntradaParams{
+		ID:                           int32(id),
+		IDUsuarioCriacaoCancelamento: pgtype.Int4{Int32: int32(idUser),Valid: true},
+		TenantID:                     int32(tenantid),
 	}
 	linhasAfetadas, err := e.repo.CancelarEntrada(ctx, arg)
 	if err != nil {
