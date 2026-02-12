@@ -78,7 +78,7 @@ func (e *EpiController) AdicionarEpi() gin.HandlerFunc {
 
 			if errors.Is(err, helper.ErrDataMenor) {
 
-				ctx.JSON(http.StatusConflict, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error":  "data não pode ser menor que a atual",
 					"detalhes": err.Error(),
@@ -87,7 +87,7 @@ func (e *EpiController) AdicionarEpi() gin.HandlerFunc {
 			}
 
 			if errors.Is(err, helper.ErrConflitoIntegridade) {
-				ctx.JSON(http.StatusNotFound, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error":    "tamanho ou protecao invalidos",
 					"detalhes": err.Error(),
@@ -165,7 +165,7 @@ func (e *EpiController) ListarEpiPorId() gin.HandlerFunc {
 
 			if errors.Is(err, helper.ErrNaoEncontrado) {
 
-				ctx.JSON(http.StatusNotFound, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error":   "epi nao encontrado",
 					"detalhe": err.Error(),
@@ -266,7 +266,7 @@ func (e *EpiController) AtualizaEpi() gin.HandlerFunc {
 
 			if errors.Is(err, helper.ErrNaoEncontrado) {
 
-				ctx.JSON(http.StatusNotFound, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error":    "epi nao encontrado",
 					"detalhes": err.Error(),
@@ -286,7 +286,7 @@ func (e *EpiController) AtualizaEpi() gin.HandlerFunc {
 
 			if errors.Is(err, helper.ErrDataMenor) {
 
-				ctx.JSON(http.StatusConflict, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error":    "data não pode ser menor que a atual",
 					"detalhes": err.Error(),
@@ -296,7 +296,7 @@ func (e *EpiController) AtualizaEpi() gin.HandlerFunc {
 
 			if errors.Is(err, helper.ErrConflitoIntegridade) {
 
-				ctx.JSON(http.StatusNotFound, gin.H{
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
 					"error":    "tamanho ou protecao nao encontrado",
 					"detalhes": err.Error(),
