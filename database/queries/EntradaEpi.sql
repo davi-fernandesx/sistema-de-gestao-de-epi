@@ -7,18 +7,50 @@ INSERT INTO entrada_epi (
 
 -- name: ListarEntradas :many
 SELECT 
-    ee.id, ee.IdEpi, e.nome as epi_nome, e.fabricante, e.CA, e.descricao as epi_descricao,
-    ee.data_fabricacao, ee.data_validade, e.validade_CA,
-    e.IdTipoProtecao, tp.nome as protecao_nome,
-    ee.IdTamanho, t.tamanho as tamanho_nome, 
-    ee.quantidade, ee.quantidadeAtual, ee.data_entrada,
-    ee.lote, ee.fornecedor, ee.valor_unitario, ee.nota_fiscal_numero, ee.nota_fiscal_serie, ee.id_usuario_criacao
+    ee.id, 
+    ee.IdEpi, 
+    e.nome as epi_nome, 
+    e.fabricante, 
+    e.CA, 
+    e.descricao as epi_descricao,
+    ee.data_fabricacao, 
+    ee.data_validade, 
+    e.validade_CA,
+    e.IdTipoProtecao, 
+    tp.nome as protecao_nome,
+    ee.IdTamanho, 
+    t.tamanho as tamanho_nome, 
+    ee.quantidade, 
+    ee.quantidadeAtual, 
+    ee.data_entrada,
+    ee.lote, 
+    ee.fornecedor, 
+    ee.valor_unitario, 
+    ee.nota_fiscal_numero, 
+    ee.nota_fiscal_serie, 
+    
+    -- Campos de Usuário Criação
+    ee.id_usuario_criacao,
+    u_criacao.nome as usuario_criacao_nome,
+    
+    -- Campos de Usuário Cancelamento
+    ee.id_usuario_criacao_cancelamento,
+    u_cancelamento.nome as usuario_cancelamento_nome,
+    ee.cancelada_em -- É bom retornar a data também para saber quando foi
+
 FROM entrada_epi ee
 INNER JOIN epi e ON ee.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
 INNER JOIN tamanho t ON ee.IdTamanho = t.id
+
+-- JOIN 1: Quem criou a entrada
+LEFT JOIN usuarios u_criacao ON ee.id_usuario_criacao = u_criacao.id
+
+-- JOIN 2: Quem cancelou a entrada (só vai retornar dados se tiver sido cancelada)
+LEFT JOIN usuarios u_cancelamento ON ee.id_usuario_criacao_cancelamento = u_cancelamento.id
+
 WHERE 
-    ee.tenant_id = sqlc.arg('tenant_id') -- SEGURANÇA: Filtro de Tenant
+    ee.tenant_id = sqlc.arg('tenant_id')
     AND (
         (sqlc.arg('canceladas')::boolean IS FALSE AND ee.cancelada_em IS NULL) OR
         (sqlc.arg('canceladas')::boolean IS TRUE AND ee.cancelada_em IS NOT NULL)
@@ -29,7 +61,7 @@ WHERE
     AND (sqlc.narg('data_fim')::date IS NULL OR ee.data_entrada <= sqlc.narg('data_fim'))
     AND (sqlc.narg('nota_fiscal')::text IS NULL OR ee.nota_fiscal_numero ILIKE '%' || sqlc.narg('nota_fiscal') || '%')
 ORDER BY ee.data_entrada DESC
-LIMIT $1 OFFSET $2;
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: CancelarEntrada :execrows
 UPDATE entrada_epi 
