@@ -2,7 +2,7 @@
 INSERT INTO entrada_epi (
     tenant_id, -- Novo campo obrigatório
     IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-    data_fabricacao, data_validade, lote, fornecedor, valor_unitario, nota_fiscal_numero, nota_fiscal_serie, id_usuario_criacao
+    data_fabricacao, data_validade, lote, Idfornecedor, valor_unitario, nota_fiscal_numero, nota_fiscal_serie, id_usuario_criacao
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
 
 -- name: ListarEntradas :many
@@ -24,7 +24,11 @@ SELECT
     ee.quantidadeAtual, 
     ee.data_entrada,
     ee.lote, 
-    ee.fornecedor, 
+    ee.Idfornecedor,
+    f.razao_social,
+    f.nome_fantasia,
+    f.cnpj,
+    f.inscricao_estadual,
     ee.valor_unitario, 
     ee.nota_fiscal_numero, 
     ee.nota_fiscal_serie, 
@@ -42,6 +46,7 @@ FROM entrada_epi ee
 INNER JOIN epi e ON ee.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
 INNER JOIN tamanho t ON ee.IdTamanho = t.id
+INNER JOIN fornecedores f on ee.IdFornecedor = f.id
 
 -- JOIN 1: Quem criou a entrada
 LEFT JOIN usuarios u_criacao ON ee.id_usuario_criacao = u_criacao.id
