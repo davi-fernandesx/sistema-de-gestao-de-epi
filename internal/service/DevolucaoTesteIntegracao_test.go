@@ -43,12 +43,14 @@ func TestSalvarDevolucao(t *testing.T) {
 
 	// Estoque (Entrada)
 	// Nota: Passamos iduser (quem criou) e idEmpresa (dono do dado)
-	
+
+	//fornecedores
+	Idfornecedor := CreateFornecedor(t, db, idEmpresa)
 	// Entrada Antiga (Vai aumentar +1 na devolução)
-	idEntradaAntiga := CreateEntradaEpi(t, db, idfuncionario, idEpiAntigo, idprotec, idtamAntigo, iduser, idEmpresa)
-	
+	idEntradaAntiga := CreateEntradaEpi(t, db, idfuncionario, idEpiAntigo, idprotec, idtamAntigo, iduser, Idfornecedor, idEmpresa)
+
 	// Entrada Nova (Vai diminuir -1, pois é o item da troca)
-	idEntradaNova := CreateEntradaEpi(t, db, idfuncionario, idEpiNovo, idprotec, idtamNovo, iduser, idEmpresa)
+	idEntradaNova := CreateEntradaEpi(t, db, idfuncionario, idEpiNovo, idprotec, idtamNovo, iduser, Idfornecedor, idEmpresa)
 
 	// Entregas anteriores
 	idEntregaAntiga := CreateEntregaEpi(t, db, idfuncionario, iduser, idEmpresa)
@@ -59,14 +61,14 @@ func TestSalvarDevolucao(t *testing.T) {
 	_ = CreateMotivoDevolucao(t, db, "Dano", idEmpresa)
 	_ = CreateMotivoDevolucao(t, db, "Vencimento", idEmpresa)
 	_ = CreateMotivoDevolucao(t, db, "Tamanho Errado", idEmpresa) // ID 4 (Suposição de ordem)
-	idMotivoTeste := 4 // Ajuste conforme o ID retornado se necessário, ou capture o ID criado acima
+	idMotivoTeste := 4                                            // Ajuste conforme o ID retornado se necessário, ou capture o ID criado acima
 
 	t.Run("Deve realizar uma troca: Devolver item antigo ao estoque e Retirar item novo", func(t *testing.T) {
-		
+
 		// --- FUNÇÃO AUXILIAR DE LOG (DEBUG) ---
 		logEstadoBanco := func(momento string) {
 			t.Logf("\n====== ESTADO DO BANCO (Tenant: %d): %s ======", idEmpresa, momento)
-			
+
 			// Validamos com TenantID para garantir isolamento
 			var qtdEstoqueAntigo int
 			err := db.QueryRow(ctx, "SELECT quantidadeAtual FROM entrada_epi WHERE id = $1 AND tenant_id = $2", idEntradaAntiga, idEmpresa).Scan(&qtdEstoqueAntigo)
@@ -129,13 +131,13 @@ func TestSalvarDevolucao(t *testing.T) {
 		var qtdAntigoDepois, qtdNovoDepois int
 		_ = db.QueryRow(ctx, "SELECT quantidadeAtual FROM entrada_epi WHERE id = $1 AND tenant_id = $2", idEntradaAntiga, idEmpresa).Scan(&qtdAntigoDepois)
 		_ = db.QueryRow(ctx, "SELECT quantidadeAtual FROM entrada_epi WHERE id = $1 AND tenant_id = $2", idEntradaNova, idEmpresa).Scan(&qtdNovoDepois)
-		
+
 		// O antigo deve ter AUMENTADO
-		require.Equal(t, qtdAntigoAntes+qtdDevolver, qtdAntigoDepois, 
+		require.Equal(t, qtdAntigoAntes+qtdDevolver, qtdAntigoDepois,
 			"ERRO: O estoque do item devolvido deveria ter aumentado.")
 
 		// O novo deve ter DIMINUÍDO
-		require.Equal(t, qtdNovoAntes-qtdNova, qtdNovoDepois, 
+		require.Equal(t, qtdNovoAntes-qtdNova, qtdNovoDepois,
 			"ERRO: O estoque do item novo (troca) deveria ter diminuído.")
 	})
 }
@@ -163,16 +165,18 @@ func TestCancelarDevolucao(t *testing.T) {
 	// EPIs e Tamanhos
 	idEpiVelho := CreateEpi(t, db, idprotec, idEmpresa)
 	idTamVelho := CreateTamanho(t, db, idEmpresa)
-	
+
 	idEpiNovo := CreateEpi(t, db, idprotec, idEmpresa)
 	idTamNovo := CreateTamanho(t, db, idEmpresa)
 
+	//fornecedores
+	Idfornecedor := CreateFornecedor(t, db, idEmpresa)
 	// 3. Estoque (Entradas)
 	// Item Velho (já está com funcionário)
-	idEntradaVelha := CreateEntradaEpi(t, db, idfuncionario, idEpiVelho, idprotec, idTamVelho, iduser, idEmpresa)
-	
+	idEntradaVelha := CreateEntradaEpi(t, db, idfuncionario, idEpiVelho, idprotec, idTamVelho, iduser, Idfornecedor,idEmpresa)
+
 	// Item Novo (será a troca)
-	idEntradaNova := CreateEntradaEpi(t, db, idfuncionario, idEpiNovo, idprotec, idTamNovo, iduser, idEmpresa)
+	idEntradaNova := CreateEntradaEpi(t, db, idfuncionario, idEpiNovo, idprotec, idTamNovo, iduser, Idfornecedor,idEmpresa)
 
 	// Simula entrega anterior
 	idEntregaAntiga := CreateEntregaEpi(t, db, idfuncionario, iduser, idEmpresa)
@@ -184,11 +188,11 @@ func TestCancelarDevolucao(t *testing.T) {
 
 	// 4. PREPARAÇÃO: Executar uma Troca REAL primeiro
 	t.Log("--- PREPARANDO CENÁRIO: CRIANDO UMA TROCA ---")
-	
+
 	idEpiNovoInt := int(idEpiNovo)
 	idTamNovoInt := int(idTamNovo)
 	qtd := 1
-	
+
 	dadosTroca := model.DevolucaoInserir{
 		Troca:               true,
 		IdEpiNovo:           &idEpiNovoInt,
@@ -234,8 +238,8 @@ func TestCancelarDevolucao(t *testing.T) {
 		require.NoError(t, err)
 
 		// Lógica: Tinha 99 (pós troca), cancelei, deve voltar para 100.
-		require.Equal(t, qtdAntesCancelamento + 1, qtdDepoisCancelamento, 
-			"O estoque deveria ter sido reposto. Antes: %d, Depois: %d", 
+		require.Equal(t, qtdAntesCancelamento+1, qtdDepoisCancelamento,
+			"O estoque deveria ter sido reposto. Antes: %d, Depois: %d",
 			qtdAntesCancelamento, qtdDepoisCancelamento)
 	})
 }

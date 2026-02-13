@@ -247,7 +247,62 @@ func criarTabelasPostgres(t *testing.T, pool *pgxpool.Pool) {
 		ALTER TABLE devolucao 
 		ADD COLUMN id_usuario_devolucao_cancelamento INTEGER REFERENCES usuarios(id);
 
+
+		CREATE UNIQUE INDEX idx_funcao_nome_tenant_ativo
+		ON funcao (tenant_id, nome)
+		WHERE deletado_em IS NULL;
+
+		CREATE UNIQUE INDEX idx_tamanho_tenant_ativo 
+		ON tamanho (tenant_id, tamanho) 
+		WHERE deletado_em IS NULL;
+
+		CREATE UNIQUE INDEX idx_protecao_tenant_ativo 
+		ON tipo_protecao (tenant_id, nome) 
+		WHERE deletado_em IS NULL;
+
+		-- 1. Remove a regra antiga (que estava sem o tenant_id)
+		ALTER TABLE entrada_epi 
+		DROP CONSTRAINT uk_entrada_nf_fornecedor;
+
+		-- 2. Adiciona a regra nova (AGORA COM O TENANT_ID)
+		ALTER TABLE entrada_epi
+		ADD CONSTRAINT unique_entrada_Nf
+		UNIQUE (tenant_id, fornecedor, nota_fiscal_numero, nota_fiscal_serie);
+
+		CREATE TABLE fornecedores (
+		id SERIAL PRIMARY KEY,
+		tenant_id INTEGER NOT NULL,
+		razao_social VARCHAR(100) NOT NULL,
+		nome_fantasia VARCHAR(100) NOT NULL,
+		cnpj VARCHAR(14) NOT NULL, -- Apenas números
+		inscricao_estadual VARCHAR(50) NOT NULL,
+		ativo BOOLEAN DEFAULT TRUE,
+		cancelado_em TIMESTAMP DEFAULT NULL   
+		);
+
+	-- Índices e Constraints (A parte mais importante!)
+
+	-- 1. Garante busca rápida pelo ID e Tenant (segurança)
+	CREATE INDEX idx_fornecedores_tenant ON fornecedores(tenant_id);
+
+	-- 2. Garante que NÃO existam dois fornecedores com o mesmo CNPJ na MESMA empresa (tenant)
+	-- Mas permite o mesmo CNPJ em tenants diferentes.
+	ALTER TABLE fornecedores
+	ADD CONSTRAINT unique_cnpj_por_tenant UNIQUE (tenant_id, cnpj);
 		
+		ALTER TABLE entrada_epi 
+	ALTER COLUMN fornecedor TYPE INTEGER USING NULL;
+
+	-- 2. Renomeia para ficar no padrão de chave estrangeira (Opcional, mas recomendado)
+	ALTER TABLE entrada_epi 
+	RENAME COLUMN fornecedor TO Idfornecedor;
+
+	-- 3. Cria a ligação (Foreign Key) com a tabela de fornecedores
+	ALTER TABLE entrada_epi 
+	ADD CONSTRAINT fk_entrada_fornecedor 
+	FOREIGN KEY (Idfornecedor) REFERENCES fornecedores(id);
+
+	
 	`
 
 	_, err := pool.Exec(context.Background(), schema)

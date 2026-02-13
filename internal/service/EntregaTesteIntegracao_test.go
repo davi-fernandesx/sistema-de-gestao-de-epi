@@ -38,9 +38,11 @@ func TestEntrega(t *testing.T) {
 	idfuncionario := CreateFuncionario(t, db, iddep, IdFuncao, idEmpresa)
 	idfuncionario2 := CreateFuncionario(t, db, iddep, IdFuncao, idEmpresa)
 
+	//fornecedores
+	Idfornecedor := CreateFornecedor(t, db, idEmpresa)
 	// Estoque inicial (2 entradas de 100 itens cada)
-	_ = CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec, idtam, iduser, idEmpresa)
-	_ = CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec, idtam, iduser, idEmpresa)
+	_ = CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec, idtam, iduser, Idfornecedor, idEmpresa)
+	_ = CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec, idtam, iduser, Idfornecedor, idEmpresa)
 
 	entregas := []model.EntregaParaInserir{
 		{
@@ -116,7 +118,7 @@ func TestEntrega(t *testing.T) {
 				_, err = repo.AbaterEstoqueEntrada(ctx, qtx, repository.AbaterEstoqueLoteParams{
 					Quantidadeatual: quantidadeAbater,
 					ID:              entradaLote.ID,
-					 TenantID: int32(idEmpresa), // Descomente se sua query SQL exigir
+					TenantID:        int32(idEmpresa), // Descomente se sua query SQL exigir
 				})
 				require.NoError(t, err)
 
@@ -188,8 +190,10 @@ func TestEntrega(t *testing.T) {
 		idepi2 := CreateEpi(t, db2, idprotec2, idEmpresa2)
 		idfuncionarioC := CreateFuncionario(t, db2, iddep2, IdFuncao2, idEmpresa2)
 
+		//fornecedores
+		Idfornecedor1 := CreateFornecedor(t, db2, idEmpresa2)
 		// Criar lote com APENAS 1 unidade
-		identrada1 := CreateEntradaEpi1(t, db2, idfuncionarioC, idepi2, idprotec2, idtam2, iduser2, idEmpresa2)
+		identrada1 := CreateEntradaEpi1(t, db2, idfuncionarioC, idepi2, idprotec2, idtam2, iduser2, Idfornecedor1,idEmpresa2)
 
 		var wg sync.WaitGroup
 		numRequisicoes := 2
@@ -249,20 +253,21 @@ func TestEntrega(t *testing.T) {
 		db := SetupTestDB(t)
 		defer db.Close()
 		ctx := context.Background()
-		empresa:= CreateEmpresa(t, db)
+		empresa := CreateEmpresa(t, db)
 		repo := repository.NewEntregaRepository(db)
 		serv := NewEntregaService(repo, db)
 
 		iduser := CreateUser(t, db, empresa)
-		iddep := CreateDepartamento(t, db,empresa)
-		IdFuncao := CreateFuncao(t, db, iddep,empresa)
-		idtam := CreateTamanho(t, db,empresa)
-		idprotec := CreateProtecao(t, db,empresa)
-		idepi := CreateEpi(t, db, idprotec,empresa)
-		idfuncionario := CreateFuncionario(t, db, iddep, IdFuncao,empresa)
-
+		iddep := CreateDepartamento(t, db, empresa)
+		IdFuncao := CreateFuncao(t, db, iddep, empresa)
+		idtam := CreateTamanho(t, db, empresa)
+		idprotec := CreateProtecao(t, db, empresa)
+		idepi := CreateEpi(t, db, idprotec, empresa)
+		idfuncionario := CreateFuncionario(t, db, iddep, IdFuncao, empresa)
+		//fornecedores
+		Idfornecedor := CreateFornecedor(t, db, idEmpresa)
 		idEntrada2 := CreateEntradaEpi(t, db, idfuncionario, idepi, idprotec,
-			idtam, iduser,empresa)
+			idtam, iduser, Idfornecedor, empresa)
 
 		for i := range 4 {
 
@@ -283,7 +288,7 @@ func TestEntrega(t *testing.T) {
 
 		for y := range 4 {
 
-			err := serv.CancelarEntrega(ctx, int(empresa), y+1,int(iduser))
+			err := serv.CancelarEntrega(ctx, int(empresa), y+1, int(iduser))
 			require.NoError(t, err, "o cancelamento %d deveria ter funcionado", y+1)
 
 		}
@@ -295,5 +300,5 @@ func TestEntrega(t *testing.T) {
 
 		fmt.Printf("Estoque atual do lote depois de cancelar as entregas %d: %d\n", idEntrada2, q1)
 
-		})
+	})
 }

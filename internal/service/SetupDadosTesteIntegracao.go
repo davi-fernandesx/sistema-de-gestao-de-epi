@@ -23,6 +23,11 @@ func randomInt() *rand.Rand {
 	return r
 }
 
+// Helper para gerar um "CNPJ" numérico aleatório de 14 dígitos
+func randomCNPJ() string {
+	rand.Seed(time.Now().UnixNano())
+	return fmt.Sprintf("%014d", rand.Int63n(99999999999999))
+}
 // --- 1. EMPRESA (TENANT) ---
 
 func CreateEmpresa(t *testing.T, db *pgxpool.Pool) int64 {
@@ -228,14 +233,14 @@ func CreateEpi(t *testing.T, db *pgxpool.Pool, idTipoProtecao, tenantID int64) i
 
 // --- 5. ESTOQUE E MOVIMENTAÇÃO ---
 
-func CreateEntradaEpi(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTipoProtecao, IdTamanho, idUserCriacao, tenantID int64) int64 {
+func CreateEntradaEpi(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTipoProtecao, IdTamanho,Idfornecedor,idUserCriacao, tenantID int64) int64 {
 	var id int64
 
 	// Atenção: Adicionado id_usuario_criacao, nota_fiscal e tenant_id
 	query := `
 		INSERT INTO entrada_epi (
 			tenant_id, IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-			data_fabricacao, data_validade, lote, fornecedor, valor_unitario, 
+			data_fabricacao, data_validade, lote, Idfornecedor, valor_unitario, 
 			nota_fiscal_numero, nota_fiscal_serie, id_usuario_criacao, ativo
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING id;
@@ -244,7 +249,7 @@ func CreateEntradaEpi(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTi
 	lote := randomString("Lote")
 	// Constraint: UNIQUE (nota_fiscal_numero, nota_fiscal_serie, fornecedor)
 	// Usamos randomString para garantir unicidade nos testes
-	fornecedor := randomString("Fornecedor")
+	
 	notaFiscalNumero := randomString("NF")
 	notaFiscalSerie := "1"
 
@@ -258,7 +263,7 @@ func CreateEntradaEpi(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTi
 		time.Now().AddDate(-1, 0, 0), // Fabricação
 		time.Now().AddDate(1, 0, 0),  // Validade
 		lote,
-		fornecedor,
+		Idfornecedor,
 		decimal.NewFromFloat(23.99),
 		notaFiscalNumero,
 		notaFiscalSerie,
@@ -273,19 +278,19 @@ func CreateEntradaEpi(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTi
 }
 
 // Versão com quantidade 1 para testes de limite
-func CreateEntradaEpi1(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTipoProtecao, IdTamanho, idUserCriacao, tenantID int64) int64 {
+func CreateEntradaEpi1(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdTipoProtecao, IdTamanho, idUserCriacao, Idfornecedor,tenantID int64) int64 {
 	var id int64
 	query := `
 		INSERT INTO entrada_epi (
 			tenant_id, IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-			data_fabricacao, data_validade, lote, fornecedor, valor_unitario, 
+			data_fabricacao, data_validade, lote, Idfornecedor, valor_unitario, 
 			nota_fiscal_numero, nota_fiscal_serie, id_usuario_criacao, ativo
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING id;
 	`
 	
 	lote := randomString("Lote")
-	fornecedor := randomString("Fornecedor")
+	
 	notaFiscalNumero := randomString("NF")
 
 	err := db.QueryRow(context.Background(), query,
@@ -298,7 +303,7 @@ func CreateEntradaEpi1(t *testing.T, db *pgxpool.Pool, IdFuncionario, idEpi, IdT
 		time.Now().AddDate(-1, 0, 0),
 		time.Now().AddDate(1, 0, 0),
 		lote,
-		fornecedor,
+		Idfornecedor,
 		decimal.NewFromFloat(23.99),
 		notaFiscalNumero,
 		"1",
@@ -385,5 +390,40 @@ func CreateMotivoDevolucao(t *testing.T, db *pgxpool.Pool, motivo string, tenant
 	if err != nil {
 		t.Fatalf("Helper CreateMotivoDevolucao falhou: %v", err)
 	}
+	return id
+}
+
+func CreateFornecedor(t *testing.T, db *pgxpool.Pool, tenantID int64) int64 {
+	var id int64
+	
+	// Preenchemos nome_fantasia igual a razao_social e IE como 'ISENTO' para simplificar o helper
+	query := `
+		INSERT INTO fornecedores (
+			tenant_id, 
+			razao_social, 
+			nome_fantasia, 
+			cnpj, 
+			inscricao_estadual, 
+			ativo
+		) 
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id;
+	`
+	razaoSocial:= randomString("razao")
+	fantasia:= randomString("fantasia")
+	cnpj:= randomCNPJ()
+	err := db.QueryRow(context.Background(), query,
+		tenantID,       // $1
+		razaoSocial,           // $2: Razão Social
+		fantasia,           // $3: Nome Fantasia (repetido para facilitar)
+		cnpj,           // $4: CNPJ
+		"ISENTO",       // $5: Inscrição Estadual (valor padrão)
+		true,           // $6: Ativo
+	).Scan(&id)
+
+	if err != nil {
+		t.Fatalf("Helper CreateFornecedor falhou: %v", err)
+	}
+	
 	return id
 }
