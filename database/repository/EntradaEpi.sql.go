@@ -15,7 +15,7 @@ const addEntradaEpi = `-- name: AddEntradaEpi :exec
 INSERT INTO entrada_epi (
     tenant_id, -- Novo campo obrigatório
     IdEpi, IdTamanho, data_entrada, quantidade, quantidadeAtual, 
-    data_fabricacao, data_validade, lote, fornecedor, valor_unitario, nota_fiscal_numero, nota_fiscal_serie, id_usuario_criacao
+    data_fabricacao, data_validade, lote, Idfornecedor, valor_unitario, nota_fiscal_numero, nota_fiscal_serie, id_usuario_criacao
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 
@@ -29,7 +29,7 @@ type AddEntradaEpiParams struct {
 	DataFabricacao   pgtype.Date
 	DataValidade     pgtype.Date
 	Lote             string
-	Fornecedor       string
+	Idfornecedor     int32
 	ValorUnitario    pgtype.Numeric
 	NotaFiscalNumero string
 	NotaFiscalSerie  pgtype.Text
@@ -47,7 +47,7 @@ func (q *Queries) AddEntradaEpi(ctx context.Context, arg AddEntradaEpiParams) er
 		arg.DataFabricacao,
 		arg.DataValidade,
 		arg.Lote,
-		arg.Fornecedor,
+		arg.Idfornecedor,
 		arg.ValorUnitario,
 		arg.NotaFiscalNumero,
 		arg.NotaFiscalSerie,
@@ -142,7 +142,11 @@ SELECT
     ee.quantidadeAtual, 
     ee.data_entrada,
     ee.lote, 
-    ee.fornecedor, 
+    ee.Idfornecedor,
+    f.razao_social,
+    f.nome_fantasia,
+    f.cnpj,
+    f.inscricao_estadual,
     ee.valor_unitario, 
     ee.nota_fiscal_numero, 
     ee.nota_fiscal_serie, 
@@ -160,6 +164,7 @@ FROM entrada_epi ee
 INNER JOIN epi e ON ee.IdEpi = e.id
 INNER JOIN tipo_protecao tp ON e.IdTipoProtecao = tp.id
 INNER JOIN tamanho t ON ee.IdTamanho = t.id
+INNER JOIN fornecedores f on ee.IdFornecedor = f.id
 
 LEFT JOIN usuarios u_criacao ON ee.id_usuario_criacao = u_criacao.id
 
@@ -210,7 +215,11 @@ type ListarEntradasRow struct {
 	Quantidadeatual              int32
 	DataEntrada                  pgtype.Date
 	Lote                         string
-	Fornecedor                   string
+	Idfornecedor                 int32
+	RazaoSocial                  string
+	NomeFantasia                 string
+	Cnpj                         string
+	InscricaoEstadual            string
 	ValorUnitario                pgtype.Numeric
 	NotaFiscalNumero             string
 	NotaFiscalSerie              pgtype.Text
@@ -260,7 +269,11 @@ func (q *Queries) ListarEntradas(ctx context.Context, arg ListarEntradasParams) 
 			&i.Quantidadeatual,
 			&i.DataEntrada,
 			&i.Lote,
-			&i.Fornecedor,
+			&i.Idfornecedor,
+			&i.RazaoSocial,
+			&i.NomeFantasia,
+			&i.Cnpj,
+			&i.InscricaoEstadual,
 			&i.ValorUnitario,
 			&i.NotaFiscalNumero,
 			&i.NotaFiscalSerie,

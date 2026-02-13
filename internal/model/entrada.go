@@ -15,7 +15,7 @@ type EntradaEpiInserir struct {
 	DataFabricacao     configs.DataBr  `json:"data_fabricacao" binding:"required"`
 	DataValidade       configs.DataBr  `json:"data_validade" binding:"required"`
 	Lote               string          `json:"lote" binding:"required,numeric,max=6"`
-	Fornecedor         string          `json:"fornecedor" binding:"required,max=50"`
+	Id_fornecedor      int             `json:"id_fornecedor" binding:"required,max=50"`
 	Nota_fiscal_serie  string          `json:"notaFiscalSerie" binding:"required,max=20,numeric"`
 	Nota_fiscal_numero string          `json:"notaFiscalNumero" binding:"required,max=10,numeric"`
 	ValorUnitario      decimal.Decimal `json:"valorUnitario" binding:"required"`
@@ -29,7 +29,7 @@ type EntradaEpiDto struct {
 	Quantidade                 int                 `json:"quantidade"`
 	Quantidade_Atual           int                 `json:"quantidade_Atual"`
 	Lote                       string              `json:"lote"`
-	Fornecedor                 string              `json:"fornecedor"`
+	Fornecedor                 FornecedorDto       `json:"fornecedor"`
 	Nota_fiscal_serie          string              `json:"notaFicalSerie"`
 	Nota_fiscal_numero         string              `json:"notaFiscalNumero"`
 	UsuarioEntradaCancelamento RecuperaUserEntrada `json:"usuario_Cancelamento"`

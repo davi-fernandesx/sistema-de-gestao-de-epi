@@ -49,7 +49,6 @@ func (e *EntradaController) AdicionarEntrada() gin.HandlerFunc {
 
 		// 1. Remove espaços extras no começo/fim
 		// 2. Transforma tudo em MAIÚSCULO para padronizar
-		input.Fornecedor = strings.ToUpper(strings.TrimSpace(input.Fornecedor))
 		input.Lote = strings.ToUpper(strings.TrimSpace(input.Lote))
 
 		entrada := model.EntradaEpiInserir{
@@ -62,7 +61,7 @@ func (e *EntradaController) AdicionarEntrada() gin.HandlerFunc {
 			DataFabricacao:     input.DataFabricacao,
 			DataValidade:       input.DataValidade,
 			Lote:               input.Lote,
-			Fornecedor:         input.Fornecedor,
+			Id_fornecedor:      input.Id_fornecedor,
 			Nota_fiscal_serie:  input.Nota_fiscal_serie,
 			Nota_fiscal_numero: input.Nota_fiscal_numero,
 			ValorUnitario:      input.ValorUnitario,
@@ -107,7 +106,7 @@ func (e *EntradaController) AdicionarEntrada() gin.HandlerFunc {
 			if errors.Is(err, helper.ErrConflitoIntegridade) {
 				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 
-					"error":    "epi ou tamanho nao encontrado",
+					"error":    "epi,tamanho ou fornecedor nao encontrado",
 					"detalhes": err.Error(),
 				})
 				return
@@ -179,7 +178,7 @@ func (e *EntradaController) CancelarEntrada() gin.HandlerFunc {
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"error": "id deve ser um numero",
 			})
-			return 
+			return
 		}
 
 		tenantId, ok := middleware.GetTenantID(ctx)

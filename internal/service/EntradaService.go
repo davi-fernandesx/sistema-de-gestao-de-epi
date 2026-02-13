@@ -50,7 +50,7 @@ func (e *EntradaService) Adicionar(ctx context.Context, model model.EntradaEpiIn
 	}
 
 	model.Lote = strings.TrimSpace(model.Lote)
-	model.Fornecedor = strings.TrimSpace(model.Fornecedor)
+
 	model.Nota_fiscal_numero = strings.TrimSpace(model.Nota_fiscal_numero)
 	model.Nota_fiscal_serie = strings.TrimSpace(model.Nota_fiscal_serie)
 
@@ -68,7 +68,7 @@ func (e *EntradaService) Adicionar(ctx context.Context, model model.EntradaEpiIn
 		Quantidadeatual:  int32(model.Quantidade_Atual),
 		DataFabricacao:   pgtype.Date{Time: model.DataFabricacao.Time(), Valid: true},
 		DataValidade:     pgtype.Date{Time: model.DataValidade.Time(), Valid: true},
-		Fornecedor:       model.Fornecedor,
+		Idfornecedor:     int32(model.Id_fornecedor),
 		Lote:             model.Lote,
 		ValorUnitario:    vm,
 		NotaFiscalNumero: model.Nota_fiscal_numero,
@@ -151,10 +151,9 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas, t
 		var idUsuarioCancelamento int
 		if entrada.IDUsuarioCriacaoCancelamento.Valid {
 			idUsuarioCancelamento = int(entrada.IDUsuarioCriacaoCancelamento.Int32)
-		}else {
+		} else {
 			idUsuarioCancelamento = 0
 		}
-
 
 		nomeCriacao := "" // Valor padrão se vier nulo do banco
 		if entrada.UsuarioCriacaoNome.Valid {
@@ -191,7 +190,13 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas, t
 			Quantidade:         int(entrada.Quantidade),
 			Quantidade_Atual:   int(entrada.Quantidadeatual),
 			Lote:               entrada.Lote,
-			Fornecedor:         entrada.Fornecedor,
+			Fornecedor:         model.FornecedorDto{
+				ID: int(entrada.Idfornecedor),
+				RazaoSocial: entrada.RazaoSocial,
+				NomeFantasia: entrada.NomeFantasia,
+				CNPJ: entrada.Cnpj,
+				InscricaoEstadual: entrada.InscricaoEstadual,
+			},
 			Nota_fiscal_serie:  entrada.NotaFiscalSerie.String,
 			Nota_fiscal_numero: entrada.NotaFiscalNumero,
 			ValorUnitario:      valorDecimal,
@@ -200,7 +205,7 @@ func (e *EntradaService) ListarEntradas(ctx context.Context, f FiltroEntradas, t
 				Nome: nomeCriacao,
 			},
 			UsuarioEntradaCancelamento: model.RecuperaUserEntrada{
-				Id: idUsuarioCancelamento,
+				Id:   idUsuarioCancelamento,
 				Nome: nomeCancelamento,
 			},
 		}
@@ -240,7 +245,7 @@ func (e *EntradaService) CancelarEntrada(ctx context.Context, id, idUser, tenant
 
 	arg := repository.CancelarEntradaParams{
 		ID:                           int32(id),
-		IDUsuarioCriacaoCancelamento: pgtype.Int4{Int32: int32(idUser),Valid: true},
+		IDUsuarioCriacaoCancelamento: pgtype.Int4{Int32: int32(idUser), Valid: true},
 		TenantID:                     int32(tenantid),
 	}
 	linhasAfetadas, err := e.repo.CancelarEntrada(ctx, arg)
