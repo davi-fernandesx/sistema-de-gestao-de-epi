@@ -57,7 +57,7 @@ type EntradaEpi struct {
 	DataFabricacao               pgtype.Date
 	DataValidade                 pgtype.Date
 	Lote                         string
-	Fornecedor                   string
+	Idfornecedor                 int32
 	ValorUnitario                pgtype.Numeric
 	CanceladaEm                  pgtype.Timestamp
 	Ativo                        bool
@@ -105,6 +105,17 @@ type EpisEntregue struct {
 	Quantidade int32
 	Ativo      bool
 	DeletadoEm pgtype.Timestamp
+}
+
+type Fornecedore struct {
+	ID                int32
+	TenantID          int32
+	RazaoSocial       string
+	NomeFantasia      string
+	Cnpj              string
+	InscricaoEstadual string
+	Ativo             pgtype.Bool
+	CanceladoEm       pgtype.Timestamp
 }
 
 type Funcao struct {
