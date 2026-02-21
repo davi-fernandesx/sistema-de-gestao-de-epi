@@ -26,10 +26,10 @@ FROM fornecedores
 WHERE 
     tenant_id = sqlc.arg('tenant_id')
         AND (
-        (sqlc.arg('canceladas')::boolean IS FALSE AND cancelada_em IS NULL) OR
-        (sqlc.arg('canceladas')::boolean IS TRUE AND cancelada_em IS NOT NULL)
+        (sqlc.arg('canceladas')::boolean IS FALSE AND cancelado_em IS NULL) OR
+        (sqlc.arg('canceladas')::boolean IS TRUE AND cancelado_em IS NOT NULL)
     )
-    AND cancelado_em IS NULL -- Soft Delete: Só traz os ativos
+    
     AND (sqlc.narg('nome')::text IS NULL OR nome_fantasia ILIKE '%' || sqlc.narg('nome') || '%' OR razao_social ILIKE '%' || sqlc.narg('nome') || '%')
     AND (sqlc.narg('cnpj')::text IS NULL OR cnpj ILIKE '%' || sqlc.narg('cnpj') || '%')
 ORDER BY id DESC
