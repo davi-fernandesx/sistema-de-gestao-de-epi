@@ -4,10 +4,13 @@ import (
 	"log"
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
+	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/routers"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/middleware"
+	"github.com/go-playground/validator/v10"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
 
 // @title           SaaS EPI API
@@ -27,17 +30,17 @@ import (
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-func main(){
+func main() {
 
-	postgressConnection := configs. ConexaoDbPostgres{}
+	postgressConnection := configs.ConexaoDbPostgres{}
 
-	init:= configs.Init{Conexao: &postgressConnection,}
-	
-	router:= gin.Default()
+	init := configs.Init{Conexao: &postgressConnection}
 
-	router.Use(middleware.CorsConfig(),middleware.SecurityHeaders())
+	router := gin.Default()
 
-	db, err:= init.InitAplicattion()
+	router.Use(middleware.CorsConfig(), middleware.SecurityHeaders())
+
+	db, err := init.InitAplicattion()
 	if err != nil {
 
 		log.Fatal(err)
@@ -48,7 +51,16 @@ func main(){
 		log.Fatal(err)
 	}
 
-	container:= routers.NewContainer(db)
+	// --- BLOCO DE REGISTRO DO VALIDATOR ---
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		// Aqui você registra a tag "cnpj"
+		err := v.RegisterValidation("cnpj", helper.ValidateCNPJ)
+		if err != nil {
+			log.Fatal("Erro ao registrar validador de CNPJ")
+		}
+	}
+
+	container := routers.NewContainer(db)
 
 	routers.ConfigurarRotas(router, container, db)
 
