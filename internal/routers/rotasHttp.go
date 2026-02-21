@@ -1,6 +1,8 @@
 package routers
 
 import (
+	
+
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/controller"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	_ "github.com/davi-fernandesx/sistema-de-gestao-de-epi/docs"
@@ -59,6 +61,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	}
 }
 func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
+
 
 	queries := repository.New(db)
 	// --- GRUPO 1: Rotas Públicas (Aberta) ---
@@ -135,4 +138,3 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 	}
 
 }
- 
