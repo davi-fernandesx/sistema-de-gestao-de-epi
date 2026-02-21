@@ -5,7 +5,7 @@ package model
 type FornecedorInserir struct {
 	RazaoSocial       string         `json:"razao_social" binding:"required,max=100"`
 	NomeFantasia      string         `json:"nome_fantasia" binding:"required,max=100"`
-	CNPJ              string         `json:"cnpj" binding:"required"` // Valide 14 digitos no validator
+	CNPJ              string         `json:"cnpj" binding:"required,cnpj"` // Valide 14 digitos no validator
 	InscricaoEstadual string         `json:"inscricao_estadual" binding:"required"`
 }
 
@@ -31,6 +31,6 @@ type FornecedorDto struct {
 type FornecedorUpdate struct {
 	RazaoSocial       *string         `json:"razao_social"`
 	NomeFantasia      *string         `json:"nome_fantasia"`
-	CNPJ              *string         `json:"cnpj"` // Valide 14 digitos no validator
+	CNPJ              *string         `json:"cnpj" binding:"cnpj"` // Valide 14 digitos no validator
 	InscricaoEstadual *string         `json:"inscricao_estadual"`
 }
