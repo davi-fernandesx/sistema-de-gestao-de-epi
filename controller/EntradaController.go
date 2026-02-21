@@ -51,22 +51,6 @@ func (e *EntradaController) AdicionarEntrada() gin.HandlerFunc {
 		// 2. Transforma tudo em MAIÚSCULO para padronizar
 		input.Lote = strings.ToUpper(strings.TrimSpace(input.Lote))
 
-		entrada := model.EntradaEpiInserir{
-			ID_epi:             input.ID_epi,
-			Id_tamanho:         input.Id_tamanho,
-			Id_user:            input.Id_user,
-			Data_entrada:       input.Data_entrada,
-			Quantidade_Atual:   input.Quantidade_Atual,
-			Quantidade:         input.Quantidade,
-			DataFabricacao:     input.DataFabricacao,
-			DataValidade:       input.DataValidade,
-			Lote:               input.Lote,
-			Id_fornecedor:      input.Id_fornecedor,
-			Nota_fiscal_serie:  input.Nota_fiscal_serie,
-			Nota_fiscal_numero: input.Nota_fiscal_numero,
-			ValorUnitario:      input.ValorUnitario,
-		}
-
 		tenantId, ok := middleware.GetTenantID(ctx)
 		if !ok {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -75,7 +59,7 @@ func (e *EntradaController) AdicionarEntrada() gin.HandlerFunc {
 			return
 		}
 
-		err := e.service.Adicionar(ctx, entrada, tenantId)
+		err := e.service.Adicionar(ctx, input, tenantId)
 		if err != nil {
 
 			if errors.Is(err, helper.ErrDataMenor) {
@@ -214,6 +198,7 @@ func (e *EntradaController) CancelarEntrada() gin.HandlerFunc {
 
 				"error": err.Error(),
 			})
+			return 
 		}
 
 		ctx.Status(http.StatusNoContent)
