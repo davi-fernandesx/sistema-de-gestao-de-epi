@@ -66,7 +66,7 @@ type FornecedoresPaginados struct {
 	PaginaFinal  int32
 }
 
-func (f *FornecedorService) ListarEntradas(ctx context.Context, filt FiltroFornecedores, tenatId int32) (FornecedoresPaginados, error) {
+func (f *FornecedorService) ListarFornecedor(ctx context.Context, filt FiltroFornecedores, tenantId int32) (FornecedoresPaginados, error) {
 
 	limit := filt.Quantidade
 	if limit <= 0 {
@@ -79,7 +79,7 @@ func (f *FornecedorService) ListarEntradas(ctx context.Context, filt FiltroForne
 	offset := max((paginaAtual-1)*limit, 0)
 
 	filtro := repository.ListarFornecedoresParams{
-		TenantID:   tenatId,
+		TenantID:   tenantId,
 		Nome:       pgtype.Text{String: filt.Nome, Valid: filt.Nome != ""},
 		Cnpj:       pgtype.Text{String: filt.Cnpj, Valid: filt.Cnpj != ""},
 		Canceladas: filt.Cancelados,
