@@ -139,10 +139,10 @@ FROM fornecedores
 WHERE 
     tenant_id = $1
         AND (
-        ($2::boolean IS FALSE AND cancelada_em IS NULL) OR
-        ($2::boolean IS TRUE AND cancelada_em IS NOT NULL)
+        ($2::boolean IS FALSE AND cancelado_em IS NULL) OR
+        ($2::boolean IS TRUE AND cancelado_em IS NOT NULL)
     )
-    AND cancelado_em IS NULL -- Soft Delete: Só traz os ativos
+    
     AND ($3::text IS NULL OR nome_fantasia ILIKE '%' || $3 || '%' OR razao_social ILIKE '%' || $3 || '%')
     AND ($4::text IS NULL OR cnpj ILIKE '%' || $4 || '%')
 ORDER BY id DESC
