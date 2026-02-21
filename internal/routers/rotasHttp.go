@@ -21,6 +21,7 @@ type Container struct {
 	Protecao     controller.TipoProtecaoController
 	Epi          controller.EpiController
 	Entrada      controller.EntradaController
+	Fornecedor   controller.FornecedorController
 }
 
 func NewContainer(db *pgxpool.Pool) *Container {
@@ -33,10 +34,12 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	repoTipoProtecao := repository.NewProtecaoRepository(db)
 	repoEpi := repository.NewEpiRepository(db)
 	repoEntrada := repository.NewEntradaRepository(db)
+	repoFornecedor := repository.NewFornecedorRepository(db)
 
 	serviceUsuario := service.NewUsuarioService(repoUsuario)
 	departamentoService := service.NewDepartamentoService(repoDepartamento)
 	funcaoService := service.NewFuncaoService(repoFuncao)
+	FornecedorService := service.NewFornecedorService(repoFornecedor)
 	funcionarioService := service.NewFuncionarioService(repoFuncionario, db)
 	tamanhoService := service.NewTamanhoService(repoTamanho)
 	TipoProtecaoService := service.NewProtecaoService(repoTipoProtecao)
@@ -52,6 +55,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 		Protecao:     *controller.NewTipoProtecaoController(TipoProtecaoService),
 		Epi:          *controller.NewEpiController(epiService),
 		Entrada:      *controller.NewEntradaController(entradaService),
+		Fornecedor:   *controller.NewFornecedorController(FornecedorService),
 	}
 }
 func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
@@ -122,6 +126,13 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 		api.POST("/cadastrar-entrada", c.Entrada.AdicionarEntrada())
 		api.GET("/entradas", c.Entrada.ListarEntradas())
 		api.DELETE("/entrada/:id", c.Entrada.CancelarEntrada())
+
+		//fornecedores
+		api.POST("/cadastro-fornecedores", c.Fornecedor.Adicionar())
+		api.GET("/fornecedores", c.Fornecedor.ListarFornecedores())
+		api.DELETE("/fornecedor/:id", c.Fornecedor.CancelarFornecedor())
+		api.PATCH("/fornecedor/:id", c.Fornecedor.AtualizaFornecedor())
 	}
 
 }
+ 
