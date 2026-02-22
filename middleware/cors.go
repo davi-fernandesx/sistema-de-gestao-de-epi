@@ -16,6 +16,8 @@ func CorsConfig() gin.HandlerFunc {
 		AllowOrigins: []string{
 			"https://sgepi-front-end.vercel.app", //homologação
 			"http://localhost:3000", //local
+			"https://radaptech.com.br",//homologação
+			"https://www.radaptech.com.br",
 		},
 
 		AllowMethods: []string{
@@ -28,7 +30,7 @@ func CorsConfig() gin.HandlerFunc {
 			"Content-type",
 			"Accept",
 			"Authorization",
-			"X-Request-With",
+			"X-Requested-With",
 		},//cabeçalhos que o front pode enviar
 
 		ExposeHeaders: []string{
