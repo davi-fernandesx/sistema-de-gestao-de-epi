@@ -9,6 +9,7 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/helper"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/internal/model"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -22,7 +23,7 @@ type EntregaRepository interface {
 	AbaterEstoqueEntrada(ctx context.Context, qtx *repository.Queries, args repository.AbaterEstoqueLoteParams) (int64, error)
 	ReporEstoqueEntrada(ctx context.Context, qtx *repository.Queries, args repository.ReporEstoqueLoteParams) (int64, error)
 	ListarEntregasDisponiveis(ctx context.Context, qtx *repository.Queries, args repository.ListarLotesParaConsumoParams) ([]repository.ListarLotesParaConsumoRow, error)
-	ListarEpisEntreguesCancelados(ctx context.Context,qtx *repository.Queries ,arg repository.ListarItensEntregueCanceladosParams) ([]repository.ListarItensEntregueCanceladosRow, error)
+	ListarEpisEntreguesCancelados(ctx context.Context, qtx *repository.Queries, arg repository.ListarItensEntregueCanceladosParams) ([]repository.ListarItensEntregueCanceladosRow, error)
 }
 
 type EntregaService struct {
@@ -65,7 +66,11 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 	})
 	if err != nil {
 
-		return err
+		if err == pgx.ErrNoRows {
+
+			return helper.ErrNaoEncontrado
+		}
+		return  err
 	}
 	token := helper.GerarTokenAuditoria(funcionario.Nome, funcionario.FuncaoNome, funcionario.DepartamentoNome, model.Data_entrega.Time())
 	// 1. Cria a variável vazia (Valid: false por padrão)
@@ -81,10 +86,10 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 	args := repository.AddEntregaEpiParams{
 
 		Idfuncionario:    int32(model.ID_funcionario),
-		DataEntrega:      pgtype.Date{Time: model.Data_entrega.Time(), Valid: true},
+		DataEntrega:      pgtype.Date{Time: model.Data_entrega.Time(), Valid: !model.Data_entrega.IsZero()},
 		Assinatura:       model.Assinatura_Digital,
-		TokenValidacao:   pgtype.Text{String: token},
-		IDUsuarioEntrega: pgtype.Int4{Int32: int32(model.Id_user)},
+		TokenValidacao:   pgtype.Text{String: token, Valid: token != ""},
+		IDUsuarioEntrega: pgtype.Int4{Int32: int32(model.Id_user), Valid: int32(model.Id_user) > 0},
 		Idtroca:          idTrocaParaBanco,
 		TenantID:         tenantId,
 	}
@@ -92,6 +97,10 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 	identrega, err := e.repo.AdicionarEntrega(ctx, qtx, args) //salva o "cabeçalho"
 	if err != nil {
 
+		if err == pgx.ErrNoRows {
+
+			return helper.ErrNaoEncontrado
+		}
 		return err
 	}
 
@@ -108,6 +117,11 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 		/*lista todas as entradas com quantidadeAtual maior que 0 e que tenha os idepie e idtamanhos iguais as passado nos parametros*/
 		entradaLotes, err := e.repo.ListarEntregasDisponiveis(ctx, qtx, lotes)
 		if err != nil {
+
+			if err == pgx.ErrNoRows {
+
+				return helper.ErrNaoEncontrado
+			}
 			return err
 		}
 
@@ -154,6 +168,7 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 		if quantidadeNescessaria > 0 {
 			// Se sobrou quantidade, significa que percorremos todos os lotes
 			// e ainda não deu o total. Rollback automático pelo defer!
+			
 			return fmt.Errorf("estoque insuficiente para o EPI ID %d (faltam %d unidades)",
 				item.ID_epi, quantidadeNescessaria)
 		}
@@ -225,7 +240,7 @@ func (e *EntregaService) ListaEntregas(ctx context.Context, f FiltroEntregas, te
 		})
 	}
 	todosItens, err := e.queries.BuscarTodosItensEntrega(ctx, repository.BuscarTodosItensEntregaParams{
-		TenantID: tenantId,
+		TenantID:  tenantId,
 		IDEntrega: f.EntregaID,
 	})
 	if err != nil {
@@ -311,7 +326,7 @@ func (e *EntregaService) CancelarEntrega(ctx context.Context, tenantId, id, idus
 	defer tx.Rollback(ctx)
 
 	qtx := e.queries.WithTx(tx)
-	err = e.RegistrarCancelamento(ctx, qtx, tenantId,id, iduser)
+	err = e.RegistrarCancelamento(ctx, qtx, tenantId, id, iduser)
 
 	if err := tx.Commit(ctx); err != nil {
 
@@ -349,7 +364,7 @@ func (e *EntregaService) RegistrarCancelamento(ctx context.Context, qtx *reposit
 
 	cancelados, err := e.repo.ListarEpisEntreguesCancelados(ctx, qtx, repository.ListarItensEntregueCanceladosParams{
 		Identrega: identrega,
-		TenantID: arg.TenantID,
+		TenantID:  arg.TenantID,
 	})
 	if err != nil {
 		return err
