@@ -1,8 +1,6 @@
 package routers
 
 import (
-	
-
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/controller"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	_ "github.com/davi-fernandesx/sistema-de-gestao-de-epi/docs"
@@ -24,6 +22,7 @@ type Container struct {
 	Epi          controller.EpiController
 	Entrada      controller.EntradaController
 	Fornecedor   controller.FornecedorController
+	Entrega      controller.EntregaController
 }
 
 func NewContainer(db *pgxpool.Pool) *Container {
@@ -37,6 +36,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	repoEpi := repository.NewEpiRepository(db)
 	repoEntrada := repository.NewEntradaRepository(db)
 	repoFornecedor := repository.NewFornecedorRepository(db)
+	repoEntrega := repository.NewEntregaRepository(db)
 
 	serviceUsuario := service.NewUsuarioService(repoUsuario)
 	departamentoService := service.NewDepartamentoService(repoDepartamento)
@@ -47,6 +47,7 @@ func NewContainer(db *pgxpool.Pool) *Container {
 	TipoProtecaoService := service.NewProtecaoService(repoTipoProtecao)
 	epiService := service.NewEpiService(repoEpi, db)
 	entradaService := service.NewEntradaService(repoEntrada)
+	entregaService := service.NewEntregaService(repoEntrega, db)
 
 	return &Container{
 		Usuario:      *controller.NewLoginController(serviceUsuario),
@@ -58,10 +59,10 @@ func NewContainer(db *pgxpool.Pool) *Container {
 		Epi:          *controller.NewEpiController(epiService),
 		Entrada:      *controller.NewEntradaController(entradaService),
 		Fornecedor:   *controller.NewFornecedorController(FornecedorService),
+		Entrega:      *controller.NewEntregaController(entregaService),
 	}
 }
 func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
-
 
 	queries := repository.New(db)
 	// --- GRUPO 1: Rotas Públicas (Aberta) ---
@@ -135,6 +136,9 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 		api.GET("/fornecedores", c.Fornecedor.ListarFornecedores())
 		api.DELETE("/fornecedor/:id", c.Fornecedor.CancelarFornecedor())
 		api.PATCH("/fornecedor/:id", c.Fornecedor.AtualizaFornecedor())
+
+		//entregas
+		api.POST("/cadastro-entregas", c.Entrega.Adicionar())
 	}
 
 }
