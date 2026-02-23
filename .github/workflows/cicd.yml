@@ -4,9 +4,9 @@ name: Go - CI
 ## apenas os testes unitarios
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "main", "dev", "homologacao" ]
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "main", "dev",. "homologacao" ]
 
 jobs:
 
