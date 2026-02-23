@@ -1,0 +1,24 @@
+services:
+
+  # -----------------------------------------------------------------
+  # API (Sua Aplicação Go)
+  # -----------------------------------------------------------------
+  api:
+    container_name: api_epi
+    restart: always
+    build:
+      context: .           # <--- O PULO DO GATO: Define a raiz do projeto como contexto
+      dockerfile: Dockerfile # Aponta onde está o arquivo de build
+    environment:
+      - GIN_MODE=release # Otimiza o Gin para produção
+
+  # O Nginx (Seu Proxy Reverso e Escudo contra bots)
+nginx:
+    # Usando o build do Dockerfile.nginx em vez de volume!
+    build:
+      context: .
+      dockerfile: nginx.Dockerfile
+    ports:
+      - "80:80" 
+    depends_on:
+      - api

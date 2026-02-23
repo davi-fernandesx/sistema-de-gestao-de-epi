@@ -15,15 +15,14 @@ type VariaveisDeAmbiente struct {
 	DB_PORT     string
 	DATABASE    string
 	DB_PASSWORD string
-	DB_URL      string
 }
 
 func NewVariaveisAmbiente() *VariaveisDeAmbiente {
-    // Tenta carregar. Se não achar, avisa UMA VEZ e segue.
-    err := godotenv.Load(".env", "../.env", "../../.env")
-    if err != nil {
-        log.Println("Aviso: arquivo .env não encontrado. Continuando com variáveis de sistema...")
-    }
+	// Tenta carregar. Se não achar, avisa UMA VEZ e segue.
+	err := godotenv.Load(".env", "../.env", "../../.env")
+	if err != nil {
+		log.Println("Aviso: arquivo .env não encontrado. Continuando com variáveis de sistema...")
+	}
 
 	return &VariaveisDeAmbiente{
 		DB_SERVER:   os.Getenv("DB_SERVER"),
@@ -31,6 +30,5 @@ func NewVariaveisAmbiente() *VariaveisDeAmbiente {
 		DB_PORT:     os.Getenv("DB_PORT"),
 		DATABASE:    os.Getenv("DATABASE"),
 		DB_PASSWORD: os.Getenv("DB_PASSWORD"),
-		DB_URL:      os.Getenv("DATABASE_URL"),
 	}
 }
