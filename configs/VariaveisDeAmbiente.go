@@ -21,7 +21,7 @@ type VariaveisDeAmbiente struct {
 
 func NewVariaveisAmbiente() *VariaveisDeAmbiente {
     // Tenta carregar. Se não achar, avisa UMA VEZ e segue.
-    err := godotenv.Load("configs/.env", "../configs/.env")
+    err := godotenv.Load(".env", "../.env", "../../.env")
     if err != nil {
         log.Println("Aviso: arquivo .env não encontrado. Continuando com variáveis de sistema...")
     }
