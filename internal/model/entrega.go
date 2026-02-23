@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/configs"
-	
 )
 
 type ItemParaInserir struct {
@@ -21,10 +20,10 @@ type EntregaParaInserir struct {
 }
 
 type ItemEntregueDto struct {
-	Id            int64           `json:"id"`
-	Epi           EpiDto          `json:"epi"`
-	Quantidade    int             `json:"quantidade"`
-	
+	Id         int64       `json:"id"`
+	Epi        EpiResponse `json:"epi"`
+	Tamanho    TamanhoDto  `json:"tamanho"`
+	Quantidade int         `json:"quantidade"`
 }
 
 type EntregaDto struct {
@@ -33,5 +32,5 @@ type EntregaDto struct {
 	Funcionario        Funcionario_Dto   `json:"funcionario"`
 	Data_entrega       configs.DataBr    `json:"data_entrega"`
 	Assinatura_Digital string            `json:"assinatura_digital"`
-	Itens              []ItemEntregueDto `json:"itens"`
+	Itens              []ItemEntregueDto `json:"itens,omitempty"`
 }
