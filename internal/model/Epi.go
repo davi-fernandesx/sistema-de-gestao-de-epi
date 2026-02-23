@@ -32,3 +32,13 @@ type UpdateEpiInput struct {
 	ValidadeCa *configs.DataBr `json:"validadeCa"`
 	Tamanhos   []int32         `json:"tamanhos"` // Novos IDs de tamanhos
 }
+
+type EpiResponse struct {
+	Id             int             `json:"id"`
+	Nome           string          `json:"nome"`
+	Fabricante     string          `json:"fabricante"`
+	CA             string          `json:"ca"`
+	Descricao      string          `json:"descricao"`
+	DataValidadeCa configs.DataBr  `json:"data_validadeCa"`
+	Protecao       TipoProtecaoDto `json:"protecao"`
+}

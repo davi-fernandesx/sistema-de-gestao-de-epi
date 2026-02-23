@@ -17,8 +17,6 @@ func (I *Init) InitAplicattion() (*pgxpool.Pool, error) {
 	if err != nil {
 
 		log.Printf("erro ao carregar o arquivo .env: %v", err)
-		log.Printf("aplicação não pode seguir daqui")
-		log.Fatal()
 	}
 	log.Println("---")
 	log.Println("Carregando informações do banco de dados.....")

@@ -31,6 +31,7 @@ func CorsConfig() gin.HandlerFunc {
 			"Accept",
 			"Authorization",
 			"X-Requested-With",
+			"X-Tenant-ID",
 		},//cabeçalhos que o front pode enviar
 
 		ExposeHeaders: []string{

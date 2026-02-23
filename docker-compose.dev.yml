@@ -7,7 +7,7 @@ services:
     container_name: postgres_container
     restart: always
     env_file:
-      - ../configs/.env  # Lê o .env da pasta configs
+      - .env  # Lê o .env para obter as variáveis de ambiente
     ports:
       - "${DB_PORT}:5432" # Porta externa:interna
     environment:
@@ -39,14 +39,12 @@ services:
     container_name: api_epi
     restart: always
     build:
-      context: ..            # <--- O PULO DO GATO: Define a raiz do projeto como contexto
-      dockerfile: docker/dockerfile # Aponta onde está o arquivo de build
-    ports:
-      - "8080:8080"
+      context: .           # <--- O PULO DO GATO: Define a raiz do projeto como contexto
+      dockerfile: Dockerfile # Aponta onde está o arquivo de build
     depends_on:
       - postgres
     env_file:
-      - ../configs/.env
+      -  .env
     environment:
       # Sobrescreve o DB_HOST para usar o nome do container
       - DB_HOST=postgres
@@ -56,6 +54,17 @@ services:
       - DB_NAME=${DATABASE}
       - JWT_SECRET=${JWT_SECRET}
       - GIN_MODE=release # Otimiza o Gin para produção
+
+  # O Nginx (Seu Proxy Reverso e Escudo contra bots)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80" # Porta que você vai acessar no http://localhost
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+
 
 volumes:
   postgres_data:

@@ -19,11 +19,11 @@ type VariaveisDeAmbiente struct {
 }
 
 func NewVariaveisAmbiente() *VariaveisDeAmbiente {
-	// Tenta carregar. Se não achar, avisa UMA VEZ e segue.
-	err := godotenv.Load("configs/.env", "../configs/.env")
-	if err != nil {
-		log.Println("Aviso: arquivo .env não encontrado. Continuando com variáveis de sistema...")
-	}
+    // Tenta carregar. Se não achar, avisa UMA VEZ e segue.
+    err := godotenv.Load(".env", "../.env", "../../.env")
+    if err != nil {
+        log.Println("Aviso: arquivo .env não encontrado. Continuando com variáveis de sistema...")
+    }
 
 	return &VariaveisDeAmbiente{
 		DB_SERVER:   os.Getenv("DB_SERVER"),

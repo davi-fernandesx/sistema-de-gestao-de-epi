@@ -2,9 +2,8 @@ package middleware
 
 import (
 	"database/sql"
-	"net"
 	"net/http"
-	"strings"
+
 
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	"github.com/gin-gonic/gin"
@@ -16,41 +15,18 @@ func TenantMiddleware(querie *repository.Queries)  gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 
-		host:= c.Request.Host
+		subdominio := c.GetHeader("X-tenant-ID")
 
-		// Remove a porta se existir (ex: localhost:8080 -> localhost)
-		if strings.Contains(host, ":"){
-			var err error
-			host, _, err = net.SplitHostPort(host)
-			if err != nil {
-
-				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Host inválido"})
-				return
-			}
-		}
-
-		parts:= strings.Split(host, ".")
-		// Lógica simples: Pega a primeira parte como subdomínio.
-		// Ex: "frigorifico.radap.com.br" -> parts[0] = "frigorifico"
-		// CUIDADO: Em localhost puro ("localhost"), parts tem tamanho 1.
-		// Se usar lvh.me ("teste.lvh.me"), parts tem tamanho 3.
-
-		var subdominio string
-
-		if len(parts) >= 3 {
-			subdominio = parts[0]
-		} else {
-			// Caso esteja rodando local sem subdomínio ou ip direto, bloqueia ou define um padrão
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Subdomínio não identificado"})
+		if subdominio == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Tenant não informado (X-Tenant-ID ausente)"})
 			return
 		}
 
-		// Ignorar 'www' ou 'api' se forem reservados
+		// 3. Ignora o'www' ou 'api' se vierem no header
 		if subdominio == "www" || subdominio == "api" {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Subdomínio reservado"})
 			return
 		}
-
 
 		// Busca no banco (usando o Context da request para cancelamento/timeout)
 		empresa,err:= querie.GetTenantBySubdomain(c.Request.Context(), subdominio)
