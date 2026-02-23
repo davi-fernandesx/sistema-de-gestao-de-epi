@@ -70,7 +70,7 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 
 			return helper.ErrNaoEncontrado
 		}
-		return  err
+		return err
 	}
 	token := helper.GerarTokenAuditoria(funcionario.Nome, funcionario.FuncaoNome, funcionario.DepartamentoNome, model.Data_entrega.Time())
 	// 1. Cria a variável vazia (Valid: false por padrão)
@@ -168,7 +168,7 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 		if quantidadeNescessaria > 0 {
 			// Se sobrou quantidade, significa que percorremos todos os lotes
 			// e ainda não deu o total. Rollback automático pelo defer!
-			
+
 			return fmt.Errorf("estoque insuficiente para o EPI ID %d (faltam %d unidades)",
 				item.ID_epi, quantidadeNescessaria)
 		}
@@ -178,14 +178,14 @@ func (e *EntregaService) RegistrarEntrega(ctx context.Context, qtx *repository.Q
 }
 
 type FiltroEntregas struct {
-	Canceladas    bool
-	EpiID         int32
-	EntregaID     int32
-	FuncionarioId int32
-	DataInicio    configs.DataBr
-	DataFim       configs.DataBr
-	Pagina        int32
-	Quantidade    int32
+	Canceladas    bool           `form:"canceladas"`
+	EpiID         int32          `form:"epiId"`
+	EntregaID     int32          `form:"entregaId"`
+	FuncionarioId int32          `form:"funcionarioId"`
+	DataInicio    configs.DataBr `form:"dataInicio"`
+	DataFim       configs.DataBr `form:"dataFim"`
+	Pagina        int32          `form:"pagina"`
+	Quantidade    int32          `form:"quantidade"`
 }
 
 type EntregaPaginada struct {
@@ -225,20 +225,6 @@ func (e *EntregaService) ListaEntregas(ctx context.Context, f FiltroEntregas, te
 		return EntregaPaginada{}, err
 	}
 
-	todosTamanhos, err := e.queries.BuscarTodosTamanhosAgrupados(ctx, tenantId)
-	if err != nil {
-
-		return EntregaPaginada{}, err
-	}
-
-	tamanhosMap := make(map[int32][]model.TamanhoDto)
-	for _, t := range todosTamanhos {
-
-		tamanhosMap[t.Idepi] = append(tamanhosMap[t.Idepi], model.TamanhoDto{
-			ID:      int(t.ID),
-			Tamanho: t.Tamanho,
-		})
-	}
 	todosItens, err := e.queries.BuscarTodosItensEntrega(ctx, repository.BuscarTodosItensEntregaParams{
 		TenantID:  tenantId,
 		IDEntrega: f.EntregaID,
@@ -252,18 +238,21 @@ func (e *EntregaService) ListaEntregas(ctx context.Context, f FiltroEntregas, te
 
 		itensMap[I.EntregaID] = append(itensMap[I.EntregaID], model.ItemEntregueDto{
 			Id: int64(I.ItemID),
-			Epi: model.EpiDto{
+			Epi: model.EpiResponse{
 				Id:             int(I.EpiID),
 				Nome:           I.EpiNome,
 				Fabricante:     I.Fabricante,
 				CA:             I.Ca,
-				Tamanho:        tamanhosMap[I.EpiID],
 				Descricao:      I.EpiDesc,
 				DataValidadeCa: configs.DataBr(I.ValidadeCa.Time),
 				Protecao: model.TipoProtecaoDto{
 					ID:   int64(I.TpID),
 					Nome: I.TpNome,
 				},
+			},
+			Tamanho: model.TamanhoDto{
+				ID:      int(I.TamID),
+				Tamanho: I.TamNome,
 			},
 			Quantidade: int(I.Quantidade),
 		})
@@ -327,6 +316,10 @@ func (e *EntregaService) CancelarEntrega(ctx context.Context, tenantId, id, idus
 
 	qtx := e.queries.WithTx(tx)
 	err = e.RegistrarCancelamento(ctx, qtx, tenantId, id, iduser)
+	if err != nil {
+
+		return err
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 
@@ -339,14 +332,14 @@ func (e *EntregaService) RegistrarCancelamento(ctx context.Context, qtx *reposit
 
 	arg := repository.CancelarEntregaParams{
 		ID:                           int32(id),
-		IDUsuarioEntregaCancelamento: pgtype.Int4{Int32: int32(iduser), Valid: true},
+		IDUsuarioEntregaCancelamento: pgtype.Int4{Int32: int32(iduser), Valid: int32(iduser) > 0},
 		TenantID:                     int32(tenantID),
 	}
 
 	identrega, err := e.repo.Cancelar(ctx, qtx, arg)
 	if err != nil {
 
-		return err
+		return err 
 	}
 
 	if identrega == 0 {
@@ -359,7 +352,8 @@ func (e *EntregaService) RegistrarCancelamento(ctx context.Context, qtx *reposit
 		TenantID:  arg.TenantID,
 	})
 	if err != nil {
-		return err
+
+		return fmt.Errorf("erro em cancelar entrega de item, %w ", err) 
 	}
 
 	cancelados, err := e.repo.ListarEpisEntreguesCancelados(ctx, qtx, repository.ListarItensEntregueCanceladosParams{
@@ -367,7 +361,8 @@ func (e *EntregaService) RegistrarCancelamento(ctx context.Context, qtx *reposit
 		TenantID:  arg.TenantID,
 	})
 	if err != nil {
-		return err
+
+		return fmt.Errorf("erro em epis entregues cancelados, %w ", err) 
 	}
 
 	for _, cancelado := range cancelados {
@@ -380,7 +375,7 @@ func (e *EntregaService) RegistrarCancelamento(ctx context.Context, qtx *reposit
 		linhasAfetadas, err := e.repo.ReporEstoqueEntrada(ctx, qtx, args)
 		if err != nil {
 
-			return err
+			return fmt.Errorf("erro em repor estoque, %w ", err) 
 		}
 
 		if linhasAfetadas == 0 {

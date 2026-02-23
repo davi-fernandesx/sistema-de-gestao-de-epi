@@ -139,6 +139,8 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 
 		//entregas
 		api.POST("/cadastro-entregas", c.Entrega.Adicionar())
+		api.GET("/entregas", c.Entrega.ListarEntregas())
+		api.DELETE("/entrega/:id", c.Entrega.CancelarEntrega())
 	}
 
 }
