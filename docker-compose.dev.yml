@@ -61,7 +61,7 @@ services:
     ports:
       - "80:80" # Porta que você vai acessar no http://localhost
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api
 
