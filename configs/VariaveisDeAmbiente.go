@@ -15,13 +15,23 @@ type VariaveisDeAmbiente struct {
 	DB_PORT     string
 	DATABASE    string
 	DB_PASSWORD string
+	DB_SSLMODE  string
 }
 
 func NewVariaveisAmbiente() *VariaveisDeAmbiente {
+
+	dir, _ := os.Getwd()
+	log.Println("👀 ATENÇÃO: O Go está procurando o arquivo .env dentro desta pasta:", dir)
 	// Tenta carregar. Se não achar, avisa UMA VEZ e segue.
-	err := godotenv.Load(".env", "../.env", "../../.env")
+	err := godotenv.Load(".env")
 	if err != nil {
 		log.Println("Aviso: arquivo .env não encontrado. Continuando com variáveis de sistema...")
+	}
+
+	sslmode:= os.Getenv("DB_SSLMODE")
+	if sslmode == ""{
+
+		sslmode = "disable"
 	}
 
 	return &VariaveisDeAmbiente{
@@ -30,5 +40,6 @@ func NewVariaveisAmbiente() *VariaveisDeAmbiente {
 		DB_PORT:     os.Getenv("DB_PORT"),
 		DATABASE:    os.Getenv("DATABASE"),
 		DB_PASSWORD: os.Getenv("DB_PASSWORD"),
+		DB_SSLMODE: sslmode,
 	}
 }

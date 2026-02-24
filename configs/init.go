@@ -13,6 +13,7 @@ type Init struct {
 func (I *Init) InitAplicattion() (*pgxpool.Pool, error) {
 
 	conf := NewVariaveisAmbiente()
+	
 	db, err := I.Conexao.Conn(conf)
 	if err != nil {
 
