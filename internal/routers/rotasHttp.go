@@ -1,6 +1,8 @@
 package routers
 
 import (
+	"net/http"
+
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/controller"
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	_ "github.com/davi-fernandesx/sistema-de-gestao-de-epi/docs"
@@ -69,7 +71,19 @@ func ConfigurarRotas(r *gin.Engine, c *Container, db *pgxpool.Pool) {
 	// Qualquer um acessa sem token
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "online",
+			"message": "Bem-vindo à API do Sistema de Gestão de EPIs - Radaptech",
+			"version": "1.0.0",
+		})
+	})
+	r.GET("/api", func(c *gin.Context) {
+    c.JSON(http.StatusOK, gin.H{
+        "status":  "online",
+        "message": "API operando normalmente. Acesse a documentação do Swagger para ver as rotas.",
+    })
+})
 	api := r.Group("/api")
 	// --- GRUPO 2: Rotas que precisam do tenentId (SaaS) ---
 	// Precisa do tenant Id para passar

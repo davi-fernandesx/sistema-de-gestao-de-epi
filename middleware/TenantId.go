@@ -8,7 +8,7 @@ import (
 	"github.com/davi-fernandesx/sistema-de-gestao-de-epi/database/repository"
 	"github.com/gin-gonic/gin"
 )
-const TenantId = "tenantId"
+	const TenantId = "tenantId"
 
 
 func TenantMiddleware(querie *repository.Queries)  gin.HandlerFunc {
