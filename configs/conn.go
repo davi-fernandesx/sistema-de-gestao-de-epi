@@ -27,7 +27,7 @@ type ConexaoDbPostgres struct {
 func (p *ConexaoDbPostgres) Conn(configEnv *VariaveisDeAmbiente) (*pgxpool.Pool, error) {
 
 	// Formato: postgres://usuario:senha@host:porta/database
-	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
 		configEnv.DB_SERVER,
 		configEnv.DB_PORT,
 		configEnv.DB_USER,
