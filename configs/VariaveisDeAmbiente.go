@@ -3,6 +3,7 @@ package configs
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -28,11 +29,24 @@ func NewVariaveisAmbiente() *VariaveisDeAmbiente {
 		log.Println("Aviso: arquivo .env não encontrado. Continuando com variáveis de sistema...")
 	}
 
-	sslmode:= os.Getenv("DB_SSLMODE")
-	if sslmode == ""{
+	sslmode := os.Getenv("DB_SSLMODE")
+	if sslmode == "" {
 
 		sslmode = "disable"
 	}
+
+	log.Println("=== INÍCIO DA ESPIONAGEM ===")
+	// os.Environ() lista tudo que existe na memória do sistema
+	for _, env := range os.Environ() {
+		// Separa o nome da variável do valor dela
+		chave := strings.Split(env, "=")[0]
+
+		// Vamos filtrar só as nossas para não poluir o log
+		if strings.HasPrefix(chave, "DB_") || chave == "DATABASE" {
+			log.Println("👀 Achei esta variável no sistema:", chave)
+		}
+	}
+	log.Println("=== FIM DA ESPIONAGEM ===")
 
 	return &VariaveisDeAmbiente{
 		DB_SERVER:   os.Getenv("DB_SERVER"),
@@ -40,6 +54,6 @@ func NewVariaveisAmbiente() *VariaveisDeAmbiente {
 		DB_PORT:     os.Getenv("DB_PORT"),
 		DATABASE:    os.Getenv("DATABASE"),
 		DB_PASSWORD: os.Getenv("DB_PASSWORD"),
-		DB_SSLMODE: sslmode,
+		DB_SSLMODE:  sslmode,
 	}
 }
